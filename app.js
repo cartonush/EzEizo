@@ -18,8 +18,10 @@ const actionList = document.querySelector("#action-list");
 const repairField = document.querySelector("#repair-description");
 const unitsToggle = document.querySelector("#units-toggle");
 const unitsArea = document.querySelector("#units-area");
-const defaultState = { repair: "", actions: ACTIONS.map(() => false), unitsEnabled: false, removed: [], installed: [] };
+const defaultState = { repair: "", actions: ACTIONS.map(() => false), completionTime: "", unitsEnabled: false, removed: [], installed: [] };
 let state = loadState();
+state.completionTime = state.completionTime || "";
+state.actions[ACTIONS.length - 1] = Boolean(state.completionTime);
 
 function loadState() {
   try { return { ...defaultState, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") }; }
@@ -45,18 +47,36 @@ function renderActions() {
     const text = document.createElement("span");
     text.className = "action-text";
     text.textContent = label;
-    const checkbox = document.createElement("input");
-    checkbox.className = "action-check";
-    checkbox.type = "checkbox";
-    checkbox.checked = Boolean(state.actions[index]);
-    checkbox.setAttribute("aria-label", `סמן פעולה ${index + 1} כהושלמה`);
-    checkbox.addEventListener("change", () => {
-      state.actions[index] = checkbox.checked;
-      row.classList.toggle("done", checkbox.checked);
-      updateProgress();
-      saveState();
-    });
-    row.append(number, text, checkbox);
+    if (index === ACTIONS.length - 1) {
+      const timePicker = document.createElement("input");
+      timePicker.className = "time-picker";
+      timePicker.type = "time";
+      timePicker.step = "60";
+      timePicker.value = state.completionTime;
+      timePicker.dir = "ltr";
+      timePicker.setAttribute("aria-label", "בחר שעת סיום תקלה");
+      timePicker.addEventListener("change", () => {
+        state.completionTime = timePicker.value;
+        state.actions[index] = Boolean(state.completionTime);
+        row.classList.toggle("done", state.actions[index]);
+        updateProgress();
+        saveState();
+      });
+      row.append(number, text, timePicker);
+    } else {
+      const checkbox = document.createElement("input");
+      checkbox.className = "action-check";
+      checkbox.type = "checkbox";
+      checkbox.checked = Boolean(state.actions[index]);
+      checkbox.setAttribute("aria-label", `סמן פעולה ${index + 1} כהושלמה`);
+      checkbox.addEventListener("change", () => {
+        state.actions[index] = checkbox.checked;
+        row.classList.toggle("done", checkbox.checked);
+        updateProgress();
+        saveState();
+      });
+      row.append(number, text, checkbox);
+    }
     actionList.append(row);
   });
   updateProgress();
