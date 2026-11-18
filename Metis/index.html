@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.2.0">
-  <link rel="stylesheet" href="styles.css?v=1.2.0">
+  <link rel="stylesheet" href="../styles.css?v=1.3.0">
+  <link rel="stylesheet" href="styles.css?v=1.3.0">
 </head>
 <body>
   <div class="app-shell">
@@ -23,7 +23,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.2.0</span>
+      <span class="version-pill">v1.3.0</span>
     </header>
 
     <main>
@@ -33,18 +33,15 @@
       </section>
       <section class="card" aria-labelledby="closed-list-title">
         <div class="section-heading"><div><p class="section-kicker">מעקב מקומי</p><h2 id="closed-list-title">תקלות שנסגרו</h2></div></div>
-        <div id="closed-list" class="issue-list"></div>
-        <p class="demo-note">במכשיר אחר הטכנאי שולח קישור סגירה. פתיחתו בדף המנהל מוסיפה את התקלה לרשימה כאן.</p>
-        <label class="input-field" for="import-closed-link">קיבלת קישור סגירה? הדבק אותו כאן
-          <input id="import-closed-link" type="url" inputmode="url" placeholder="הדבק קישור סגירה" dir="ltr">
+        <label class="input-field" for="closed-search">חיפוש לפי מספר תקלה
+          <input id="closed-search" type="search" inputmode="numeric" placeholder="למשל 000001">
         </label>
-        <button id="import-closed" type="button" class="secondary-button">הוסף סגירה לרשימה</button>
-        <p id="import-closed-status" role="status" aria-live="polite"></p>
+        <div id="closed-list" class="issue-list"></div>
       </section>
       <section class="card manager-intro">
         <div class="section-heading"><div><p class="section-kicker">דף חדש</p><h2>יצירת תקלה</h2></div><span class="step-badge">01</span></div>
-        <p>מלא את פרטי האירוע. לאחר יצירת הקישור, דף הטכנאי יציג את הפרטים האלה לקריאה בלבד.</p>
-        <a class="preview-link" href="../mechanic/">פתח את דף הטכנאי לדוגמה ←</a>
+        <p>מלא את פרטי האירוע ופתח תקלה חדשה. היא תקבל מספר סידורי ותופיע ברשימה.</p>
+
       </section>
 
       <section class="card" aria-labelledby="manager-details-title">
@@ -79,22 +76,14 @@
       <section class="card send-card" aria-labelledby="send-title">
         <div class="section-heading"><div><p class="section-kicker">המחשה ללא שרת</p><h2 id="send-title">העברה לטכנאי</h2></div><span class="step-badge">06</span></div>
         <button id="new-draft" class="secondary-button" type="button">טופס לתקלה חדשה</button>
-        <button id="create-link" class="primary-button" type="button">פתח תקלה וצור קישור לטכנאי</button>
-        <div id="link-result" class="link-result" hidden>
-          <label class="input-field" for="share-link">קישור לדף שנוצר</label>
-          <textarea id="share-link" class="text-box share-link" rows="3" readonly dir="ltr"></textarea>
-          <div class="link-actions">
-            <button id="copy-link" class="secondary-button" type="button">העתק קישור</button>
-            <a id="open-link" class="secondary-button" target="_blank" rel="noopener">פתח תצוגת טכנאי</a>
-          </div>
-          <p id="copy-status" class="copy-status" role="status" aria-live="polite"></p>
-        </div>
-        <p class="demo-note">כל תקלה שנפתחת מתווספת לרשימה במכשיר הזה. הקישור מכיל את פרטי התקלה; כל מי שמחזיק בו יכול לצפות בהם. עריכה בטיוטה אינה משנה תקלה שכבר נפתחה.</p>
+        <button id="create-link" class="primary-button" type="button">פתח תקלה</button>
+        <p id="created-status" class="copy-status" role="status" aria-live="polite"></p>
+        <p class="demo-note">תקלות ודפים סגורים מוצגים כרגע מאחסון הדפדפן הזה. סנכרון בין אפליקציות מותקנות ומכשירים יופעל לאחר חיבור מסד נתונים.</p>
       </section>
       <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span id="draft-status">הטיוטה נשמרת במכשיר הזה</span></footer>
     </main>
   </div>
-  <script src="../sheet-data.js?v=1.2.0" defer></script>
-  <script src="app.js?v=1.2.0" defer></script>
+  <script src="../sheet-data.js?v=1.3.0" defer></script>
+  <script src="app.js?v=1.3.0" defer></script>
 </body>
 </html>

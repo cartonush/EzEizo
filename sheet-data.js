@@ -1,6 +1,7 @@
 (function () {
   const defaultSheet = {
     id: "example",
+    serial: "דוגמה",
     location: "14/105",
     aircraft: "603",
     systemCode: "74A",
@@ -31,7 +32,7 @@
     ]
   };
 
-  const scalarKeys = ["location", "aircraft", "systemCode", "systemName", "ewSystem", "technicians", "fault"];
+  const scalarKeys = ["serial", "location", "aircraft", "systemCode", "systemName", "ewSystem", "technicians", "fault"];
   function normalizeSheet(input) {
     if (!input || typeof input !== "object") return null;
     const sheet = structuredClone(defaultSheet);
@@ -50,6 +51,11 @@
       sheet.actions = sheet.actions.map((label, index) => typeof input.actions[index] === "string" ? input.actions[index].slice(0, 300) : label);
     }
     return sheet;
+  }
+
+  function nextSerial() {
+    const max = readList(ISSUES_KEY).reduce((n, item) => Math.max(n, Number(item.serial) || 0), 0);
+    return String(max + 1).padStart(6, "0");
   }
 
   function encodeSheet(sheet) {
@@ -95,5 +101,5 @@
     } catch { return null; }
   }
 
-  window.EzEizoData = { defaultSheet, normalizeSheet, encodeSheet, decodeSheet, readIssues: () => readList(ISSUES_KEY), saveIssue: (item) => upsert(ISSUES_KEY, item), readClosed: () => readList(CLOSED_KEY), saveClosed: (item) => upsert(CLOSED_KEY, item), encodePayload, decodePayload };
+  window.EzEizoData = { defaultSheet, normalizeSheet, encodeSheet, decodeSheet, readIssues: () => readList(ISSUES_KEY), saveIssue: (item) => upsert(ISSUES_KEY, item), readClosed: () => readList(CLOSED_KEY), nextSerial, saveClosed: (item) => upsert(CLOSED_KEY, item), encodePayload, decodePayload };
 })();

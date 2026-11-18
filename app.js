@@ -1,9 +1,9 @@
-const encodedSheet = new URLSearchParams(window.location.hash.slice(1)).get("sheet");
-const sheet = EzEizoData.decodeSheet(encodedSheet) || EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
-const selectedSheet = Boolean(EzEizoData.decodeSheet(encodedSheet)) || window.location.hash === "#example";
+const selectedId = new URLSearchParams(window.location.search).get("id");
+const sheet = EzEizoData.readIssues().find((item) => item.id === selectedId) || EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
+const selectedSheet = Boolean(selectedId && (selectedId === "example" || EzEizoData.readIssues().some((item) => item.id === selectedId)));
 document.querySelector("#sheet-form").hidden = !selectedSheet;
 const ACTIONS = sheet.actions;
-const STORAGE_KEY = encodedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
+const STORAGE_KEY = selectedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
 const actionList = document.querySelector("#action-list");
 const repairField = document.querySelector("#repair-description");
 const unitsToggle = document.querySelector("#units-toggle");
@@ -143,38 +143,28 @@ function updateProgress() {
   document.querySelector("#action-progress").textContent = `${complete} מתוך ${ACTIONS.length}`;
 }
 
-function sheetUrl(item) {
-  const url = new URL(window.location.pathname, window.location.href);
-  url.hash = `sheet=${EzEizoData.encodeSheet(item)}`;
-  return url.href;
-}
-
 function renderIssueList() {
   const list = document.querySelector("#mechanic-issues");
   list.replaceChildren();
   const issues = EzEizoData.readIssues();
-  const example = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
-  issues.concat(example).forEach((item) => {
+  if (!issues.length) { list.textContent = "אין תקלות במכשיר הזה."; return; }
+  const closedIds = new Set(EzEizoData.readClosed().map((item) => item.id));
+  issues.forEach((item) => {
     const card = document.createElement("a");
     card.className = "issue-item";
-    card.href = item.id === "example" ? "#example" : sheetUrl(item);
+    card.href = `?id=${encodeURIComponent(item.id)}`;
     const title = document.createElement("strong");
-    title.textContent = `${item.aircraft || "ללא מספר מטוס"} · ${item.location || "ללא מיקום"}`;
+    title.textContent = `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
     const info = document.createElement("span");
-    info.textContent = `${item.fault || "ללא תיאור"} · ${item.id === "example" ? "דוגמה" : EzEizoData.readClosed().some((closed) => closed.id === item.id) || getClosedLocally(item.id) ? "סגורה" : "פתוחה"}`;
+    info.textContent = `${item.fault || "ללא תיאור"} · ${closedIds.has(item.id) ? "סגורה" : "פתוחה"}`;
     card.append(title, info);
     list.append(card);
   });
 }
 
-function getClosedLocally(id) {
-  try { return Boolean(JSON.parse(localStorage.getItem(`fault-sheet-v2:${id}`) || "{}").closedAt); }
-  catch { return false; }
-}
-
 function closureRecord() {
   return {
-    id: sheet.id, location: sheet.location, aircraft: sheet.aircraft,
+    id: sheet.id, serial: sheet.serial, location: sheet.location, aircraft: sheet.aircraft,
     systemCode: sheet.systemCode, systemName: sheet.systemName,
     technicians: sheet.technicians, fault: sheet.fault,
     closedAt: state.closedAt, completionTime: state.completionTime,
@@ -191,17 +181,12 @@ function closureRecord() {
 function showClosed() {
   document.querySelector("#sheet-form").classList.add("is-closed");
   document.querySelector("#sheet-form").querySelectorAll("input, textarea, button").forEach((element) => {
-    if (element.id !== "closed-link" && element.id !== "copy-closed-link") element.disabled = true;
+    element.disabled = true;
   });
   document.querySelectorAll("canvas[data-signature]").forEach((canvas) => { canvas.style.pointerEvents = "none"; });
   document.querySelector("#close-sheet").hidden = true;
   document.querySelector("#close-message").textContent = `הדף נסגר ב־${new Date(state.closedAt).toLocaleString("he-IL")}. אי אפשר לערוך אותו.`;
-  if (sheet.id !== "example") {
-    const url = new URL("../Metis/", window.location.href);
-    url.hash = `closed=${EzEizoData.encodePayload(closureRecord())}`;
-    document.querySelector("#closed-link").value = url.href;
-    document.querySelector("#closed-result").hidden = false;
-  }
+
 }
 
 document.querySelector("#close-sheet").addEventListener("click", () => {
@@ -221,27 +206,6 @@ document.querySelector("#close-sheet").addEventListener("click", () => {
   document.querySelector("#close-title").scrollIntoView({ behavior: "smooth", block: "center" });
 });
 
-document.querySelector("#copy-closed-link").addEventListener("click", async () => {
-  const field = document.querySelector("#closed-link");
-  try { await navigator.clipboard.writeText(field.value); document.querySelector("#closed-copy-status").textContent = "הקישור הועתק"; }
-  catch { field.focus(); field.select(); document.querySelector("#closed-copy-status").textContent = "אפשר להעתיק את הקישור המסומן"; }
-});
-
-document.querySelector("#import-issue").addEventListener("click", () => {
-  const status = document.querySelector("#import-issue-status");
-  try {
-    const url = new URL(document.querySelector("#import-issue-link").value);
-    const expected = new URL("./", window.location.href);
-    const incoming = EzEizoData.decodeSheet(new URLSearchParams(url.hash.slice(1)).get("sheet"));
-    if (url.origin !== expected.origin || url.pathname !== expected.pathname || !incoming || incoming.id === "example") throw new Error("invalid");
-    EzEizoData.saveIssue(incoming);
-    const target = sheetUrl(incoming);
-    if (window.location.href === target) window.location.reload();
-    else window.location.href = target;
-  } catch { status.textContent = "לא נמצא בקישור דף תקלה תקין"; }
-});
-
-window.addEventListener("hashchange", () => window.location.reload());
 window.addEventListener("storage", renderIssueList);
 
 function rowHasValue(item, fields) {
@@ -428,7 +392,6 @@ bindToggleInputs();
 bindStateFields();
 setupSignaturePads();
 
-if (selectedSheet && sheet.id !== "example") EzEizoData.saveIssue(sheet);
 renderIssueList();
 if (selectedSheet && state.closedAt) showClosed();
 
