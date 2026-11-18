@@ -186,7 +186,23 @@ function showClosed() {
   document.querySelectorAll("canvas[data-signature]").forEach((canvas) => { canvas.style.pointerEvents = "none"; });
   document.querySelector("#close-sheet").hidden = true;
   document.querySelector("#close-message").textContent = `הדף נסגר ב־${new Date(state.closedAt).toLocaleString("he-IL")}. אי אפשר לערוך אותו.`;
-
+  if (sheet.id !== "example") {
+    let transfer = document.querySelector("#share-closed-sheet");
+    if (!transfer) {
+      transfer = document.createElement("button");
+      transfer.id = "share-closed-sheet";
+      transfer.type = "button";
+      transfer.className = "secondary-button";
+      transfer.textContent = "העבר דף סגור למנהל";
+      transfer.addEventListener("click", async () => {
+        try {
+          const result = await EzEizoData.shareTransfer("closed", { issue: sheet, record: closureRecord(), state }, sheet.serial);
+          if (result !== "cancelled") transfer.textContent = result === "shared" ? "הקובץ שותף" : "הקובץ נשמר";
+        } catch { transfer.textContent = "ההעברה נכשלה. נסה שוב."; }
+      });
+      document.querySelector("#close-sheet").after(transfer);
+    }
+  }
 }
 
 document.querySelector("#close-sheet").addEventListener("click", () => {
@@ -207,6 +223,24 @@ document.querySelector("#close-sheet").addEventListener("click", () => {
 });
 
 window.addEventListener("storage", renderIssueList);
+document.querySelector("#mechanic-import-issues").addEventListener("change", async (event) => {
+  const input = event.currentTarget;
+  const status = document.querySelector("#mechanic-transfer-status");
+  try {
+    const file = input.files?.[0];
+    if (!file || file.size > 2_000_000) throw new Error("בחר קובץ EzEizo שגודלו עד 2MB.");
+    const payload = EzEizoData.parseTransfer(await file.text(), "issue");
+    if (!payload || typeof payload.id !== "string" || payload.id === "example" || payload.id.length > 80 || !/^\d{6}$/.test(payload.serial) || typeof payload.fault !== "string") throw new Error("נתוני התקלה בקובץ אינם תקינים.");
+    const issue = EzEizoData.normalizeSheet(payload);
+    const existing = EzEizoData.readIssues().find((item) => item.id === issue.id);
+    if (existing && JSON.stringify(existing) !== JSON.stringify(issue)) throw new Error("תקלה עם אותו מזהה כבר קיימת עם נתונים אחרים.");
+    if (EzEizoData.readClosed().some((item) => item.id === issue.id)) throw new Error("התקלה הזו כבר סגורה במכשיר.");
+    if (!existing) EzEizoData.saveIssue(issue);
+    renderIssueList();
+    status.textContent = `תקלה ${issue.serial} נקלטה. בחר אותה מהרשימה למילוי הדף.`;
+  } catch (error) { status.textContent = error.message || "הייבוא נכשל."; }
+  finally { input.value = ""; }
+});
 
 function rowHasValue(item, fields) {
   return fields.some(({ key }) => String(item[key] ?? "").trim() !== "");

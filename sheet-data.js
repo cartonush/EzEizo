@@ -108,5 +108,34 @@
     } catch { return null; }
   }
 
-  window.EzEizoData = { defaultSheet, normalizeSheet, encodeSheet, decodeSheet, readIssues: () => readList(ISSUES_KEY), saveIssue: (item) => upsert(ISSUES_KEY, item), readClosed: () => readList(CLOSED_KEY), nextSerial, saveClosed: (item) => upsert(CLOSED_KEY, item), encodePayload, decodePayload };
+  const TRANSFER_FORMAT = "ezeizo-offline-v1";
+  function makeTransfer(type, payload) {
+    return JSON.stringify({ format: TRANSFER_FORMAT, type, payload, exportedAt: new Date().toISOString() }, null, 2);
+  }
+  function parseTransfer(text, expectedType) {
+    if (typeof text !== "string" || text.length > 2_000_000) throw new Error("הקובץ גדול מדי או אינו תקין.");
+    let transfer;
+    try { transfer = JSON.parse(text); } catch { throw new Error("הקובץ אינו קובץ העברה של EzEizo."); }
+    if (transfer?.format !== TRANSFER_FORMAT || transfer.type !== expectedType) throw new Error("סוג הקובץ אינו מתאים לייבוא הזה.");
+    return transfer.payload;
+  }
+  async function shareTransfer(type, payload, serial) {
+    const filename = `EzEizo-${type}-${String(serial || "data").replace(/[^a-zA-Z0-9-]/g, "")}.json`;
+    const file = new File([makeTransfer(type, payload)], filename, { type: "application/json" });
+    if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+      try { await navigator.share({ files: [file], title: `EzEizo · תקלה ${serial}` }); return "shared"; }
+      catch (error) { if (error.name === "AbortError") return "cancelled"; }
+    }
+    const url = URL.createObjectURL(file);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return "downloaded";
+  }
+
+  window.EzEizoData = { defaultSheet, normalizeSheet, encodeSheet, decodeSheet, readIssues: () => readList(ISSUES_KEY), saveIssue: (item) => upsert(ISSUES_KEY, item), readClosed: () => readList(CLOSED_KEY), nextSerial, saveClosed: (item) => upsert(CLOSED_KEY, item), encodePayload, decodePayload, makeTransfer, parseTransfer, shareTransfer };
 })();

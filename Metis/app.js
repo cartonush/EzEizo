@@ -103,6 +103,18 @@ function addIssueCard(container, item, isClosed) {
     view.href = `../mechanic/?id=${encodeURIComponent(item.id)}`;
     view.textContent = "צפה בדף הסגור";
     card.append(view);
+  } else {
+    const transfer = document.createElement("button");
+    transfer.type = "button";
+    transfer.className = "secondary-button";
+    transfer.textContent = "העבר לטכנאי";
+    transfer.addEventListener("click", async () => {
+      try {
+        const result = await EzEizoData.shareTransfer("issue", item, item.serial);
+        if (result !== "cancelled") transfer.textContent = result === "shared" ? "הקובץ שותף" : "הקובץ נשמר";
+      } catch { transfer.textContent = "ההעברה נכשלה. נסה שוב."; }
+    });
+    card.append(transfer);
   }
   container.append(card);
 }
@@ -145,6 +157,26 @@ document.querySelector("#new-draft").addEventListener("click", () => {
 
 window.addEventListener("storage", renderIssueLists);
 window.addEventListener("pageshow", renderIssueLists);
+document.querySelector("#manager-import-closed").addEventListener("change", async (event) => {
+  const input = event.currentTarget;
+  const status = document.querySelector("#manager-transfer-status");
+  try {
+    const file = input.files?.[0];
+    if (!file || file.size > 2_000_000) throw new Error("בחר קובץ EzEizo שגודלו עד 2MB.");
+    const payload = EzEizoData.parseTransfer(await file.text(), "closed");
+    const issue = EzEizoData.readIssues().find((item) => item.id === payload?.issue?.id);
+    if (!issue || issue.serial !== payload?.issue?.serial) throw new Error("התקלה הזו אינה קיימת אצל המנהל.");
+    const record = payload?.record;
+    if (!record || record.id !== issue.id || record.serial !== issue.serial || !record.closedAt || record.actionsComplete !== true) throw new Error("הדף הסגור אינו תקין.");
+    const state = payload?.state;
+    if (!state || !Array.isArray(state.actions) || state.actions.length !== 12 || !state.actions.every(Boolean) || !state.completionTime || state.closedAt !== record.closedAt) throw new Error("דף הטיפול אינו תקין.");
+    localStorage.setItem(`fault-sheet-v2:${issue.id}`, JSON.stringify(state));
+    EzEizoData.saveClosed(record);
+    renderIssueLists();
+    status.textContent = `תקלה ${issue.serial} עודכנה כסגורה במנהל.`;
+  } catch (error) { status.textContent = error.message || "הייבוא נכשל."; }
+  finally { input.value = ""; }
+});
 renderConstants();
 renderActions();
 renderIssueLists();

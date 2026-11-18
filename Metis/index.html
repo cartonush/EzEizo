@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.5.0">
-  <link rel="stylesheet" href="styles.css?v=1.5.0">
+  <link rel="stylesheet" href="../styles.css?v=1.5.1">
+  <link rel="stylesheet" href="styles.css?v=1.5.1">
 </head>
 <body>
   <div class="app-shell">
@@ -23,7 +23,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.5.0</span>
+      <span class="version-pill">v1.5.1</span>
     </header>
 
     <main>
@@ -74,7 +74,7 @@
         <button id="new-draft" class="secondary-button" type="button">טופס לתקלה חדשה</button>
         <button id="create-link" class="primary-button" type="button">פתח תקלה</button>
         <p id="created-status" class="copy-status" role="status" aria-live="polite"></p>
-        <p class="demo-note">תקלות ודפים סגורים מוצגים כרגע מאחסון הדפדפן הזה. סנכרון בין אפליקציות מותקנות ומכשירים יופעל לאחר חיבור מסד נתונים.</p>
+        <p class="demo-note">הנתונים נשמרים במכשיר. להעברה לטכנאי, פתח את רשימת התקלות הפתוחות ובחר ״העבר לטכנאי״.</p>
       </section>
       <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span id="draft-status">הטיוטה נשמרת במכשיר הזה</span></footer>
       </div>
@@ -88,11 +88,16 @@
       <section class="card" aria-labelledby="closed-list-title">
         <div class="section-heading"><div><p class="section-kicker">מעקב מקומי</p><h2 id="closed-list-title">תקלות סגורות</h2></div></div>
         <div id="closed-list" class="issue-list"></div>
+        <div class="transfer-panel">
+          <label class="secondary-button file-button" for="manager-import-closed">ייבוא דף סגור מהטכנאי</label>
+          <input id="manager-import-closed" class="file-input" type="file" accept=".json,application/json">
+          <p id="manager-transfer-status" class="copy-status" role="status" aria-live="polite"></p>
+        </div>
       </section>
       </div>
     </main>
   </div>
-  <script src="../sheet-data.js?v=1.5.0" defer></script>
-  <script src="app.js?v=1.5.0" defer></script>
+  <script src="../sheet-data.js?v=1.5.1" defer></script>
+  <script src="app.js?v=1.5.1" defer></script>
 </body>
 </html>
