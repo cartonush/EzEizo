@@ -58,6 +58,8 @@ main { width: min(880px, calc(100% - 32px)); margin: 22px auto 0; }
 .action-number { color: #9aa9b4; font-size: 11px; font-weight: 700; text-align: center; }
 .action-text { color: #30485b; font-size: 13px; line-height: 1.45; }
 .action-check { width: 23px; height: 23px; accent-color: #168b79; cursor: pointer; justify-self: end; }
+.time-picker { width: 102px; height: 34px; padding: 3px 7px; border: 1px solid #d9e3e9; border-radius: 9px; background: #f9fbfc; color: var(--ink); font-size: 13px; font-weight: 700; justify-self: end; cursor: pointer; }
+.time-picker:focus { outline: 2px solid #5da8c55c; border-color: #5da8c5; }
 .action-row.done .action-text { color: #8a989f; text-decoration: line-through; text-decoration-color: #a9c3bc; }
 .units-card { padding-bottom: 18px; }
 .replaced-toggle { display: flex; align-items: center; gap: 13px; cursor: pointer; border: 1px solid #dfe9ee; border-radius: 13px; padding: 13px; background: #f9fbfc; }
