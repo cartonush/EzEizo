@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#173b5d">
+  <meta name="description" content="יצירת דפי תקלה לטכנאים - EzEizo">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Metis מנהל">
+  <title>Metis | מנהל תקלות</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="../styles.css?v=1.1.0">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar manager-topbar">
+      <div class="brand-mark manager-mark" aria-hidden="true">מ</div>
+      <div class="brand-copy">
+        <p class="eyebrow">כנף 1 - טייסת תחזוקה</p>
+        <h1>Metis · דף מנהל</h1>
+        <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
+      </div>
+      <span class="version-pill">v1.1.0</span>
+    </header>
+
+    <main>
+      <section class="card manager-intro">
+        <div class="section-heading"><div><p class="section-kicker">דף חדש</p><h2>יצירת תקלה</h2></div><span class="step-badge">01</span></div>
+        <p>מלא את פרטי האירוע. לאחר יצירת הקישור, דף הטכנאי יציג את הפרטים האלה לקריאה בלבד.</p>
+        <a class="preview-link" href="../mechanic/">פתח את דף הטכנאי לדוגמה ←</a>
+      </section>
+
+      <section class="card" aria-labelledby="manager-details-title">
+        <div class="section-heading"><div><p class="section-kicker">פרטי אירוע</p><h2 id="manager-details-title">נתוני התקלה</h2></div><span class="step-badge">02</span></div>
+        <div class="manager-grid">
+          <label class="input-field">מיקום<input data-sheet-field="location" type="text" autocomplete="off"></label>
+          <label class="input-field">מספר מטוס<input data-sheet-field="aircraft" type="text" inputmode="numeric" autocomplete="off"></label>
+          <label class="input-field">קוד מערכת<input data-sheet-field="systemCode" type="text" autocomplete="off"></label>
+          <label class="input-field">שם מערכת<input data-sheet-field="systemName" type="text" autocomplete="off"></label>
+          <label class="input-field">מערכת ל״א<input data-sheet-field="ewSystem" type="text" autocomplete="off"></label>
+          <label class="input-field">שמות טכנאים<input data-sheet-field="technicians" type="text" autocomplete="off"></label>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="manager-fault-title">
+        <div class="section-heading"><div><p class="section-kicker">נשלח לטכנאי</p><h2 id="manager-fault-title">תיאור תקלה</h2></div><span class="step-badge">03</span></div>
+        <textarea class="text-box" data-sheet-field="fault" rows="4" maxlength="2000" placeholder="תאר את התקלה לטכנאי…"></textarea>
+      </section>
+
+      <section class="card" aria-labelledby="manager-constants-title">
+        <div class="section-heading"><div><p class="section-kicker">נתוני מערכת</p><h2 id="manager-constants-title">קבועים</h2></div><span class="step-badge">04</span></div>
+        <p class="section-note">ערוך את הערכים שיופיעו לטכנאי. שמות הקבועים נשארים כפי שהוגדרו בדוגמה.</p>
+        <div id="manager-constants" class="constants-grid"></div>
+      </section>
+
+      <section class="card" aria-labelledby="manager-actions-title">
+        <div class="section-heading"><div><p class="section-kicker">רשימת ביצוע</p><h2 id="manager-actions-title">פעולות לטכנאי</h2></div><span class="step-badge">05</span></div>
+        <p class="section-note">השורה האחרונה מוצגת לטכנאי כבחירת שעת סיום.</p>
+        <div id="manager-actions" class="manager-actions"></div>
+      </section>
+
+      <section class="card send-card" aria-labelledby="send-title">
+        <div class="section-heading"><div><p class="section-kicker">המחשה ללא שרת</p><h2 id="send-title">העברה לטכנאי</h2></div><span class="step-badge">06</span></div>
+        <button id="create-link" class="primary-button" type="button">צור קישור לדף טכנאי</button>
+        <div id="link-result" class="link-result" hidden>
+          <label class="input-field" for="share-link">קישור לדף שנוצר</label>
+          <textarea id="share-link" class="text-box share-link" rows="3" readonly dir="ltr"></textarea>
+          <div class="link-actions">
+            <button id="copy-link" class="secondary-button" type="button">העתק קישור</button>
+            <a id="open-link" class="secondary-button" target="_blank" rel="noopener">פתח תצוגת טכנאי</a>
+          </div>
+          <p id="copy-status" class="copy-status" role="status" aria-live="polite"></p>
+        </div>
+        <p class="demo-note">הקישור מכיל את פרטי התקלה. כל מי שמחזיק בו יכול לצפות בהם. עריכה כאן אינה משנה קישור שכבר נוצר; צור קישור חדש לאחר שינוי.</p>
+      </section>
+      <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span id="draft-status">הטיוטה נשמרת במכשיר הזה</span></footer>
+    </main>
+  </div>
+  <script src="../sheet-data.js?v=1.1.0" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>

@@ -1,19 +1,7 @@
-const ACTIONS = [
-  "חתום על כלים רלוונטיים וגש לנקודת העבודה",
-  "זמן הגעה לדת״ק",
-  "קבל אישור עבודה על המטוס מר״צ חימוש / מפקד דת״ק",
-  "בצע ביקורת כלים עם ר״צ / מפקד תורן – קוד שכיח 310 (משוך את הכלים לנקודת העבודה)",
-  "וודא מטוס בטוח לאחזקה לפי כרך בטיחות המטוס",
-  "לפתרון התקלה פעל עפ״י תהליך מרכזי דרג א׳",
-  "עדכן ר״צ / מפקד דת״ק בסטטוס המטוס",
-  "בצע ביקורת כלים בסיום העבודה – קוד שכיח 310",
-  "בצע בדיקה להיעדר גופים זרים במקום העבודה – קוד שכיח 3100",
-  "זכה את הכלים שנלקחו מהגף",
-  "הצמד תג בר תיקון למכלול / צב״ד תקול",
-  "זמן סיום התקלה"
-];
-
-const STORAGE_KEY = "fault-sheet-v1";
+const encodedSheet = new URLSearchParams(window.location.hash.slice(1)).get("sheet");
+const sheet = EzEizoData.decodeSheet(encodedSheet) || EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
+const ACTIONS = sheet.actions;
+const STORAGE_KEY = encodedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
 const actionList = document.querySelector("#action-list");
 const repairField = document.querySelector("#repair-description");
 const unitsToggle = document.querySelector("#units-toggle");
@@ -72,6 +60,33 @@ function saveState() {
   status.textContent = "נשמר עכשיו במכשיר";
   window.clearTimeout(saveState.timer);
   saveState.timer = window.setTimeout(() => { status.textContent = "נשמר אוטומטית במכשיר"; }, 1400);
+}
+
+function renderSheetDetails() {
+  document.querySelectorAll("[data-sheet-field]").forEach((element) => {
+    element.textContent = sheet[element.dataset.sheetField] || "—";
+  });
+  document.querySelector("#fault-description").value = sheet.fault;
+  const grid = document.querySelector("#constants-grid");
+  grid.replaceChildren();
+  Object.entries(sheet.constants).forEach(([groupName, entries]) => {
+    const group = document.createElement("section");
+    group.className = "constant-group";
+    const heading = document.createElement("h3");
+    heading.textContent = groupName;
+    const list = document.createElement("dl");
+    entries.forEach(([label, value]) => {
+      const row = document.createElement("div");
+      const term = document.createElement("dt");
+      const description = document.createElement("dd");
+      term.textContent = label;
+      description.textContent = value;
+      row.append(term, description);
+      list.append(row);
+    });
+    group.append(heading, list);
+    grid.append(group);
+  });
 }
 
 function renderActions() {
@@ -302,6 +317,7 @@ unitsToggle.addEventListener("change", () => {
   saveState();
 });
 
+renderSheetDetails();
 renderActions();
 Object.keys(TABLES).forEach((table) => renderRows(table));
 bindToggleInputs();
