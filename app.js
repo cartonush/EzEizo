@@ -67,20 +67,22 @@ function updateProgress() {
   document.querySelector("#action-progress").textContent = `${complete} מתוך ${ACTIONS.length}`;
 }
 
-function renderRows(type) {
+function rowHasValue(item) {
+  return Boolean(String(item.name || "").trim() || String(item.serial || "").trim());
+}
+
+function normalizeRows(rows) {
+  const filledRows = (Array.isArray(rows) ? rows : [])
+    .filter(rowHasValue)
+    .map((item) => ({ name: item.name || "", serial: item.serial || "" }));
+  return [...filledRows, { name: "", serial: "" }];
+}
+
+function renderRows(type, focusTarget = null) {
+  state[type] = normalizeRows(state[type]);
   const target = document.querySelector(`#${type}-rows`);
   const rows = state[type];
   target.replaceChildren();
-  if (!rows.length) {
-    const tr = document.createElement("tr");
-    tr.className = "empty-row";
-    const td = document.createElement("td");
-    td.colSpan = 3;
-    td.textContent = "אין יחידות ברשימה — אפשר להוסיף שורה";
-    tr.append(td);
-    target.append(tr);
-    return;
-  }
   rows.forEach((item, index) => {
     const tr = document.createElement("tr");
     ["name", "serial"].forEach((key) => {
@@ -89,8 +91,20 @@ function renderRows(type) {
       input.type = "text";
       input.value = item[key] || "";
       input.placeholder = key === "name" ? "שם יחידה" : "מס״ד";
+      input.dataset.rowIndex = String(index);
+      input.dataset.field = key;
       input.setAttribute("aria-label", `${key === "name" ? "שם יחידה" : "מספר סידורי"}, שורה ${index + 1}`);
-      input.addEventListener("input", () => { rows[index][key] = input.value; saveState(); });
+      input.addEventListener("input", () => {
+        const wasFilled = rowHasValue(rows[index]);
+        rows[index][key] = input.value;
+        const isFilled = rowHasValue(rows[index]);
+        const isLastRow = index === rows.length - 1;
+        if ((isFilled && isLastRow) || (wasFilled && !isFilled && !isLastRow)) {
+          const caret = input.selectionStart;
+          renderRows(type, { index, key, caret });
+        }
+        saveState();
+      });
       td.append(input);
       tr.append(td);
     });
@@ -100,11 +114,23 @@ function renderRows(type) {
     remove.type = "button";
     remove.textContent = "×";
     remove.setAttribute("aria-label", "הסר שורה");
+    if (!rowHasValue(item)) {
+      remove.hidden = true;
+      remove.tabIndex = -1;
+    }
     remove.addEventListener("click", () => { rows.splice(index, 1); renderRows(type); saveState(); });
     removeCell.append(remove);
     tr.append(removeCell);
     target.append(tr);
   });
+  if (focusTarget) {
+    requestAnimationFrame(() => {
+      const input = target.querySelector(`[data-row-index="${focusTarget.index}"][data-field="${focusTarget.key}"]`);
+      if (!input) return;
+      input.focus({ preventScroll: true });
+      if (focusTarget.caret !== null) input.setSelectionRange(focusTarget.caret, focusTarget.caret);
+    });
+  }
 }
 
 repairField.value = state.repair;
@@ -121,16 +147,6 @@ unitsToggle.addEventListener("change", () => {
   state.unitsEnabled = unitsToggle.checked;
   unitsArea.hidden = !state.unitsEnabled;
   saveState();
-});
-
-document.querySelectorAll(".add-row").forEach((button) => {
-  button.addEventListener("click", () => {
-    state[button.dataset.table].push({ name: "", serial: "" });
-    renderRows(button.dataset.table);
-    const inputs = document.querySelectorAll(`#${button.dataset.table}-rows input`);
-    inputs[inputs.length - 2]?.focus();
-    saveState();
-  });
 });
 
 renderActions();
