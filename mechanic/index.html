@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.6.0">
+  <link rel="stylesheet" href="../styles.css?v=1.6.1">
 </head>
 <body>
   <div class="app-shell">
@@ -22,8 +22,8 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.6.0</span>
-      <span class="offline-pill"><i></i> GitHub · main</span>
+      <span class="version-pill">v1.6.1</span>
+      <span class="offline-pill"><i></i> טיוטה מקומית</span>
     </header>
 
     <main>
@@ -31,10 +31,13 @@
         <div class="section-heading"><div><p class="section-kicker">תקלות שהתקבלו</p><h2 id="queue-title">רשימת תקלות</h2></div><span class="step-badge">01</span></div>
         <p class="section-note">בחר תקלה פתוחה מהרשימה כדי למלא את הדף שלה.</p>
         <div id="mechanic-issues" class="issue-list"></div>
-        <p id="github-status" class="copy-status" role="status" aria-live="polite">טוען תקלות מ־GitHub…</p>
-        <div class="github-controls"><label class="input-field">הרשאת GitHub לסגירת דפים<input id="github-token" type="password" autocomplete="off" placeholder="הרשאה עם Contents: Read and write"></label><button id="github-connect" class="secondary-button" type="button">חבר הרשאה</button><button id="github-disconnect" class="secondary-button" type="button">הסר הרשאה</button><button id="github-refresh" class="secondary-button" type="button">רענן תקלות</button></div>
-        <p class="section-note">אפשר לראות תקלות ללא הרשאה. כדי לסגור דף ולשמור אותו ב־main יש לחבר הרשאת כתיבה. טיוטת המילוי נשמרת במכשיר.</p>
-        <p class="section-note">הרשאת הכתיבה נשמרת להפעלה הנוכחית בלבד. הנתונים שנשמרים ב־repo הציבורי גלויים לציבור.</p>
+        <div class="transfer-panel">
+          <button id="mechanic-paste-issue" class="primary-button" type="button">קבל תקלה מהלוח</button>
+          <label class="secondary-button file-button" for="mechanic-import-issues">בחר קובץ תקלה</label>
+          <input id="mechanic-import-issues" class="file-input" type="file" accept=".json,application/json">
+          <p class="section-note">לאחר העתקה במנהל לחץ ״קבל תקלה מהלוח״. אפשר גם לבחור קובץ ששיתף המנהל. אין צורך בהרשאת GitHub.</p>
+          <p id="mechanic-transfer-status" class="copy-status" role="status" aria-live="polite"></p>
+        </div>
       </section>
       <div id="sheet-form" hidden>
       <a class="back-to-queue" href="./">← חזרה לתקלות פתוחות</a>
@@ -215,12 +218,11 @@
         <p id="close-message" class="section-note" role="status" aria-live="polite">ניתן לסגור אחרי סימון כל הפעולות, כולל שעת סיום התקלה.</p>
         <button id="close-sheet" type="button" class="primary-button">שמירה וסגירה</button>
       </section>
-      <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span>טיוטת המילוי נשמרת במכשיר; הדף הסגור נשמר ב־GitHub</span></footer>
+      <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span>המידע נשמר כרגע במכשיר הזה בלבד</span></footer>
       </div>
     </main>
   </div>
-  <script src="../sheet-data.js?v=1.6.0" defer></script>
-  <script src="../github-store.js?v=1.6.0" defer></script>
-  <script src="../app.js?v=1.6.0" defer></script>
+  <script src="../sheet-data.js?v=1.6.1" defer></script>
+  <script src="../app.js?v=1.6.1" defer></script>
 </body>
 </html>

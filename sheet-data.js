@@ -119,6 +119,14 @@
     if (transfer?.format !== TRANSFER_FORMAT || transfer.type !== expectedType) throw new Error("סוג הקובץ אינו מתאים לייבוא הזה.");
     return transfer.payload;
   }
+  async function copyTransfer(type, payload) {
+    if (!navigator.clipboard?.writeText) throw new Error("העתקה אינה זמינה כאן. השתמש בשיתוף קובץ.");
+    await navigator.clipboard.writeText(makeTransfer(type, payload));
+  }
+  async function readTransfer(type) {
+    if (!navigator.clipboard?.readText) throw new Error("קריאה מהלוח אינה זמינה כאן. בחר קובץ במקום.");
+    return parseTransfer(await navigator.clipboard.readText(), type);
+  }
   async function shareTransfer(type, payload, serial) {
     const filename = `EzEizo-${type}-${String(serial || "data").replace(/[^a-zA-Z0-9-]/g, "")}.json`;
     const file = new File([makeTransfer(type, payload)], filename, { type: "application/json" });
@@ -137,5 +145,5 @@
     return "downloaded";
   }
 
-  window.EzEizoData = { defaultSheet, normalizeSheet, encodeSheet, decodeSheet, readIssues: () => readList(ISSUES_KEY), saveIssue: (item) => upsert(ISSUES_KEY, item), readClosed: () => readList(CLOSED_KEY), nextSerial, saveClosed: (item) => upsert(CLOSED_KEY, item), encodePayload, decodePayload, makeTransfer, parseTransfer, shareTransfer };
+  window.EzEizoData = { defaultSheet, normalizeSheet, encodeSheet, decodeSheet, readIssues: () => readList(ISSUES_KEY), saveIssue: (item) => upsert(ISSUES_KEY, item), readClosed: () => readList(CLOSED_KEY), nextSerial, saveClosed: (item) => upsert(CLOSED_KEY, item), encodePayload, decodePayload, makeTransfer, parseTransfer, shareTransfer, copyTransfer, readTransfer };
 })();

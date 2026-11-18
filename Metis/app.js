@@ -1,42 +1,6 @@
 const DRAFT_KEY = "ezeizo-metis-draft-v1";
 let draft = loadDraft();
 const draftStatus = document.querySelector("#draft-status");
-let remoteEntries = null;
-const githubStatus = document.querySelector("#github-status");
-
-async function refreshIssues() {
-  try {
-    remoteEntries = (await EzEizoGitHub.read()).document.issues;
-    renderIssueLists();
-    githubStatus.textContent = `מחובר לקובץ ב־main · ${remoteEntries.length} תקלות${EzEizoGitHub.hasToken() ? " · הרשאה הוזנה" : " · קריאה בלבד"}`;
-  } catch (error) { githubStatus.textContent = error.message; }
-}
-
-document.querySelector("#github-connect").addEventListener("click", async () => {
-  const input = document.querySelector("#github-token");
-  if (!input.value.trim()) { githubStatus.textContent = "הזן הרשאת GitHub כדי לשמור תקלות."; return; }
-  EzEizoGitHub.setToken(input.value);
-  input.value = "";
-  githubStatus.textContent = "בודק הרשאה ומעלה תקלות קיימות…";
-  try {
-    const current = (await EzEizoGitHub.read()).document.issues;
-    const local = EzEizoData.readIssues().filter((item) => !current.some((entry) => entry.sheet?.id === item.id));
-    let imported = 0;
-    if (local.length) {
-      const result = await EzEizoGitHub.importLocal(local, EzEizoData.readClosed(), (id) => {
-        try { return JSON.parse(localStorage.getItem(`fault-sheet-v2:${id}`) || "null"); } catch { return null; }
-      });
-      imported = result.result;
-    }
-    await refreshIssues();
-    if (imported) githubStatus.textContent += ` · הועלו ${imported} תקלות מקומיות`;
-  } catch (error) {
-    githubStatus.textContent = error.message;
-    if (/אין גישה/.test(error.message)) EzEizoGitHub.clearToken();
-  }
-});
-document.querySelector("#github-disconnect").addEventListener("click", () => { EzEizoGitHub.clearToken(); githubStatus.textContent = "הרשאת הכתיבה הוסרה מהמכשיר."; });
-document.querySelector("#github-refresh").addEventListener("click", refreshIssues);
 
 function loadDraft() {
   try {
@@ -105,20 +69,14 @@ function renderActions() {
   });
 }
 
-document.querySelector("#create-link").addEventListener("click", async (event) => {
-  const button = event.currentTarget;
-  const status = document.querySelector("#created-status");
-  if (!EzEizoGitHub.hasToken()) { status.textContent = "כדי לפתוח תקלה, חבר תחילה הרשאת כתיבה ל־GitHub בראש הדף."; return; }
-  button.disabled = true;
-  status.textContent = "שומר תקלה ב־main…";
-  try {
-    const { result: sheet, document } = await EzEizoGitHub.createIssue(draft);
-    remoteEntries = document.issues;
-    renderIssueLists();
-    status.textContent = `תקלה מספר ${sheet.serial} נשמרה ב־GitHub.`;
-    window.location.hash = "open";
-  } catch (error) { status.textContent = error.message; }
-  finally { button.disabled = false; }
+document.querySelector("#create-link").addEventListener("click", () => {
+  const sheet = EzEizoData.normalizeSheet(draft);
+  sheet.id = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  sheet.serial = EzEizoData.nextSerial();
+  EzEizoData.saveIssue(sheet);
+  document.querySelector("#created-status").textContent = `תקלה מספר ${sheet.serial} נשמרה. בחר אותה בתקלות פתוחות ולחץ ״העתק לטכנאי״.`;
+  renderIssueLists();
+  window.location.hash = "open";
 });
 
 function addIssueCard(container, item, isClosed) {
@@ -141,6 +99,31 @@ function addIssueCard(container, item, isClosed) {
     tables.textContent = `יחידות שפורקו: ${item.removedCount || 0} · יחידות שהורכבו: ${item.installedCount || 0} · כלים: ${item.toolsCount || 0} · קשיחים שנלקחו: ${item.takenCount || 0} · קשיחים שנפסלו: ${item.rejectedCount || 0}`;
     details.append(heading, description, repair, tables);
     card.append(details);
+    const view = document.createElement("a");
+    view.href = `../mechanic/?id=${encodeURIComponent(item.id)}`;
+    view.textContent = "צפה בדף הסגור";
+    card.append(view);
+  } else {
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "primary-button";
+    copy.textContent = "העתק לטכנאי";
+    copy.addEventListener("click", async () => {
+      try { await EzEizoData.copyTransfer("issue", item); copy.textContent = "הועתק · פתח את הטכנאי ולחץ קבל מהלוח"; }
+      catch { copy.textContent = "לא ניתן להעתיק · השתמש בשיתוף קובץ"; }
+    });
+    card.append(copy);
+    const transfer = document.createElement("button");
+    transfer.type = "button";
+    transfer.className = "secondary-button";
+    transfer.textContent = "העבר לטכנאי";
+    transfer.addEventListener("click", async () => {
+      try {
+        const result = await EzEizoData.shareTransfer("issue", item, item.serial);
+        if (result !== "cancelled") transfer.textContent = result === "shared" ? "הקובץ שותף" : "הקובץ נשמר";
+      } catch { transfer.textContent = "ההעברה נכשלה. נסה שוב."; }
+    });
+    card.append(transfer);
   }
   container.append(card);
 }
@@ -150,13 +133,13 @@ function renderIssueLists() {
   const closed = document.querySelector("#closed-list");
   opened.replaceChildren();
   closed.replaceChildren();
-  if (!remoteEntries) { opened.textContent = "טוען מ־GitHub…"; closed.textContent = "טוען מ־GitHub…"; return; }
-  const allClosed = remoteEntries.filter((entry) => entry.closed?.record).map((entry) => entry.closed.record);
-  const active = remoteEntries.filter((entry) => !entry.closed).map((entry) => entry.sheet);
+  const allClosed = EzEizoData.readClosed().filter((item) => item && typeof item.id === "string" && item.closedAt);
+  const closedIds = new Set(allClosed.map((item) => item.id));
+  const active = EzEizoData.readIssues().filter((item) => item && typeof item.id === "string" && !closedIds.has(item.id));
   active.forEach((item) => addIssueCard(opened, item, false));
   allClosed.forEach((item) => addIssueCard(closed, item, true));
-  if (!active.length) opened.textContent = "אין תקלות פתוחות ב־GitHub.";
-  if (!allClosed.length) closed.textContent = "אין תקלות סגורות ב־GitHub.";
+  if (!active.length) opened.textContent = "אין תקלות פתוחות במכשיר הזה.";
+  if (!allClosed.length) closed.textContent = "אין תקלות סגורות במכשיר הזה.";
 }
 
 function showManagerView() {
@@ -181,13 +164,40 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   document.querySelector("#manager-details-title").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-window.addEventListener("pageshow", refreshIssues);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshIssues(); });
+window.addEventListener("storage", renderIssueLists);
+window.addEventListener("pageshow", renderIssueLists);
+function importClosedPayload(payload) {
+  const issue = EzEizoData.readIssues().find((item) => item.id === payload?.issue?.id);
+  if (!issue || issue.serial !== payload?.issue?.serial) throw new Error("התקלה הזו אינה קיימת אצל המנהל.");
+  const record = payload?.record;
+  if (!record || record.id !== issue.id || record.serial !== issue.serial || !record.closedAt || record.actionsComplete !== true) throw new Error("הדף הסגור אינו תקין.");
+  const state = payload?.state;
+  if (!state || !Array.isArray(state.actions) || state.actions.length !== 12 || !state.actions.every(Boolean) || !state.completionTime || state.closedAt !== record.closedAt) throw new Error("דף הטיפול אינו תקין.");
+  localStorage.setItem(`fault-sheet-v2:${issue.id}`, JSON.stringify(state));
+  EzEizoData.saveClosed(record);
+  renderIssueLists();
+  return issue.serial;
+}
+document.querySelector("#manager-import-closed").addEventListener("change", async (event) => {
+  const input = event.currentTarget;
+  const status = document.querySelector("#manager-transfer-status");
+  try {
+    const file = input.files?.[0];
+    if (!file || file.size > 2_000_000) throw new Error("בחר קובץ EzEizo שגודלו עד 2MB.");
+    const serial = importClosedPayload(EzEizoData.parseTransfer(await file.text(), "closed"));
+    status.textContent = `תקלה ${serial} עודכנה כסגורה במנהל.`;
+  } catch (error) { status.textContent = error.message || "הייבוא נכשל."; }
+  finally { input.value = ""; }
+});
+document.querySelector("#manager-paste-closed").addEventListener("click", async () => {
+  const status = document.querySelector("#manager-transfer-status");
+  try { status.textContent = `תקלה ${importClosedPayload(await EzEizoData.readTransfer("closed"))} עודכנה כסגורה במנהל.`; }
+  catch (error) { status.textContent = error.message || "לא ניתן לקלוט מהלוח. בחר קובץ במקום."; }
+});
 renderConstants();
 renderActions();
 renderIssueLists();
 showManagerView();
-refreshIssues();
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
 }
