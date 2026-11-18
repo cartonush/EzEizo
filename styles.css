@@ -103,6 +103,14 @@ td input:focus { border-color: #5da8c5; }
 .input-field input:focus { border-color: #5da8c5; box-shadow: 0 0 0 3px #58a9c51b; }
 .named-signature { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(150px, .7fr) minmax(0, 1.3fr); align-items: start; gap: 12px; }
 .taken-signature-grid { margin-top: 15px; }
+.constants-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 11px; }
+.constant-group { min-width: 0; padding: 12px; border: 1px solid #e3ebef; border-radius: 12px; background: #fbfdfe; }
+.constant-group h3 { margin: 0 0 9px; color: var(--blue); font-size: 13px; letter-spacing: .04em; }
+.constant-group dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.constant-group dl div { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-width: 0; border-radius: 7px; background: #f1f6f8; padding: 6px 7px; }
+.constant-group dt, .constant-group dd { margin: 0; font-size: 11px; }
+.constant-group dt { color: #6a7f8e; }
+.constant-group dd { direction: ltr; color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
 .wide-table table { min-width: 570px; }
 .wide-table th { width: auto; white-space: normal; }
 .wide-table th:first-child { width: auto; }
