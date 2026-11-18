@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.3.0">
-  <link rel="stylesheet" href="styles.css?v=1.3.0">
+  <link rel="stylesheet" href="../styles.css?v=1.4.0">
+  <link rel="stylesheet" href="styles.css?v=1.4.0">
 </head>
 <body>
   <div class="app-shell">
@@ -23,21 +23,16 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.3.0</span>
+      <span class="version-pill">v1.4.0</span>
     </header>
 
     <main>
-      <section class="card" aria-labelledby="issued-title">
-        <div class="section-heading"><div><p class="section-kicker">מעקב מקומי</p><h2 id="issued-title">תקלות שנפתחו</h2></div></div>
-        <div id="issued-list" class="issue-list"></div>
-      </section>
-      <section class="card" aria-labelledby="closed-list-title">
-        <div class="section-heading"><div><p class="section-kicker">מעקב מקומי</p><h2 id="closed-list-title">תקלות שנסגרו</h2></div></div>
-        <label class="input-field" for="closed-search">חיפוש לפי מספר תקלה
-          <input id="closed-search" type="search" inputmode="numeric" placeholder="למשל 000001">
-        </label>
-        <div id="closed-list" class="issue-list"></div>
-      </section>
+      <nav class="manager-nav" aria-label="דפי ניהול">
+        <a class="manager-nav-link" href="#new" data-view-link="new">פתיחת תקלה חדשה</a>
+        <a class="manager-nav-link" href="#open" data-view-link="open">תקלות פתוחות</a>
+        <a class="manager-nav-link" href="#closed" data-view-link="closed">תקלות סגורות</a>
+      </nav>
+      <div id="view-new" data-manager-view="new">
       <section class="card manager-intro">
         <div class="section-heading"><div><p class="section-kicker">דף חדש</p><h2>יצירת תקלה</h2></div><span class="step-badge">01</span></div>
         <p>מלא את פרטי האירוע ופתח תקלה חדשה. היא תקבל מספר סידורי ותופיע ברשימה.</p>
@@ -74,16 +69,29 @@
       </section>
 
       <section class="card send-card" aria-labelledby="send-title">
-        <div class="section-heading"><div><p class="section-kicker">המחשה ללא שרת</p><h2 id="send-title">העברה לטכנאי</h2></div><span class="step-badge">06</span></div>
+        <div class="section-heading"><div><p class="section-kicker">סיום יצירה</p><h2 id="send-title">פתיחת התקלה</h2></div><span class="step-badge">06</span></div>
         <button id="new-draft" class="secondary-button" type="button">טופס לתקלה חדשה</button>
         <button id="create-link" class="primary-button" type="button">פתח תקלה</button>
         <p id="created-status" class="copy-status" role="status" aria-live="polite"></p>
         <p class="demo-note">תקלות ודפים סגורים מוצגים כרגע מאחסון הדפדפן הזה. סנכרון בין אפליקציות מותקנות ומכשירים יופעל לאחר חיבור מסד נתונים.</p>
       </section>
       <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span id="draft-status">הטיוטה נשמרת במכשיר הזה</span></footer>
+      </div>
+      <div id="view-open" data-manager-view="open" hidden>
+      <section class="card" aria-labelledby="issued-title">
+        <div class="section-heading"><div><p class="section-kicker">מעקב מקומי</p><h2 id="issued-title">תקלות פתוחות</h2></div></div>
+        <div id="issued-list" class="issue-list"></div>
+      </section>
+      </div>
+      <div id="view-closed" data-manager-view="closed" hidden>
+      <section class="card" aria-labelledby="closed-list-title">
+        <div class="section-heading"><div><p class="section-kicker">מעקב מקומי</p><h2 id="closed-list-title">תקלות סגורות</h2></div></div>
+        <div id="closed-list" class="issue-list"></div>
+      </section>
+      </div>
     </main>
   </div>
-  <script src="../sheet-data.js?v=1.3.0" defer></script>
-  <script src="app.js?v=1.3.0" defer></script>
+  <script src="../sheet-data.js?v=1.4.0" defer></script>
+  <script src="app.js?v=1.4.0" defer></script>
 </body>
 </html>

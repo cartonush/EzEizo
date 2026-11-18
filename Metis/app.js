@@ -75,7 +75,7 @@ document.querySelector("#create-link").addEventListener("click", () => {
   EzEizoData.saveIssue(sheet);
   document.querySelector("#created-status").textContent = `תקלה מספר ${sheet.serial} נפתחה ונוספה לרשימה`;
   renderIssueLists();
-  document.querySelector("#issued-title").scrollIntoView({ behavior: "smooth", block: "start" });
+  window.location.hash = "open";
 });
 
 function addIssueCard(container, item, isClosed) {
@@ -114,14 +114,23 @@ function renderIssueLists() {
   const allClosed = EzEizoData.readClosed().filter((item) => item && typeof item.id === "string" && item.closedAt);
   const closedIds = new Set(allClosed.map((item) => item.id));
   const active = EzEizoData.readIssues().filter((item) => item && typeof item.id === "string" && !closedIds.has(item.id));
-  const search = document.querySelector("#closed-search").value.trim();
   active.forEach((item) => addIssueCard(opened, item, false));
-  allClosed.filter((item) => !search || String(item.serial || "").includes(search)).forEach((item) => addIssueCard(closed, item, true));
+  allClosed.forEach((item) => addIssueCard(closed, item, true));
   if (!active.length) opened.textContent = "אין תקלות פתוחות במכשיר הזה.";
-  if (!closed.childElementCount) closed.textContent = search ? "לא נמצאה תקלה סגורה במספר הזה." : "אין תקלות סגורות במכשיר הזה.";
+  if (!allClosed.length) closed.textContent = "אין תקלות סגורות במכשיר הזה.";
 }
 
-document.querySelector("#closed-search").addEventListener("input", renderIssueLists);
+function showManagerView() {
+  const requested = window.location.hash.slice(1);
+  const selected = ["new", "open", "closed"].includes(requested) ? requested : "new";
+  document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== selected; });
+  document.querySelectorAll("[data-view-link]").forEach((link) => {
+    if (link.dataset.viewLink === selected) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+  if (selected !== "new") renderIssueLists();
+}
+window.addEventListener("hashchange", showManagerView);
 document.querySelector("#new-draft").addEventListener("click", () => {
   draft = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
   document.querySelectorAll("[data-sheet-field]").forEach((input) => { input.value = draft[input.dataset.sheetField] || ""; });
@@ -129,6 +138,7 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   renderActions();
   saveDraft();
   document.querySelector("#created-status").textContent = "";
+  window.location.hash = "new";
   document.querySelector("#manager-details-title").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
@@ -137,6 +147,7 @@ window.addEventListener("pageshow", renderIssueLists);
 renderConstants();
 renderActions();
 renderIssueLists();
+showManagerView();
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
 }

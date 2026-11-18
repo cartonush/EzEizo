@@ -146,9 +146,9 @@ function updateProgress() {
 function renderIssueList() {
   const list = document.querySelector("#mechanic-issues");
   list.replaceChildren();
-  const issues = EzEizoData.readIssues();
-  if (!issues.length) { list.textContent = "אין תקלות במכשיר הזה."; return; }
   const closedIds = new Set(EzEizoData.readClosed().map((item) => item.id));
+  const issues = EzEizoData.readIssues().filter((item) => !closedIds.has(item.id));
+  if (!issues.length) { list.textContent = "אין תקלות פתוחות במכשיר הזה."; return; }
   issues.forEach((item) => {
     const card = document.createElement("a");
     card.className = "issue-item";
@@ -156,7 +156,7 @@ function renderIssueList() {
     const title = document.createElement("strong");
     title.textContent = `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
     const info = document.createElement("span");
-    info.textContent = `${item.fault || "ללא תיאור"} · ${closedIds.has(item.id) ? "סגורה" : "פתוחה"}`;
+    info.textContent = `${item.fault || "ללא תיאור"} · פתוחה`;
     card.append(title, info);
     list.append(card);
   });
