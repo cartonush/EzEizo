@@ -1,4 +1,4 @@
-const CACHE_NAME = "ezeizo-metis-v1.1.0";
+const CACHE_NAME = "ezeizo-metis-v1.2.0";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png", "./styles.css", "./app.js", "../styles.css?v=1.1.0", "../sheet-data.js?v=1.1.0"];
 const ASSET_URLS = new Set(ASSETS.map((path) => new URL(path, self.location.href).href));
 

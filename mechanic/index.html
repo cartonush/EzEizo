@@ -22,11 +22,22 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.1.0</span>
+      <span class="version-pill">v1.2.0</span>
       <span class="offline-pill"><i></i> טיוטה מקומית</span>
     </header>
 
     <main>
+      <section class="card queue-card" aria-labelledby="queue-title">
+        <div class="section-heading"><div><p class="section-kicker">תקלות שהתקבלו</p><h2 id="queue-title">רשימת תקלות</h2></div><span class="step-badge">01</span></div>
+        <p class="section-note">תקלה שנפתחה בקישור מתווספת לרשימה במכשיר הזה. בחר תקלה כדי למלא את הדף שלה.</p>
+        <label class="input-field" for="import-issue-link">קיבלת קישור מהמנהל? הדבק אותו כאן
+          <input id="import-issue-link" type="url" inputmode="url" placeholder="הדבק קישור לתקלה" dir="ltr">
+        </label>
+        <button id="import-issue" type="button" class="secondary-button">הוסף לרשימה</button>
+        <p id="import-issue-status" role="status" aria-live="polite"></p>
+        <div id="mechanic-issues" class="issue-list"></div>
+      </section>
+      <div id="sheet-form" hidden>
       <section class="card summary-card" aria-labelledby="details-title">
         <div class="section-heading">
           <div>
@@ -197,7 +208,19 @@
         </div>
       </section>
 
+      <section class="card close-card" aria-labelledby="close-title">
+        <div class="section-heading"><div><p class="section-kicker">סיום עבודה</p><h2 id="close-title">שמירה וסגירה</h2></div></div>
+        <p id="close-message" class="section-note" role="status" aria-live="polite">ניתן לסגור אחרי סימון כל הפעולות, כולל שעת סיום התקלה.</p>
+        <button id="close-sheet" type="button" class="primary-button">שמירה וסגירה</button>
+        <div id="closed-result" hidden>
+          <p>הדף נסגר ונשמר במכשיר הזה. כדי להציג את הסגירה במכשיר המנהל, שלח לו את הקישור:</p>
+          <textarea id="closed-link" class="text-box share-link" rows="3" readonly dir="ltr"></textarea>
+          <button id="copy-closed-link" type="button" class="secondary-button">העתק קישור למנהל</button>
+          <p id="closed-copy-status" role="status" aria-live="polite"></p>
+        </div>
+      </section>
       <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span>המידע נשמר כרגע במכשיר הזה בלבד</span></footer>
+      </div>
     </main>
   </div>
   <script src="../sheet-data.js?v=1.1.0" defer></script>

@@ -69,5 +69,31 @@
     } catch { return null; }
   }
 
-  window.EzEizoData = { defaultSheet, normalizeSheet, encodeSheet, decodeSheet };
+  const ISSUES_KEY = "ezeizo-issues-v1";
+  const CLOSED_KEY = "ezeizo-closed-v1";
+  function readList(key) {
+    try { const value = JSON.parse(localStorage.getItem(key) || "[]"); return Array.isArray(value) ? value : []; }
+    catch { return []; }
+  }
+  function upsert(key, item) {
+    const list = readList(key).filter((entry) => entry && entry.id !== item.id);
+    list.unshift(item);
+    localStorage.setItem(key, JSON.stringify(list));
+    return list;
+  }
+  function encodePayload(value) {
+    const bytes = new TextEncoder().encode(JSON.stringify(value));
+    let binary = "";
+    bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function decodePayload(value) {
+    try {
+      if (!value || value.length > 30000 || !/^[A-Za-z0-9_-]+$/.test(value)) return null;
+      const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
+      return JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, (character) => character.charCodeAt(0))));
+    } catch { return null; }
+  }
+
+  window.EzEizoData = { defaultSheet, normalizeSheet, encodeSheet, decodeSheet, readIssues: () => readList(ISSUES_KEY), saveIssue: (item) => upsert(ISSUES_KEY, item), readClosed: () => readList(CLOSED_KEY), saveClosed: (item) => upsert(CLOSED_KEY, item), encodePayload, decodePayload };
 })();

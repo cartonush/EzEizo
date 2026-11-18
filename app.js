@@ -1,5 +1,6 @@
 const encodedSheet = new URLSearchParams(window.location.hash.slice(1)).get("sheet");
 const sheet = EzEizoData.decodeSheet(encodedSheet) || EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
+const selectedSheet = Boolean(EzEizoData.decodeSheet(encodedSheet)) || window.location.hash === "#example";
 const ACTIONS = sheet.actions;
 const STORAGE_KEY = encodedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
 const actionList = document.querySelector("#action-list");
@@ -35,7 +36,7 @@ const TABLES = {
   ]
 };
 const defaultState = {
-  repair: "", actions: ACTIONS.map(() => false), completionTime: "",
+  repair: "", actions: ACTIONS.map(() => false), completionTime: "", closedAt: "",
   unitsEnabled: false, removed: [], installed: [], constantsEnabled: false,
   toolsEnabled: false, tools: [], interimEnabled: false, finalEnabled: false,
   takenEnabled: false, taken: [], rejectedEnabled: false, rejected: [],
@@ -55,6 +56,7 @@ function loadState() {
 }
 
 function saveState() {
+  if (state.closedAt) return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   const status = document.querySelector("#save-state");
   status.textContent = "נשמר עכשיו במכשיר";
@@ -139,6 +141,107 @@ function updateProgress() {
   const complete = state.actions.filter(Boolean).length;
   document.querySelector("#action-progress").textContent = `${complete} מתוך ${ACTIONS.length}`;
 }
+
+function sheetUrl(item) {
+  const url = new URL(window.location.pathname, window.location.href);
+  url.hash = `sheet=${EzEizoData.encodeSheet(item)}`;
+  return url.href;
+}
+
+function renderIssueList() {
+  const list = document.querySelector("#mechanic-issues");
+  list.replaceChildren();
+  const issues = EzEizoData.readIssues();
+  const example = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
+  issues.concat(example).forEach((item) => {
+    const card = document.createElement("a");
+    card.className = "issue-item";
+    card.href = item.id === "example" ? "#example" : sheetUrl(item);
+    const title = document.createElement("strong");
+    title.textContent = `${item.aircraft || "ללא מספר מטוס"} · ${item.location || "ללא מיקום"}`;
+    const info = document.createElement("span");
+    info.textContent = `${item.fault || "ללא תיאור"} · ${item.id === "example" ? "דוגמה" : EzEizoData.readClosed().some((closed) => closed.id === item.id) || getClosedLocally(item.id) ? "סגורה" : "פתוחה"}`;
+    card.append(title, info);
+    list.append(card);
+  });
+}
+
+function getClosedLocally(id) {
+  try { return Boolean(JSON.parse(localStorage.getItem(`fault-sheet-v2:${id}`) || "{}").closedAt); }
+  catch { return false; }
+}
+
+function closureRecord() {
+  return {
+    id: sheet.id, location: sheet.location, aircraft: sheet.aircraft,
+    systemCode: sheet.systemCode, systemName: sheet.systemName,
+    technicians: sheet.technicians, fault: sheet.fault,
+    closedAt: state.closedAt, completionTime: state.completionTime,
+    repair: state.repair.slice(0, 1200),
+    actionsComplete: state.actions.every(Boolean),
+    removedCount: state.removed.filter((row) => row.name || row.serial).length,
+    installedCount: state.installed.filter((row) => row.name || row.serial).length,
+    toolsCount: state.tools.filter((row) => row.toolName || row.toolNumber || row.notes).length,
+    takenCount: state.taken.filter((row) => row.description).length,
+    rejectedCount: state.rejected.filter((row) => row.description).length
+  };
+}
+
+function showClosed() {
+  document.querySelector("#sheet-form").classList.add("is-closed");
+  document.querySelector("#sheet-form").querySelectorAll("input, textarea, button").forEach((element) => {
+    if (element.id !== "closed-link" && element.id !== "copy-closed-link") element.disabled = true;
+  });
+  document.querySelectorAll("canvas[data-signature]").forEach((canvas) => { canvas.style.pointerEvents = "none"; });
+  document.querySelector("#close-sheet").hidden = true;
+  document.querySelector("#close-message").textContent = `הדף נסגר ב־${new Date(state.closedAt).toLocaleString("he-IL")}. אי אפשר לערוך אותו.`;
+  if (sheet.id !== "example") {
+    const url = new URL("../Metis/", window.location.href);
+    url.hash = `closed=${EzEizoData.encodePayload(closureRecord())}`;
+    document.querySelector("#closed-link").value = url.href;
+    document.querySelector("#closed-result").hidden = false;
+  }
+}
+
+document.querySelector("#close-sheet").addEventListener("click", () => {
+  const missing = ACTIONS.findIndex((_, index) => index === ACTIONS.length - 1 ? !state.completionTime : !state.actions[index]);
+  if (missing !== -1) {
+    document.querySelector("#close-message").textContent = `אי אפשר לסגור: פעולה ${missing + 1} עדיין לא סומנה${missing === ACTIONS.length - 1 ? " (בחר שעת סיום)" : ""}.`;
+    const row = actionList.children[missing];
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+    row.querySelector("input")?.focus({ preventScroll: true });
+    return;
+  }
+  state.closedAt = new Date().toISOString();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (sheet.id !== "example") EzEizoData.saveClosed(closureRecord());
+  showClosed();
+  renderIssueList();
+  document.querySelector("#close-title").scrollIntoView({ behavior: "smooth", block: "center" });
+});
+
+document.querySelector("#copy-closed-link").addEventListener("click", async () => {
+  const field = document.querySelector("#closed-link");
+  try { await navigator.clipboard.writeText(field.value); document.querySelector("#closed-copy-status").textContent = "הקישור הועתק"; }
+  catch { field.focus(); field.select(); document.querySelector("#closed-copy-status").textContent = "אפשר להעתיק את הקישור המסומן"; }
+});
+
+document.querySelector("#import-issue").addEventListener("click", () => {
+  const status = document.querySelector("#import-issue-status");
+  try {
+    const url = new URL(document.querySelector("#import-issue-link").value);
+    const expected = new URL("./", window.location.href);
+    const incoming = EzEizoData.decodeSheet(new URLSearchParams(url.hash.slice(1)).get("sheet"));
+    if (url.origin !== expected.origin || url.pathname !== expected.pathname || !incoming || incoming.id === "example") throw new Error("invalid");
+    EzEizoData.saveIssue(incoming);
+    const target = sheetUrl(incoming);
+    if (window.location.href === target) window.location.reload();
+    else window.location.href = target;
+  } catch { status.textContent = "לא נמצא בקישור דף תקלה תקין"; }
+});
+
+window.addEventListener("hashchange", () => window.location.reload());
+window.addEventListener("storage", renderIssueList);
 
 function rowHasValue(item, fields) {
   return fields.some(({ key }) => String(item[key] ?? "").trim() !== "");
@@ -323,6 +426,11 @@ Object.keys(TABLES).forEach((table) => renderRows(table));
 bindToggleInputs();
 bindStateFields();
 setupSignaturePads();
+
+if (selectedSheet && sheet.id !== "example") EzEizoData.saveIssue(sheet);
+renderIssueList();
+document.querySelector("#sheet-form").hidden = !selectedSheet;
+if (selectedSheet && state.closedAt) showClosed();
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
