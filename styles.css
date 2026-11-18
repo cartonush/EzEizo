@@ -25,6 +25,7 @@ button, textarea, input { font: inherit; }
 .brand-copy { flex: 1; }
 .eyebrow, .section-kicker { margin: 0 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .08em; opacity: .7; }
 .topbar h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+.header-subtitle { margin: 1px 0 0; font-size: 12px; color: #c2d7e5; }
 .offline-pill { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #ffffff35; border-radius: 20px; padding: 7px 10px; font-size: 11px; white-space: nowrap; color: #d9edf5; }
 .version-pill { display: inline-flex; align-items: center; border: 1px solid #ffffff35; border-radius: 20px; padding: 6px 9px; font-size: 10px; font-weight: 700; letter-spacing: .03em; color: #d9edf5; white-space: nowrap; }
 .offline-pill i { width: 7px; height: 7px; display: inline-block; border-radius: 50%; background: #71ddc2; box-shadow: 0 0 0 3px #71ddc225; }
@@ -89,6 +90,26 @@ td input:focus { border-color: #5da8c5; }
 .remove-row { border: 0; background: transparent; color: #98a6af; font-size: 17px; cursor: pointer; padding: 3px 5px; }
 .remove-row:hover { color: #c25454; }
 .empty-row td { color: #a0adb5; text-align: center; font-size: 11px; padding: 14px; }
+.conditional-area { padding-top: 14px; }
+.inspection-checks { display: grid; gap: 11px; margin-top: 15px; }
+.sub-toggle { background: #fff; }
+.signature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 4px 1px 8px; }
+.signature-field { min-width: 0; border: 1px solid #e2eaf0; background: #f9fbfc; border-radius: 12px; padding: 10px; }
+.signature-field .field-label { margin: 0 0 7px; font-size: 12px; }
+.signature-pad { display: block; width: 100%; height: 82px; border: 1px dashed #bdcbd4; border-radius: 8px; background: #fff; touch-action: none; cursor: crosshair; }
+.clear-signature { display: block; margin: 5px 0 0 auto; border: 0; padding: 4px 0; color: #61798a; background: none; font-size: 10px; cursor: pointer; }
+.input-field { display: flex; flex-direction: column; gap: 6px; color: #344e61; font-size: 12px; font-weight: 700; }
+.input-field input { width: 100%; min-height: 39px; border: 1px solid #dce6eb; border-radius: 9px; padding: 8px 10px; outline: none; color: var(--ink); background: #fbfdfe; font-size: 13px; font-weight: 400; }
+.input-field input:focus { border-color: #5da8c5; box-shadow: 0 0 0 3px #58a9c51b; }
+.named-signature { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(150px, .7fr) minmax(0, 1.3fr); align-items: start; gap: 12px; }
+.taken-signature-grid { margin-top: 15px; }
+.wide-table table { min-width: 570px; }
+.wide-table th { width: auto; white-space: normal; }
+.wide-table th:first-child { width: auto; }
+.wide-table th:last-child { width: 34px; }
+.wide-table td input { min-width: 90px; }
+.parts-card .wide-table table { min-width: 720px; }
+.tools-card .wide-table table { min-width: 500px; }
 .footer-note { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 2px 0 22px; font-size: 11px; color: #7f909d; }
 .shield-icon { width: 17px; height: 17px; display: grid; place-items: center; color: #187b68; background: #e5f4ef; border-radius: 50%; font-size: 11px; font-weight: 800; }
 [hidden] { display: none !important; }
@@ -97,6 +118,7 @@ td input:focus { border-color: #5da8c5; }
   .topbar { min-height: 94px; padding: 18px 17px; gap: 11px; }
   .brand-mark { width: 41px; height: 41px; border-radius: 13px; }
   .topbar h1 { font-size: 19px; }
+  .header-subtitle { font-size: 11px; }
   .offline-pill { font-size: 0; width: 28px; height: 28px; padding: 0; justify-content: center; }
   .version-pill { font-size: 9px; padding: 6px 7px; }
   .offline-pill i { width: 8px; height: 8px; }
@@ -111,6 +133,8 @@ td input:focus { border-color: #5da8c5; }
   .action-row { grid-template-columns: 22px 1fr 27px; gap: 8px; padding: 10px 0; }
   .action-text { font-size: 12.5px; }
   .unit-table-heading { padding: 10px; }
+  .signature-grid { grid-template-columns: 1fr; }
+  .named-signature { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
