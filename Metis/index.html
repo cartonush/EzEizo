@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.5.1">
-  <link rel="stylesheet" href="styles.css?v=1.5.1">
+  <link rel="stylesheet" href="../styles.css?v=1.6.0">
+  <link rel="stylesheet" href="styles.css?v=1.6.0">
 </head>
 <body>
   <div class="app-shell">
@@ -23,7 +23,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.5.1</span>
+      <span class="version-pill">v1.6.0</span>
     </header>
 
     <main>
@@ -32,6 +32,13 @@
         <a class="manager-nav-link" href="#open" data-view-link="open">תקלות פתוחות</a>
         <a class="manager-nav-link" href="#closed" data-view-link="closed">תקלות סגורות</a>
       </nav>
+      <section class="card github-panel" aria-labelledby="github-title">
+        <div class="section-heading"><div><p class="section-kicker">אחסון משותף</p><h2 id="github-title">GitHub · main</h2></div></div>
+        <p class="section-note">התקלות נשמרות בקובץ משותף ב־repo. כדי לפתוח ולסגור תקלות נדרשת הרשאת GitHub עם Contents: Read and write ל־EzEizo. ההרשאה נשמרת רק למשך ההפעלה הנוכחית של האפליקציה.</p>
+        <p class="section-note"><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">יצירת הרשאה מוגבלת ל־EzEizo ב־GitHub</a> · התקלות בקובץ יהיו גלויות לכל מי שיכול לראות את ה־repo.</p>
+        <div class="github-controls"><label class="input-field">הרשאת GitHub<input id="github-token" type="password" autocomplete="off" placeholder="הדבק הרשאה כאן"></label><button id="github-connect" class="primary-button" type="button">חבר הרשאה</button><button id="github-disconnect" class="secondary-button" type="button">הסר הרשאה</button><button id="github-refresh" class="secondary-button" type="button">רענן תקלות</button></div>
+        <p id="github-status" class="copy-status" role="status" aria-live="polite">טוען תקלות מ־GitHub…</p>
+      </section>
       <div id="view-new" data-manager-view="new">
       <section class="card manager-intro">
         <div class="section-heading"><div><p class="section-kicker">דף חדש</p><h2>יצירת תקלה</h2></div><span class="step-badge">01</span></div>
@@ -74,7 +81,7 @@
         <button id="new-draft" class="secondary-button" type="button">טופס לתקלה חדשה</button>
         <button id="create-link" class="primary-button" type="button">פתח תקלה</button>
         <p id="created-status" class="copy-status" role="status" aria-live="polite"></p>
-        <p class="demo-note">הנתונים נשמרים במכשיר. להעברה לטכנאי, פתח את רשימת התקלות הפתוחות ובחר ״העבר לטכנאי״.</p>
+        <p class="demo-note">תקלה חדשה תישמר ב־main ותופיע ברשימת הטכנאי לאחר רענון. תקלות ישנות מהמכשיר יועלו כשמחברים הרשאת כתיבה.</p>
       </section>
       <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span id="draft-status">הטיוטה נשמרת במכשיר הזה</span></footer>
       </div>
@@ -88,16 +95,12 @@
       <section class="card" aria-labelledby="closed-list-title">
         <div class="section-heading"><div><p class="section-kicker">מעקב מקומי</p><h2 id="closed-list-title">תקלות סגורות</h2></div></div>
         <div id="closed-list" class="issue-list"></div>
-        <div class="transfer-panel">
-          <label class="secondary-button file-button" for="manager-import-closed">ייבוא דף סגור מהטכנאי</label>
-          <input id="manager-import-closed" class="file-input" type="file" accept=".json,application/json">
-          <p id="manager-transfer-status" class="copy-status" role="status" aria-live="polite"></p>
-        </div>
       </section>
       </div>
     </main>
   </div>
-  <script src="../sheet-data.js?v=1.5.1" defer></script>
-  <script src="app.js?v=1.5.1" defer></script>
+  <script src="../sheet-data.js?v=1.6.0" defer></script>
+  <script src="../github-store.js?v=1.6.0" defer></script>
+  <script src="app.js?v=1.6.0" defer></script>
 </body>
 </html>

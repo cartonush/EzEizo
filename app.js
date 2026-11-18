@@ -1,4 +1,5 @@
 const selectedId = new URLSearchParams(window.location.search).get("id");
+let remoteEntries = null;
 const sheet = EzEizoData.normalizeSheet(EzEizoData.readIssues().find((item) => item.id === selectedId)) || EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
 const selectedSheet = Boolean(selectedId && (selectedId === "example" || EzEizoData.readIssues().some((item) => item.id === selectedId)));
 document.querySelector("#sheet-form").hidden = !selectedSheet;
@@ -146,9 +147,9 @@ function updateProgress() {
 function renderIssueList() {
   const list = document.querySelector("#mechanic-issues");
   list.replaceChildren();
-  const closedIds = new Set(EzEizoData.readClosed().map((item) => item.id));
-  const issues = EzEizoData.readIssues().filter((item) => !closedIds.has(item.id));
-  if (!issues.length) { list.textContent = "אין תקלות פתוחות במכשיר הזה."; return; }
+  if (!remoteEntries) { list.textContent = "טוען תקלות מ־GitHub…"; return; }
+  const issues = remoteEntries.filter((item) => !item.closed).map((item) => item.sheet);
+  if (!issues.length) { list.textContent = "אין תקלות פתוחות ב־GitHub."; return; }
   issues.forEach((item) => {
     const card = document.createElement("a");
     card.className = "issue-item";
@@ -186,26 +187,9 @@ function showClosed() {
   document.querySelectorAll("canvas[data-signature]").forEach((canvas) => { canvas.style.pointerEvents = "none"; });
   document.querySelector("#close-sheet").hidden = true;
   document.querySelector("#close-message").textContent = `הדף נסגר ב־${new Date(state.closedAt).toLocaleString("he-IL")}. אי אפשר לערוך אותו.`;
-  if (sheet.id !== "example") {
-    let transfer = document.querySelector("#share-closed-sheet");
-    if (!transfer) {
-      transfer = document.createElement("button");
-      transfer.id = "share-closed-sheet";
-      transfer.type = "button";
-      transfer.className = "secondary-button";
-      transfer.textContent = "העבר דף סגור למנהל";
-      transfer.addEventListener("click", async () => {
-        try {
-          const result = await EzEizoData.shareTransfer("closed", { issue: sheet, record: closureRecord(), state }, sheet.serial);
-          if (result !== "cancelled") transfer.textContent = result === "shared" ? "הקובץ שותף" : "הקובץ נשמר";
-        } catch { transfer.textContent = "ההעברה נכשלה. נסה שוב."; }
-      });
-      document.querySelector("#close-sheet").after(transfer);
-    }
-  }
 }
 
-document.querySelector("#close-sheet").addEventListener("click", () => {
+document.querySelector("#close-sheet").addEventListener("click", async (event) => {
   const missing = ACTIONS.findIndex((_, index) => index === ACTIONS.length - 1 ? !state.completionTime : !state.actions[index]);
   if (missing !== -1) {
     document.querySelector("#close-message").textContent = `אי אפשר לסגור: פעולה ${missing + 1} עדיין לא סומנה${missing === ACTIONS.length - 1 ? " (בחר שעת סיום)" : ""}.`;
@@ -214,33 +198,56 @@ document.querySelector("#close-sheet").addEventListener("click", () => {
     row.querySelector("input")?.focus({ preventScroll: true });
     return;
   }
+  const message = document.querySelector("#close-message");
+  if (!EzEizoGitHub.hasToken()) { message.textContent = "חבר הרשאת כתיבה ל־GitHub בראש הדף כדי לסגור את התקלה."; return; }
+  const button = event.currentTarget;
+  button.disabled = true;
   state.closedAt = new Date().toISOString();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  if (sheet.id !== "example") EzEizoData.saveClosed(closureRecord());
-  showClosed();
-  renderIssueList();
-  document.querySelector("#close-title").scrollIntoView({ behavior: "smooth", block: "center" });
+  message.textContent = "שומר את הדף הסגור ב־GitHub…";
+  try {
+    const { document } = await EzEizoGitHub.closeIssue(sheet.id, closureRecord(), structuredClone(state));
+    remoteEntries = document.issues;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    EzEizoData.saveClosed(closureRecord());
+    showClosed();
+    renderIssueList();
+    document.querySelector("#close-title").scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (error) { state.closedAt = ""; message.textContent = error.message; button.disabled = false; }
 });
 
-window.addEventListener("storage", renderIssueList);
-document.querySelector("#mechanic-import-issues").addEventListener("change", async (event) => {
-  const input = event.currentTarget;
-  const status = document.querySelector("#mechanic-transfer-status");
+async function refreshIssues() {
+  const status = document.querySelector("#github-status");
   try {
-    const file = input.files?.[0];
-    if (!file || file.size > 2_000_000) throw new Error("בחר קובץ EzEizo שגודלו עד 2MB.");
-    const payload = EzEizoData.parseTransfer(await file.text(), "issue");
-    if (!payload || typeof payload.id !== "string" || payload.id === "example" || payload.id.length > 80 || !/^\d{6}$/.test(payload.serial) || typeof payload.fault !== "string") throw new Error("נתוני התקלה בקובץ אינם תקינים.");
-    const issue = EzEizoData.normalizeSheet(payload);
-    const existing = EzEizoData.readIssues().find((item) => item.id === issue.id);
-    if (existing && JSON.stringify(existing) !== JSON.stringify(issue)) throw new Error("תקלה עם אותו מזהה כבר קיימת עם נתונים אחרים.");
-    if (EzEizoData.readClosed().some((item) => item.id === issue.id)) throw new Error("התקלה הזו כבר סגורה במכשיר.");
-    if (!existing) EzEizoData.saveIssue(issue);
+    remoteEntries = (await EzEizoGitHub.read()).document.issues;
+    for (const entry of remoteEntries) {
+      if (entry.sheet?.id) EzEizoData.saveIssue(entry.sheet);
+      if (entry.closed?.record) {
+        EzEizoData.saveClosed(entry.closed.record);
+        if (entry.closed.state && entry.sheet.id !== selectedId) localStorage.setItem(`fault-sheet-v2:${entry.sheet.id}`, JSON.stringify(entry.closed.state));
+      }
+    }
     renderIssueList();
-    status.textContent = `תקלה ${issue.serial} נקלטה. בחר אותה מהרשימה למילוי הדף.`;
-  } catch (error) { status.textContent = error.message || "הייבוא נכשל."; }
-  finally { input.value = ""; }
+    status.textContent = `עודכן מ־GitHub · ${remoteEntries.filter((entry) => !entry.closed).length} תקלות פתוחות${EzEizoGitHub.hasToken() ? " · הרשאה הוזנה" : " · קריאה בלבד"}`;
+    if (selectedSheet && remoteEntries.some((entry) => entry.sheet?.id === sheet.id && entry.closed) && !state.closedAt) {
+      const entry = remoteEntries.find((item) => item.sheet?.id === sheet.id);
+      state = { ...defaultState, ...entry.closed.state };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      window.location.reload();
+    }
+  } catch (error) { status.textContent = error.message; if (!remoteEntries) document.querySelector("#mechanic-issues").textContent = "לא ניתן לטעון תקלות מ־GitHub."; }
+}
+document.querySelector("#github-connect").addEventListener("click", async () => {
+  const input = document.querySelector("#github-token");
+  if (!input.value.trim()) { document.querySelector("#github-status").textContent = "הזן הרשאת GitHub."; return; }
+  EzEizoGitHub.setToken(input.value);
+  input.value = "";
+  await refreshIssues();
 });
+document.querySelector("#github-disconnect").addEventListener("click", () => { EzEizoGitHub.clearToken(); document.querySelector("#github-status").textContent = "הרשאת הכתיבה הוסרה מהמכשיר."; });
+document.querySelector("#github-refresh").addEventListener("click", refreshIssues);
+window.addEventListener("pageshow", refreshIssues);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshIssues(); });
+window.setInterval(() => { if (!document.hidden) refreshIssues(); }, 120000);
 
 function rowHasValue(item, fields) {
   return fields.some(({ key }) => String(item[key] ?? "").trim() !== "");
@@ -428,6 +435,7 @@ setupSignaturePads();
 
 renderIssueList();
 if (selectedSheet && state.closedAt) showClosed();
+refreshIssues();
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
