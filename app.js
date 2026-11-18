@@ -18,9 +18,47 @@ const actionList = document.querySelector("#action-list");
 const repairField = document.querySelector("#repair-description");
 const unitsToggle = document.querySelector("#units-toggle");
 const unitsArea = document.querySelector("#units-area");
-const defaultState = { repair: "", actions: ACTIONS.map(() => false), completionTime: "", unitsEnabled: false, removed: [], installed: [] };
+const TABLES = {
+  removed: [
+    { key: "name", label: "שם יחידה", placeholder: "שם יחידה" },
+    { key: "serial", label: "מס״ד", placeholder: "מס״ד" }
+  ],
+  installed: [
+    { key: "name", label: "שם יחידה", placeholder: "שם יחידה" },
+    { key: "serial", label: "מס״ד", placeholder: "מס״ד" }
+  ],
+  tools: [
+    { key: "toolName", label: "שם כלי", placeholder: "שם כלי" },
+    { key: "toolNumber", label: "מספר כלי", placeholder: "מספר כלי" },
+    { key: "notes", label: "הערות", placeholder: "הערות" }
+  ],
+  taken: [
+    { key: "description", label: "תיאור קשיח / נצרך", placeholder: "תיאור קשיח / נצרך" },
+    { key: "removedFrom", label: "הוסר מרכיב / אזור", placeholder: "מרכיב / אזור" },
+    { key: "quantityIn", label: "כמות בכניסה", placeholder: "כמות", type: "number" },
+    { key: "quantityOut", label: "כמות ביציאה", placeholder: "כמות", type: "number" },
+    { key: "notes", label: "הערות", placeholder: "הערות" }
+  ],
+  rejected: [
+    { key: "description", label: "תיאור הקשיח", placeholder: "תיאור הקשיח" },
+    { key: "quantity", label: "כמות", placeholder: "כמות", type: "number" },
+    { key: "mascha", label: "מסחא", placeholder: "מסחא" },
+    { key: "reason", label: "סיבת הפסילה", placeholder: "סיבת הפסילה" }
+  ]
+};
+const defaultState = {
+  repair: "", actions: ACTIONS.map(() => false), completionTime: "",
+  unitsEnabled: false, removed: [], installed: [],
+  toolsEnabled: false, tools: [], interimEnabled: false, finalEnabled: false,
+  takenEnabled: false, taken: [], rejectedEnabled: false, rejected: [],
+  interimInspectorName: "", interimToolsName: "", finalInspectorName: "", finalLeadName: "", departureTime: "",
+  takenFullName: "", takenPersonalNumber: "", takenRank: "",
+  interimTechnicianSignature: "", interimInspectorSignature: "", interimToolsSignature: "",
+  finalTechnicianSignature: "", finalInspectorSignature: "", finalLeadSignature: "", takenSignature: ""
+};
 let state = loadState();
 state.completionTime = state.completionTime || "";
+if (!Array.isArray(state.actions)) state.actions = ACTIONS.map(() => false);
 state.actions[ACTIONS.length - 1] = Boolean(state.completionTime);
 
 function loadState() {
@@ -87,37 +125,41 @@ function updateProgress() {
   document.querySelector("#action-progress").textContent = `${complete} מתוך ${ACTIONS.length}`;
 }
 
-function rowHasValue(item) {
-  return Boolean(String(item.name || "").trim() || String(item.serial || "").trim());
+function rowHasValue(item, fields) {
+  return fields.some(({ key }) => String(item[key] ?? "").trim() !== "");
 }
 
-function normalizeRows(rows) {
+function normalizeRows(rows, fields) {
   const filledRows = (Array.isArray(rows) ? rows : [])
-    .filter(rowHasValue)
-    .map((item) => ({ name: item.name || "", serial: item.serial || "" }));
-  return [...filledRows, { name: "", serial: "" }];
+    .filter((item) => rowHasValue(item, fields))
+    .map((item) => Object.fromEntries(fields.map(({ key }) => [key, item[key] ?? ""])));
+  return [...filledRows, Object.fromEntries(fields.map(({ key }) => [key, ""]))];
 }
 
 function renderRows(type, focusTarget = null) {
-  state[type] = normalizeRows(state[type]);
+  const fields = TABLES[type];
+  if (!fields) return;
+  state[type] = normalizeRows(state[type], fields);
   const target = document.querySelector(`#${type}-rows`);
   const rows = state[type];
   target.replaceChildren();
   rows.forEach((item, index) => {
     const tr = document.createElement("tr");
-    ["name", "serial"].forEach((key) => {
+    fields.forEach((field) => {
+      const { key } = field;
       const td = document.createElement("td");
       const input = document.createElement("input");
-      input.type = "text";
+      input.type = field.type || "text";
+      if (field.type === "number") input.step = "1";
       input.value = item[key] || "";
-      input.placeholder = key === "name" ? "שם יחידה" : "מס״ד";
+      input.placeholder = field.placeholder;
       input.dataset.rowIndex = String(index);
       input.dataset.field = key;
-      input.setAttribute("aria-label", `${key === "name" ? "שם יחידה" : "מספר סידורי"}, שורה ${index + 1}`);
+      input.setAttribute("aria-label", `${field.label}, שורה ${index + 1}`);
       input.addEventListener("input", () => {
-        const wasFilled = rowHasValue(rows[index]);
+        const wasFilled = rowHasValue(rows[index], fields);
         rows[index][key] = input.value;
-        const isFilled = rowHasValue(rows[index]);
+        const isFilled = rowHasValue(rows[index], fields);
         const isLastRow = index === rows.length - 1;
         if ((isFilled && isLastRow) || (wasFilled && !isFilled && !isLastRow)) {
           const caret = input.selectionStart;
@@ -134,7 +176,7 @@ function renderRows(type, focusTarget = null) {
     remove.type = "button";
     remove.textContent = "×";
     remove.setAttribute("aria-label", "הסר שורה");
-    if (!rowHasValue(item)) {
+    if (!rowHasValue(item, fields)) {
       remove.hidden = true;
       remove.tabIndex = -1;
     }
@@ -153,6 +195,97 @@ function renderRows(type, focusTarget = null) {
   }
 }
 
+function bindToggleInputs() {
+  document.querySelectorAll("[data-toggle-state]").forEach((input) => {
+    const key = input.dataset.toggleState;
+    const target = document.getElementById(input.dataset.target);
+    input.checked = Boolean(state[key]);
+    target.hidden = !input.checked;
+    input.addEventListener("change", () => {
+      state[key] = input.checked;
+      target.hidden = !input.checked;
+      if (input.checked) setupSignaturePads(target);
+      saveState();
+    });
+  });
+}
+
+function bindStateFields() {
+  document.querySelectorAll("[data-state-field]").forEach((input) => {
+    const key = input.dataset.stateField;
+    input.value = state[key] || "";
+    const eventName = input.type === "time" ? "change" : "input";
+    input.addEventListener(eventName, () => { state[key] = input.value; saveState(); });
+  });
+}
+
+function setupSignaturePads(root = document) {
+  root.querySelectorAll("canvas[data-signature]").forEach((canvas) => {
+    if (canvas.dataset.initialized === "true" || canvas.clientWidth === 0) return;
+    canvas.dataset.initialized = "true";
+    const key = canvas.dataset.signature;
+    const context = canvas.getContext("2d");
+    const ratio = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    context.scale(ratio, ratio);
+    context.lineWidth = 2;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.strokeStyle = "#18334a";
+
+    if (state[key]) {
+      const image = new Image();
+      image.onload = () => context.drawImage(image, 0, 0, width, height);
+      image.src = state[key];
+    }
+
+    let drawing = false;
+    const point = (event) => {
+      const rect = canvas.getBoundingClientRect();
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    };
+    canvas.addEventListener("pointerdown", (event) => {
+      drawing = true;
+      canvas.setPointerCapture(event.pointerId);
+      const p = point(event);
+      context.beginPath();
+      context.moveTo(p.x, p.y);
+      context.lineTo(p.x + 0.1, p.y + 0.1);
+      context.stroke();
+      event.preventDefault();
+    });
+    canvas.addEventListener("pointermove", (event) => {
+      if (!drawing) return;
+      const p = point(event);
+      context.lineTo(p.x, p.y);
+      context.stroke();
+      event.preventDefault();
+    });
+    const finish = () => {
+      if (!drawing) return;
+      drawing = false;
+      state[key] = canvas.toDataURL("image/png");
+      saveState();
+    };
+    canvas.addEventListener("pointerup", finish);
+    canvas.addEventListener("pointercancel", finish);
+    canvas.addEventListener("lostpointercapture", finish);
+  });
+}
+
+document.querySelectorAll("[data-clear-signature]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const key = button.dataset.clearSignature;
+    state[key] = "";
+    const canvas = document.querySelector(`canvas[data-signature="${key}"]`);
+    if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    saveState();
+  });
+});
+
 repairField.value = state.repair;
 document.querySelector("#repair-count").textContent = `${state.repair.length} / 1200`;
 repairField.addEventListener("input", () => {
@@ -170,8 +303,10 @@ unitsToggle.addEventListener("change", () => {
 });
 
 renderActions();
-renderRows("removed");
-renderRows("installed");
+Object.keys(TABLES).forEach((table) => renderRows(table));
+bindToggleInputs();
+bindStateFields();
+setupSignaturePads();
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
