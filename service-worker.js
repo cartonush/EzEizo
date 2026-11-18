@@ -1,4 +1,4 @@
-const CACHE_NAME = "fault-sheet-cache-v1.0.3";
+const CACHE_NAME = "fault-sheet-cache-v1.0.4";
 const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", (event) => {
