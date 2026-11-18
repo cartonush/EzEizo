@@ -1,6 +1,7 @@
 const encodedSheet = new URLSearchParams(window.location.hash.slice(1)).get("sheet");
 const sheet = EzEizoData.decodeSheet(encodedSheet) || EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
 const selectedSheet = Boolean(EzEizoData.decodeSheet(encodedSheet)) || window.location.hash === "#example";
+document.querySelector("#sheet-form").hidden = !selectedSheet;
 const ACTIONS = sheet.actions;
 const STORAGE_KEY = encodedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
 const actionList = document.querySelector("#action-list");
@@ -429,7 +430,6 @@ setupSignaturePads();
 
 if (selectedSheet && sheet.id !== "example") EzEizoData.saveIssue(sheet);
 renderIssueList();
-document.querySelector("#sheet-form").hidden = !selectedSheet;
 if (selectedSheet && state.closedAt) showClosed();
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
