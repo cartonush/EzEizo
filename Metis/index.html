@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.4.0">
-  <link rel="stylesheet" href="styles.css?v=1.4.0">
+  <link rel="stylesheet" href="../styles.css?v=1.5.0">
+  <link rel="stylesheet" href="styles.css?v=1.5.0">
 </head>
 <body>
   <div class="app-shell">
@@ -23,7 +23,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.4.0</span>
+      <span class="version-pill">v1.5.0</span>
     </header>
 
     <main>
@@ -42,7 +42,8 @@
       <section class="card" aria-labelledby="manager-details-title">
         <div class="section-heading"><div><p class="section-kicker">פרטי אירוע</p><h2 id="manager-details-title">נתוני התקלה</h2></div><span class="step-badge">02</span></div>
         <div class="manager-grid">
-          <label class="input-field">מיקום<input data-sheet-field="location" type="text" autocomplete="off"></label>
+          <label class="input-field">טייסת<input data-sheet-field="squadron" type="text" autocomplete="off"></label>
+          <label class="input-field">דת״ק<input data-sheet-field="shelter" type="text" autocomplete="off"></label>
           <label class="input-field">מספר מטוס<input data-sheet-field="aircraft" type="text" inputmode="numeric" autocomplete="off"></label>
           <label class="input-field">קוד מערכת<input data-sheet-field="systemCode" type="text" autocomplete="off"></label>
           <label class="input-field">שם מערכת<input data-sheet-field="systemName" type="text" autocomplete="off"></label>
@@ -64,7 +65,7 @@
 
       <section class="card" aria-labelledby="manager-actions-title">
         <div class="section-heading"><div><p class="section-kicker">רשימת ביצוע</p><h2 id="manager-actions-title">פעולות לטכנאי</h2></div><span class="step-badge">05</span></div>
-        <p class="section-note">השורה האחרונה מוצגת לטכנאי כבחירת שעת סיום.</p>
+        <p class="section-note">12 הפעולות קבועות. השורה האחרונה מוצגת לטכנאי כבחירת שעת סיום.</p>
         <div id="manager-actions" class="manager-actions"></div>
       </section>
 
@@ -91,7 +92,7 @@
       </div>
     </main>
   </div>
-  <script src="../sheet-data.js?v=1.4.0" defer></script>
-  <script src="app.js?v=1.4.0" defer></script>
+  <script src="../sheet-data.js?v=1.5.0" defer></script>
+  <script src="app.js?v=1.5.0" defer></script>
 </body>
 </html>

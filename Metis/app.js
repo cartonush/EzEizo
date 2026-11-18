@@ -18,7 +18,11 @@ function saveDraft() {
 document.querySelectorAll("[data-sheet-field]").forEach((input) => {
   const key = input.dataset.sheetField;
   input.value = draft[key] || "";
-  input.addEventListener("input", () => { draft[key] = input.value; saveDraft(); });
+  input.addEventListener("input", () => {
+    draft[key] = input.value;
+    if (key === "shelter" || key === "squadron") draft.location = [draft.shelter, draft.squadron].filter(Boolean).join("/");
+    saveDraft();
+  });
 });
 
 function renderConstants() {
@@ -53,17 +57,14 @@ function renderConstants() {
 function renderActions() {
   const container = document.querySelector("#manager-actions");
   container.replaceChildren();
-  draft.actions.forEach((label, index) => {
-    const row = document.createElement("label");
+  EzEizoData.defaultSheet.actions.forEach((label, index) => {
+    const row = document.createElement("div");
     row.className = "manager-action-row";
     const number = document.createElement("span");
     number.textContent = String(index + 1).padStart(2, "0");
-    const input = document.createElement("input");
-    input.type = "text";
-    input.value = label;
-    input.setAttribute("aria-label", `פעולה ${index + 1}`);
-    input.addEventListener("input", () => { draft.actions[index] = input.value; saveDraft(); });
-    row.append(number, input);
+    const text = document.createElement("p");
+    text.textContent = label;
+    row.append(number, text);
     container.append(row);
   });
 }
@@ -73,7 +74,7 @@ document.querySelector("#create-link").addEventListener("click", () => {
   sheet.id = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   sheet.serial = EzEizoData.nextSerial();
   EzEizoData.saveIssue(sheet);
-  document.querySelector("#created-status").textContent = `תקלה מספר ${sheet.serial} נפתחה ונוספה לרשימה`;
+  document.querySelector("#created-status").textContent = `תקלה מספר ${sheet.serial} נשמרה במכשיר הזה. סנכרון לטכנאי שמותקן בנפרד עדיין אינו פעיל.`;
   renderIssueLists();
   window.location.hash = "open";
 });

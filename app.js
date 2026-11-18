@@ -1,5 +1,5 @@
 const selectedId = new URLSearchParams(window.location.search).get("id");
-const sheet = EzEizoData.readIssues().find((item) => item.id === selectedId) || EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
+const sheet = EzEizoData.normalizeSheet(EzEizoData.readIssues().find((item) => item.id === selectedId)) || EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
 const selectedSheet = Boolean(selectedId && (selectedId === "example" || EzEizoData.readIssues().some((item) => item.id === selectedId)));
 document.querySelector("#sheet-form").hidden = !selectedSheet;
 const ACTIONS = sheet.actions;
