@@ -13,8 +13,21 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== "GET" || url.origin !== self.location.origin || (!ASSET_URLS.has(url.href) && !url.href.startsWith(self.registration.scope))) return;
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
-    if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
-    return response;
-  }).catch(() => event.request.mode === "navigate" ? caches.match("./index.html") : Response.error())));
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    if (event.request.mode === "navigate") {
+      try {
+        const response = await fetch(event.request);
+        if (response.ok) await cache.put(event.request, response.clone());
+        return response;
+      } catch { return await cache.match(event.request) || await cache.match("./index.html") || Response.error(); }
+    }
+    const cached = await cache.match(event.request);
+    if (cached) return cached;
+    try {
+      const response = await fetch(event.request);
+      if (response.ok) await cache.put(event.request, response.clone());
+      return response;
+    } catch { return Response.error(); }
+  })());
 });
