@@ -48,7 +48,7 @@ const TABLES = {
 };
 const defaultState = {
   repair: "", actions: ACTIONS.map(() => false), completionTime: "",
-  unitsEnabled: false, removed: [], installed: [],
+  unitsEnabled: false, removed: [], installed: [], constantsEnabled: false,
   toolsEnabled: false, tools: [], interimEnabled: false, finalEnabled: false,
   takenEnabled: false, taken: [], rejectedEnabled: false, rejected: [],
   interimInspectorName: "", interimToolsName: "", finalInspectorName: "", finalLeadName: "", departureTime: "",
