@@ -1,6 +1,6 @@
-import "./sheet-data.js?v=1.13.0";
-import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.13.0";
-import { validateTreatment } from "./mechanic-validation.js?v=1.13.0";
+import "./sheet-data.js?v=1.14.0";
+import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.14.0";
+import { validateTreatment } from "./mechanic-validation.js?v=1.14.0";
 
 const currentUser = await gate("technician");
 let cloudIssues = [];
@@ -13,6 +13,8 @@ if (selectedId) {
 const sheet = EzEizoData.normalizeSheet(remoteIssue?.sheet || EzEizoData.defaultSheet);
 const selectedSheet = Boolean(remoteIssue?.assigneeUid === currentUser.uid);
 document.querySelector("#sheet-form").hidden = !selectedSheet;
+document.querySelector("#mechanic-back").hidden = !selectedSheet;
+document.querySelector(".queue-card").hidden = selectedSheet;
 const ACTIONS = sheet.actions;
 const STORAGE_KEY = selectedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
 const actionList = document.querySelector("#action-list");

@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.13.0">
-  <link rel="stylesheet" href="styles.css?v=1.13.0">
+  <link rel="stylesheet" href="../styles.css?v=1.14.0">
+  <link rel="stylesheet" href="styles.css?v=1.14.0">
 </head>
 <body>
   <div class="app-shell">
@@ -23,10 +23,11 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.13.0</span>
+      <span class="version-pill">v1.14.0</span>
     </header>
 
     <main>
+      <button id="manager-back" class="secondary-button page-back" type="button" hidden>→ חזרה</button>
       <nav class="manager-nav" aria-label="דפי ניהול">
         <a class="manager-nav-link" href="#new" data-view-link="new">פתיחת תקלה חדשה</a>
         <a class="manager-nav-link" href="#open" data-view-link="open">תקלות פתוחות</a>
@@ -49,7 +50,7 @@
           <div class="input-field"><label for="picker-aircraft">מספר מטוס</label><div class="search-picker" data-picker="aircraft"><input id="picker-aircraft" data-sheet-field="aircraft" type="search" inputmode="numeric" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-aircraft" placeholder="בחר טייסת תחילה" autocomplete="off" disabled><div id="options-aircraft" class="picker-list" role="listbox" hidden></div></div></div>
           <div class="input-field"><label for="picker-systemName">שם מערכת</label><div class="search-picker" data-picker="systemName"><input id="picker-systemName" data-sheet-field="systemName" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-systemName" placeholder="חפש ובחר מערכת" autocomplete="off"><div id="options-systemName" class="picker-list" role="listbox" hidden></div></div></div>
           <label class="input-field">קוד מערכת<input data-sheet-field="systemCode" type="text" readonly placeholder="מתמלא עם בחירת מערכת"></label>
-          <label class="input-field" for="ew-system-select">חליפת ל״א<select id="ew-system-select" data-sheet-field="ewSystem" disabled><option value="">בחר מטוס תחילה</option><option>גרניט</option><option>אימפריה אקטיבית</option><option>אימפריה פאסיבית</option></select></label>
+          <label class="input-field" for="ew-system-select">חליפת ל״א<select id="ew-system-select" data-sheet-field="ewSystem" disabled><option>גרניט</option><option>אימפריה אקטיבית</option><option>אימפריה פאסיבית</option></select></label>
         </div>
       </section>
 
@@ -99,21 +100,20 @@
       <div id="view-users" data-manager-view="users" hidden>
         <section class="card" aria-labelledby="users-title">
           <div class="section-heading"><div><p class="section-kicker">ניהול צוות</p><h2 id="users-title">משתמשים</h2></div></div>
-          <p>נימר יכול ליצור חשבונות טכנאי ולהשבית את הגישה שלהם. ההיסטוריה נשמרת גם אחרי השבתה.</p>
+          <p>נימר יכול ליצור טכנאים ולהסיר אותם מהמערכת. ההסרה חוסמת גישה ושומרת היסטוריית תקלות; חשבון ההתחברות ב־Firebase Authentication נשאר קיים.</p>
           <form id="create-user-form" class="user-form">
             <label class="input-field">שם הטכנאי<input name="name" required maxlength="80" autocomplete="off"></label>
             <label class="input-field">דואר אלקטרוני<input name="email" type="email" required autocomplete="off"></label>
             <label class="input-field">סיסמה ראשונית<input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
             <button class="primary-button" type="submit">צור משתמש טכנאי</button>
           </form>
-          <button id="create-demo-users" class="secondary-button" type="button">צור שני חשבונות טכנאי לדוגמה</button>
           <p id="user-status" class="copy-status" role="status" aria-live="polite"></p>
-          <div id="demo-credentials" class="credentials-panel" hidden></div>
           <div id="users-list" class="issue-list"></div>
+          <details class="removed-users"><summary>משתמשים שהוסרו</summary><div id="removed-users-list" class="issue-list"></div></details>
         </section>
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.13.0"></script>
+  <script type="module" src="app.js?v=1.14.0"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
-import "../sheet-data.js?v=1.13.0";
-import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.13.0";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.13.0";
-import { resolveAssignees } from "./assignee-selection.js?v=1.13.0";
+import "../sheet-data.js?v=1.14.0";
+import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.14.0";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.14.0";
+import { resolveAssignees } from "./assignee-selection.js?v=1.14.0";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -89,8 +89,8 @@ function renderOptions(key) {
     option.setAttribute("role", "option");
     option.setAttribute("aria-selected", String(value === selections[key]));
     option.textContent = value;
-    option.addEventListener("pointerdown", (event) => { event.preventDefault(); choosePicker(key, value); });
-    option.addEventListener("click", () => { if (selections[key] !== value || !picker.list.hidden) choosePicker(key, value); });
+    option.addEventListener("pointerdown", (event) => event.preventDefault());
+    option.addEventListener("click", () => choosePicker(key, value));
     picker.list.append(option);
   });
   picker.list.hidden = false;
@@ -109,7 +109,7 @@ function refreshPickers() {
   document.querySelector('[data-sheet-field="systemCode"]').value = draft.systemCode;
   const ewSelect = document.querySelector("#ew-system-select");
   ewSelect.disabled = !selections.aircraft;
-  ewSelect.value = draft.ewSystem;
+  ewSelect.value = draft.ewSystem || "גרניט";
 }
 
 function clearPicker(key) {
@@ -142,7 +142,6 @@ function choosePicker(key, value) {
   draft.location = locationForDraft();
   refreshPickers();
   saveDraft();
-  pickers[key].input.blur();
   setStatus("#created-status", "");
 }
 
@@ -170,7 +169,7 @@ for (const [key, picker] of Object.entries(pickers)) {
   });
   picker.input.addEventListener("blur", () => setTimeout(() => {
     if (!picker.root.contains(document.activeElement)) closePicker(key);
-  }, 120));
+  }, 250));
 }
 
 function restorePickers() {
@@ -340,9 +339,14 @@ function renderIssueLists() {
   if (!allClosed.length) closed.textContent = "אין תקלות סגורות.";
 }
 
+let currentManagerView = null;
+const managerViewHistory = [];
 function showManagerView() {
   const requested = window.location.hash.slice(1);
   const selected = ["new", "open", "closed", "users"].includes(requested) ? requested : "new";
+  if (currentManagerView && currentManagerView !== selected) managerViewHistory.push(currentManagerView);
+  currentManagerView = selected;
+  document.querySelector("#manager-back").hidden = !managerViewHistory.length && selected === "new";
   document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== selected; });
   document.querySelectorAll("[data-view-link]").forEach((link) => {
     if (link.dataset.viewLink === selected) link.setAttribute("aria-current", "page");
@@ -350,6 +354,12 @@ function showManagerView() {
   });
   if (selected !== "new") renderIssueLists();
 }
+document.querySelector("#manager-back").addEventListener("click", () => {
+  const previous = managerViewHistory.pop() || "new";
+  currentManagerView = null;
+  if (location.hash === `#${previous}`) showManagerView();
+  else location.hash = previous;
+});
 window.addEventListener("hashchange", showManagerView);
 document.querySelector("#new-draft").addEventListener("click", () => {
   draft = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
@@ -419,11 +429,14 @@ function updateUserSelectors() {
 document.querySelector("#closed-filter").addEventListener("change", renderIssueLists);
 function renderUsers() {
   const list = document.querySelector("#users-list");
+  const removedList = document.querySelector("#removed-users-list");
   list.replaceChildren();
-  if (!technicians.length) { list.textContent = "עדיין אין טכנאים. צור משתמש חדש או שני חשבונות לדוגמה."; return; }
+  removedList.replaceChildren();
+  if (!technicians.some((person) => person.active)) list.textContent = "אין טכנאים פעילים. צור משתמש חדש.";
+  if (!technicians.some((person) => !person.active)) removedList.textContent = "אין משתמשים שהוסרו.";
   technicians.forEach((person) => {
     const card = document.createElement("div"); card.className = "issue-item";
-    const title = document.createElement("strong"); title.textContent = `${person.name} · ${person.active ? "פעיל" : "מושבת"}`;
+    const title = document.createElement("strong"); title.textContent = `${person.name} · ${person.active ? "פעיל" : "הוסר"}`;
     const email = document.createElement("span"); email.textContent = person.email || person.uid;
     const assigned = cloudIssues.filter((issue) => issue.assigneeUid === person.uid);
     const closed = assigned.filter((issue) => issue.status === "closed");
@@ -431,15 +444,22 @@ function renderUsers() {
     history.textContent = `תקלות פתוחות: ${assigned.length - closed.length} · תקלות סגורות: ${closed.length} · מספרים סידוריים: ${closed.map((issue) => issue.sheet.serial).join(", ") || "אין"}`;
     const view = document.createElement("button"); view.type = "button"; view.className = "secondary-button"; view.textContent = "הצג דפים סגורים";
     view.addEventListener("click", () => { document.querySelector("#closed-filter").value = person.uid; location.hash = "closed"; renderIssueLists(); });
-    const toggle = document.createElement("button"); toggle.type = "button"; toggle.className = "secondary-button";
-    toggle.textContent = person.active ? "השבת גישה" : "הפעל גישה";
-    toggle.addEventListener("click", async () => {
-      toggle.disabled = true;
-      try { await setTechnicianActive(person.uid, !person.active); }
+    const action = document.createElement("button"); action.type = "button"; action.className = "secondary-button";
+    action.textContent = person.active ? "מחק משתמש" : "שחזר משתמש";
+    action.addEventListener("click", async () => {
+      if (person.active && assigned.some((issue) => issue.status === "open")) {
+        setStatus("#user-status", `יש לשייך מחדש את התקלות הפתוחות של ${person.name} בדף ״תקלות פתוחות״ לפני הסרת המשתמש.`, true);
+        return;
+      }
+      action.disabled = true;
+      try {
+        await setTechnicianActive(person.uid, !person.active);
+        setStatus("#user-status", person.active ? `${person.name} הוסר מהמערכת והגישה שלו נחסמה. היסטוריית התקלות נשמרה.` : `${person.name} שוחזר.`);
+      }
       catch (error) { setStatus("#user-status", `שינוי המשתמש נכשל: ${error.message}`, true); }
-      finally { toggle.disabled = false; }
+      finally { action.disabled = false; }
     });
-    card.append(title, email, history, view, toggle); list.append(card);
+    card.append(title, email, history, view, action); (person.active ? list : removedList).append(card);
   });
 }
 watchTechnicians((items) => { technicians = items.sort((a, b) => a.name.localeCompare(b.name, "he")); updateUserSelectors(); renderUsers(); renderIssueLists(); }, (error) => {
@@ -455,22 +475,6 @@ userForm.addEventListener("submit", async (event) => {
     userForm.reset(); setStatus("#user-status", "הטכנאי נוצר. מסור לו את פרטי הכניסה בערוץ מתאים.");
   } catch (error) { setStatus("#user-status", `יצירת המשתמש נכשלה: ${error.message}`, true); }
   finally { button.disabled = false; }
-});
-document.querySelector("#create-demo-users").addEventListener("click", async (event) => {
-  const button = event.currentTarget; button.disabled = true;
-  const panel = document.querySelector("#demo-credentials"); panel.hidden = false;
-  panel.textContent = "שמור את פרטי הכניסה כעת; הסיסמאות לא יוצגו שוב לאחר רענון.";
-  for (let index = 1; index <= 2; index++) {
-    const token = crypto.randomUUID().slice(0, 12);
-    const email = `demo-${token}@ezeizo.example`;
-    const password = Array.from(crypto.getRandomValues(new Uint8Array(16)), (value) => value.toString(16).padStart(2, "0")).join("");
-    try {
-      await createTechnician(`טכנאי דוגמה ${index}`, email, password);
-      const detail = document.createElement("p"); detail.textContent = `טכנאי דוגמה ${index}: ${email} · סיסמה: ${password}`; panel.append(detail);
-      setStatus("#user-status", `${index} חשבונות דוגמה נוצרו.`);
-    } catch (error) { setStatus("#user-status", `יצירת טכנאי דוגמה ${index} נכשלה: ${error.message}`, true); break; }
-  }
-  button.disabled = false;
 });
 const locallyClosed = new Set(EzEizoData.readClosed().map((item) => item.id));
 const legacy = EzEizoData.readIssues().filter((item) => item?.id && item.id !== "example" && !locallyClosed.has(item.id));

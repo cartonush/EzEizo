@@ -185,5 +185,7 @@ td input:focus { border-color: #5da8c5; }
 .auth-help p { margin: 0 0 10px; }
 .auth-help code { display: block; direction: ltr; text-align: left; overflow-wrap: anywhere; margin-bottom: 10px; }
 .auth-help button { margin: 8px 0 8px 8px; }
+.back-to-queue { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; margin: 0 0 14px; padding: 9px 14px; border: 1px solid #bdd5e2; border-radius: 10px; background: #fff; color: #17668f; text-decoration: none; font-weight: 700; }
+.back-to-queue:focus-visible { outline: 3px solid #6fb1cf; }
 [data-state="error"] { color: #a80018 !important; background: #fff0f1; border: 2px solid #ff243e; border-radius: 10px; padding: 10px 12px; font-weight: 700; line-height: 1.6; }
 .closed-signature { max-width: 280px; width: 100%; background: #fff; border: 1px solid #d5e3e9; border-radius: 8px; }
