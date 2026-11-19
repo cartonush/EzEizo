@@ -1,5 +1,6 @@
-import "./sheet-data.js?v=1.8.2";
-import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.8.2";
+import "./sheet-data.js?v=1.9.0";
+import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.9.0";
+import { validateTreatment } from "./mechanic-validation.js?v=1.9.0";
 
 const currentUser = await gate("technician");
 let cloudIssues = [];
@@ -47,7 +48,7 @@ const TABLES = {
   ]
 };
 const defaultState = {
-  repair: "", actions: ACTIONS.map(() => false), completionTime: "", closedAt: "",
+  repair: "", actions: ACTIONS.map(() => false), action11Result: "", completionTime: "", closedAt: "",
   unitsEnabled: false, removed: [], installed: [], constantsEnabled: false,
   toolsEnabled: false, tools: [], interimEnabled: false, finalEnabled: false,
   takenEnabled: false, taken: [], rejectedEnabled: false, rejected: [],
@@ -62,6 +63,8 @@ if (remoteIssue?.status === "closed" && remoteIssue.closed?.state) {
 }
 state.completionTime = state.completionTime || "";
 if (!Array.isArray(state.actions)) state.actions = ACTIONS.map(() => false);
+state.action11Result = ["done", "notRequired"].includes(state.action11Result) ? state.action11Result : state.actions[10] ? "done" : "";
+state.actions[10] = Boolean(state.action11Result);
 state.actions[ACTIONS.length - 1] = Boolean(state.completionTime);
 
 function loadState() {
@@ -116,7 +119,35 @@ function renderActions() {
     const text = document.createElement("span");
     text.className = "action-text";
     text.textContent = label;
-    if (index === ACTIONS.length - 1) {
+    if (index === 10) {
+      row.classList.add("has-choice");
+      row.classList.toggle("not-required", state.action11Result === "notRequired");
+      const choices = document.createElement("div");
+      choices.className = "action-choices";
+      choices.setAttribute("role", "radiogroup");
+      choices.setAttribute("aria-label", "פעולה 11: בוצעה או לא נדרשה");
+      [["done", "✓", "בוצעה"], ["notRequired", "X", "לא נדרשה"]].forEach(([value, symbol, description]) => {
+        const option = document.createElement("label");
+        option.className = `action-choice ${value === "notRequired" ? "choice-x" : "choice-done"}`;
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = `action-11-${sheet.id}`;
+        radio.value = value;
+        radio.checked = state.action11Result === value;
+        radio.setAttribute("aria-label", `פעולה 11 ${description}`);
+        radio.addEventListener("change", () => {
+          state.action11Result = value;
+          state.actions[index] = true;
+          row.classList.add("done");
+          row.classList.toggle("not-required", value === "notRequired");
+          updateProgress();
+          saveState();
+        });
+        const mark = document.createElement("span"); mark.textContent = symbol;
+        option.append(radio, mark); choices.append(option);
+      });
+      row.append(number, text, choices);
+    } else if (index === ACTIONS.length - 1) {
       const timePicker = document.createElement("input");
       timePicker.className = "time-picker";
       timePicker.type = "time";
@@ -182,7 +213,7 @@ function closureRecord() {
     technicians: remoteIssue?.assigneeName || sheet.technicians, fault: sheet.fault,
     closedAt: state.closedAt, completionTime: state.completionTime,
     repair: state.repair.slice(0, 1200),
-    actionsComplete: state.actions.every(Boolean),
+    actionsComplete: state.actions.every(Boolean) && Boolean(state.action11Result),
     removedCount: state.removed.filter((row) => row.name || row.serial).length,
     installedCount: state.installed.filter((row) => row.name || row.serial).length,
     toolsCount: state.tools.filter((row) => row.toolName || row.toolNumber || row.notes).length,
@@ -205,14 +236,14 @@ function showClosed() {
 }
 
 document.querySelector("#close-sheet").addEventListener("click", async () => {
-  const missing = ACTIONS.findIndex((_, index) => index === ACTIONS.length - 1 ? !state.completionTime : !state.actions[index]);
-  if (missing !== -1) {
+  const validation = validateTreatment(sheet, state, TABLES);
+  if (validation) {
     const message = document.querySelector("#close-message");
-    message.textContent = `אי אפשר לסגור: פעולה ${missing + 1} עדיין לא סומנה${missing === ACTIONS.length - 1 ? " (בחר שעת סיום)" : ""}.`;
+    message.textContent = validation.message;
     message.dataset.state = "error";
-    const row = actionList.children[missing];
-    row.scrollIntoView({ behavior: "smooth", block: "center" });
-    row.querySelector("input")?.focus({ preventScroll: true });
+    const target = document.querySelector(validation.selector);
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    target?.focus({ preventScroll: true });
     return;
   }
   const button = document.querySelector("#close-sheet");

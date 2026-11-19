@@ -62,6 +62,13 @@ main { width: min(880px, calc(100% - 32px)); margin: 22px auto 0; }
 .time-picker { width: 102px; height: 34px; padding: 3px 7px; border: 1px solid #d9e3e9; border-radius: 9px; background: #f9fbfc; color: var(--ink); font-size: 13px; font-weight: 700; justify-self: end; cursor: pointer; }
 .time-picker:focus { outline: 2px solid #5da8c55c; border-color: #5da8c5; }
 .action-row.done .action-text { color: #8a989f; text-decoration: line-through; text-decoration-color: #a9c3bc; }
+.action-row.has-choice { grid-template-columns: 28px minmax(0, 1fr) auto; }
+.action-choices { display: flex; gap: 5px; direction: ltr; }
+.action-choice { display: inline-flex; align-items: center; gap: 3px; padding: 4px 6px; border: 1px solid #cbdce5; border-radius: 8px; background: #fff; cursor: pointer; font-size: 12px; font-weight: 800; }
+.action-choice input { width: 14px; height: 14px; margin: 0; accent-color: #168b79; }
+.action-choice.choice-x { color: #aa1930; }
+.action-choice.choice-x input { accent-color: #cc2540; }
+.action-row.not-required .action-text { text-decoration: none; color: #30485b; }
 .units-card { padding-bottom: 18px; }
 .replaced-toggle { display: flex; align-items: center; gap: 13px; cursor: pointer; border: 1px solid #dfe9ee; border-radius: 13px; padding: 13px; background: #f9fbfc; }
 .replaced-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }

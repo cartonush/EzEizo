@@ -1,5 +1,5 @@
-import "../sheet-data.js?v=1.8.2";
-import { gate, watchIssues, watchTechnicians, createIssue, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.8.2";
+import "../sheet-data.js?v=1.9.0";
+import { gate, watchIssues, watchTechnicians, createIssue, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.9.0";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -90,6 +90,12 @@ document.querySelector("#create-link").addEventListener("click", async () => {
   if (!assignee) { setStatus("#created-status", "בחר טכנאי פעיל לפני פתיחת התקלה.", true); document.querySelector("#new-assignee").focus(); return; }
   button.disabled = true;
   const sheet = EzEizoData.normalizeSheet(draft);
+  if (!sheet.fault.trim()) {
+    setStatus("#created-status", "חובה למלא תיאור תקלה לפני פתיחת התקלה.", true);
+    document.querySelector('[data-sheet-field="fault"]').focus();
+    button.disabled = false;
+    return;
+  }
   sheet.id = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   try {
     sheet.serial = await createIssue(sheet, { uid, name: assignee.name });
@@ -123,7 +129,7 @@ function addIssueCard(container, item, isClosed) {
     const state = fullIssue?.closed?.state;
     if (state) {
       const work = document.createElement("p");
-      work.textContent = `פעולות: ${state.actions?.map((checked, index) => `${index + 1}: ${checked ? "✓" : "—"}`).join(" · ") || "—"}`;
+      work.textContent = `פעולות: ${state.actions?.map((checked, index) => `${index + 1}: ${index === 10 && state.action11Result === "notRequired" ? "X" : checked ? "✓" : "—"}`).join(" · ") || "—"}`;
       details.append(work);
       for (const [label, rows] of [["יחידות שפורקו", state.removed], ["יחידות שהורכבו", state.installed], ["כלים", state.tools], ["קשיחים שנלקחו", state.taken], ["קשיחים שנפסלו", state.rejected]]) {
         const list = document.createElement("p");
