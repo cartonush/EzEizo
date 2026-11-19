@@ -5,6 +5,7 @@
 .preview-link:hover { text-decoration: underline; }
 .manager-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
 .manager-grid .input-field input { height: 43px; }
+.manager-grid .input-field[hidden] { display: none; }
 .search-picker { position: relative; }
 .search-picker input { width: 100%; min-width: 0; font-size: 16px; }
 .search-picker input:disabled { color: #6d8190; background: #f0f5f7; }

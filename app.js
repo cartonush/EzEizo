@@ -1,6 +1,6 @@
-import "./sheet-data.js?v=1.12.0";
-import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.12.0";
-import { validateTreatment } from "./mechanic-validation.js?v=1.12.0";
+import "./sheet-data.js?v=1.13.0";
+import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.13.0";
+import { validateTreatment } from "./mechanic-validation.js?v=1.13.0";
 
 const currentUser = await gate("technician");
 let cloudIssues = [];
@@ -83,6 +83,7 @@ function saveState() {
 }
 
 function renderSheetDetails() {
+  document.querySelector("#workshop-detail").hidden = !sheet.workshop;
   document.querySelectorAll("[data-sheet-field]").forEach((element) => {
     element.textContent = sheet[element.dataset.sheetField] || "—";
   });

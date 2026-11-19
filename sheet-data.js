@@ -3,6 +3,7 @@
     id: "example",
     serial: "דוגמה",
     shelter: "14",
+    workshop: "",
     squadron: "105",
     location: "14/105",
     aircraft: "603",
@@ -35,7 +36,7 @@
     ]
   };
 
-  const scalarKeys = ["serial", "location", "shelter", "squadron", "aircraft", "systemCode", "systemName", "ewSystem", "technicians", "fault", "managerNotes"];
+  const scalarKeys = ["serial", "location", "shelter", "workshop", "squadron", "aircraft", "systemCode", "systemName", "ewSystem", "technicians", "fault", "managerNotes"];
   function normalizeSheet(input) {
     if (!input || typeof input !== "object") return null;
     const sheet = structuredClone(defaultSheet);
@@ -50,7 +51,7 @@
         if (typeof input.squadron !== "string") sheet.squadron = parts[1].trim();
       }
     }
-    sheet.location = [sheet.shelter, sheet.squadron].filter(Boolean).join("/");
+    sheet.location = [sheet.shelter === "מוסך" && sheet.workshop ? sheet.workshop : sheet.shelter, sheet.squadron].filter(Boolean).join("/");
     if (input.constants && typeof input.constants === "object") {
       Object.keys(sheet.constants).forEach((group) => {
         const source = input.constants[group];

@@ -112,6 +112,7 @@ td input:focus { border-color: #5da8c5; }
 .note-history { margin: 8px 0; padding: 10px 12px; border: 1px solid #dce6eb; border-radius: 9px; background: #f4f8fa; color: #344e61; white-space: pre-wrap; overflow-wrap: anywhere; }
 .note-history p { margin: 5px 0; padding: 6px 0; border-bottom: 1px solid #dce6eb; }
 .note-history p:last-child { border-bottom: 0; }
+.detail-item[hidden] { display: none; }
 .named-signature { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(150px, .7fr) minmax(0, 1.3fr); align-items: start; gap: 12px; }
 .taken-signature-grid { margin-top: 15px; }
 .constants-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 11px; }

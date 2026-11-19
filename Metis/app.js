@@ -1,7 +1,7 @@
-import "../sheet-data.js?v=1.12.0";
-import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.12.0";
-import { SQUADRONS, SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.12.0";
-import { resolveAssignees } from "./assignee-selection.js?v=1.12.0";
+import "../sheet-data.js?v=1.13.0";
+import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.13.0";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.13.0";
+import { resolveAssignees } from "./assignee-selection.js?v=1.13.0";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -56,7 +56,12 @@ const pickers = Object.fromEntries([...document.querySelectorAll("[data-picker]"
 function availableFor(key) {
   if (key === "squadron") return Object.keys(SQUADRONS);
   if (key === "systemName") return SYSTEMS.map((system) => system.name);
+  if (key === "workshop") return selections.shelter === "מוסך" ? WORKSHOPS : [];
   return Object.hasOwn(SQUADRONS, selections.squadron) ? SQUADRONS[selections.squadron][key === "shelter" ? "shelters" : "aircraft"] : [];
+}
+
+function locationForDraft() {
+  return [draft.shelter === "מוסך" && draft.workshop ? draft.workshop : draft.shelter, draft.squadron].filter(Boolean).join("/");
 }
 
 function closePicker(key) {
@@ -94,41 +99,47 @@ function renderOptions(key) {
 }
 
 function refreshPickers() {
+  document.querySelector("#workshop-field").hidden = selections.shelter !== "מוסך";
   for (const [key, picker] of Object.entries(pickers)) {
-    picker.input.disabled = (key === "shelter" || key === "aircraft") && !selections.squadron;
-    picker.input.placeholder = picker.input.disabled ? "בחר טייסת תחילה" : key === "aircraft" ? "חפש ובחר מספר מטוס" : key === "shelter" ? "חפש ובחר דת״ק" : key === "systemName" ? "חפש ובחר מערכת" : "חפש ובחר טייסת";
+    picker.input.disabled = key === "workshop" ? selections.shelter !== "מוסך" : (key === "shelter" || key === "aircraft") && !selections.squadron;
+    picker.input.placeholder = picker.input.disabled ? "בחר טייסת תחילה" : key === "aircraft" ? "חפש ובחר מספר מטוס" : key === "shelter" ? "חפש ובחר דת״ק" : key === "workshop" ? "חפש ובחר מוסך" : key === "systemName" ? "חפש ובחר מערכת" : "חפש ובחר טייסת";
     picker.input.value = selections[key] || "";
     closePicker(key);
   }
   document.querySelector('[data-sheet-field="systemCode"]').value = draft.systemCode;
-  document.querySelector("#ew-system-display").textContent = draft.ewSystem || "בחר מטוס להצגת החליפה";
+  const ewSelect = document.querySelector("#ew-system-select");
+  ewSelect.disabled = !selections.aircraft;
+  ewSelect.value = draft.ewSystem;
 }
 
 function clearPicker(key) {
   selections[key] = "";
   draft[key] = "";
   if (key === "squadron") {
-    selections.shelter = ""; selections.aircraft = "";
-    draft.shelter = ""; draft.aircraft = ""; draft.ewSystem = "";
+    selections.shelter = ""; selections.workshop = ""; selections.aircraft = "";
+    draft.shelter = ""; draft.workshop = ""; draft.aircraft = ""; draft.ewSystem = "";
   }
+  if (key === "shelter") { selections.workshop = ""; draft.workshop = ""; }
   if (key === "aircraft") draft.ewSystem = "";
   if (key === "systemName") draft.systemCode = "";
-  draft.location = [draft.shelter, draft.squadron].filter(Boolean).join("/");
+  draft.location = locationForDraft();
   refreshPickers();
   saveDraft();
 }
 
 function choosePicker(key, value) {
   if (!availableFor(key).includes(value)) return;
+  const changedAircraft = key === "aircraft" && selections.aircraft !== value;
   if (key === "squadron" && selections.squadron !== value) {
-    selections.shelter = ""; selections.aircraft = "";
-    draft.shelter = ""; draft.aircraft = ""; draft.ewSystem = "";
+    selections.shelter = ""; selections.workshop = ""; selections.aircraft = "";
+    draft.shelter = ""; draft.workshop = ""; draft.aircraft = ""; draft.ewSystem = "";
   }
+  if (key === "shelter" && selections.shelter !== value) { selections.workshop = ""; draft.workshop = ""; }
   selections[key] = value;
   draft[key] = value;
-  if (key === "aircraft") draft.ewSystem = "גרניט";
+  if (changedAircraft) draft.ewSystem = "גרניט";
   if (key === "systemName") draft.systemCode = SYSTEMS.find((system) => system.name === value).code;
-  draft.location = [draft.shelter, draft.squadron].filter(Boolean).join("/");
+  draft.location = locationForDraft();
   refreshPickers();
   saveDraft();
   pickers[key].input.blur();
@@ -164,13 +175,13 @@ for (const [key, picker] of Object.entries(pickers)) {
 
 function restorePickers() {
   if (!Object.hasOwn(SQUADRONS, selections.squadron) || draft.squadron !== selections.squadron) selections.squadron = "";
-  for (const key of ["shelter", "aircraft", "systemName"]) {
+  for (const key of ["shelter", "workshop", "aircraft", "systemName"]) {
     if (!availableFor(key).includes(selections[key]) || draft[key] !== selections[key]) selections[key] = "";
   }
   for (const key of Object.keys(pickers)) draft[key] = selections[key] || "";
   draft.systemCode = SYSTEMS.find((system) => system.name === selections.systemName)?.code || "";
-  draft.ewSystem = selections.aircraft ? "גרניט" : "";
-  draft.location = [draft.shelter, draft.squadron].filter(Boolean).join("/");
+  draft.ewSystem = selections.aircraft ? (EW_SYSTEMS.includes(draft.ewSystem) ? draft.ewSystem : "גרניט") : "";
+  draft.location = locationForDraft();
   refreshPickers();
   saveDraft();
 }
@@ -224,7 +235,7 @@ function renderActions() {
 document.querySelector("#create-link").addEventListener("click", async () => {
   const button = document.querySelector("#create-link");
   const catalogError = validateCatalogSelection(selections, draft);
-  if (catalogError) { setStatus("#created-status", catalogError.message, true); pickers[catalogError.field].input.focus(); return; }
+  if (catalogError) { setStatus("#created-status", catalogError.message, true); (pickers[catalogError.field]?.input || document.querySelector("#ew-system-select")).focus(); return; }
   const { assignees, error: assigneeError } = resolveAssignees(selectedAssigneeUids(), technicians);
   if (assigneeError) { setStatus("#created-status", assigneeError, true); document.querySelector("#new-assignees").scrollIntoView({ block: "center" }); return; }
   button.disabled = true;
@@ -372,7 +383,6 @@ function syncAssigneeNames() {
   document.querySelectorAll('#new-assignees select').forEach((select) => { select.setAttribute('aria-invalid', String(Boolean(select.value && selected.filter((uid) => uid === select.value).length > 1))); });
   setStatus('#assignee-feedback', duplicate ? 'כל טכנאי יכול להיבחר פעם אחת בלבד.' : '', duplicate);
   draft.technicians = selected.map((uid) => technicians.find((person) => person.uid === uid)?.name).filter(Boolean).join(' · ');
-  document.querySelector('[data-sheet-field="technicians"]').value = draft.technicians;
   saveDraft();
 }
 function renderAssigneeSelectors(values = selectedAssigneeUids()) {
