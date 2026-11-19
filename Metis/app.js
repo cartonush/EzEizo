@@ -1,7 +1,7 @@
-import "../sheet-data.js?v=1.15.0";
-import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.15.0";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.15.0";
-import { resolveAssignees } from "./assignee-selection.js?v=1.15.0";
+import "../sheet-data.js?v=1.16.0";
+import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.16.0";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.16.0";
+import { resolveAssignees } from "./assignee-selection.js?v=1.16.0";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -339,14 +339,10 @@ function renderIssueLists() {
   if (!allClosed.length) closed.textContent = "אין תקלות סגורות.";
 }
 
-let currentManagerView = null;
-const managerViewHistory = [];
 function showManagerView() {
   const requested = window.location.hash.slice(1);
   const selected = ["new", "open", "closed", "users"].includes(requested) ? requested : "new";
-  if (currentManagerView && currentManagerView !== selected) managerViewHistory.push(currentManagerView);
-  currentManagerView = selected;
-  document.querySelector("#manager-back").hidden = !managerViewHistory.length && selected === "new";
+  document.querySelector("#manager-back").hidden = true;
   document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== selected; });
   document.querySelectorAll("[data-view-link]").forEach((link) => {
     if (link.dataset.viewLink === selected) link.setAttribute("aria-current", "page");
@@ -354,12 +350,6 @@ function showManagerView() {
   });
   if (selected !== "new") renderIssueLists();
 }
-document.querySelector("#manager-back").addEventListener("click", () => {
-  const previous = managerViewHistory.pop() || "new";
-  currentManagerView = null;
-  if (location.hash === `#${previous}`) showManagerView();
-  else location.hash = previous;
-});
 window.addEventListener("hashchange", showManagerView);
 document.querySelector("#new-draft").addEventListener("click", () => {
   draft = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);

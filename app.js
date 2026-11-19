@@ -1,6 +1,6 @@
-import "./sheet-data.js?v=1.15.0";
-import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.15.0";
-import { validateTreatment } from "./mechanic-validation.js?v=1.15.0";
+import "./sheet-data.js?v=1.16.0";
+import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.16.0";
+import { validateTreatment } from "./mechanic-validation.js?v=1.16.0";
 
 const currentUser = await gate("technician");
 let cloudIssues = [];
