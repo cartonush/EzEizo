@@ -170,4 +170,8 @@ td input:focus { border-color: #5da8c5; }
 .auth-card { max-width: 600px; margin: 24px auto; }
 .auth-card form { display: grid; gap: 14px; margin-top: 18px; }
 .auth-logout { display: block; margin: 12px auto; }
+.auth-help { margin-top: 16px; padding: 14px; border-radius: 12px; background: #edf5f9; line-height: 1.7; }
+.auth-help p { margin: 0 0 10px; }
+.auth-help code { display: block; direction: ltr; text-align: left; overflow-wrap: anywhere; margin-bottom: 10px; }
+.auth-help button { margin: 8px 0 8px 8px; }
 .closed-signature { max-width: 280px; width: 100%; background: #fff; border: 1px solid #d5e3e9; border-radius: 8px; }

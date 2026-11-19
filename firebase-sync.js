@@ -24,11 +24,39 @@ export function gate(role) {
   main.before(panel);
   if (role === "manager") panel.querySelector('[type="email"]').value = "roisuissa6@gmail.com";
   const status = panel.querySelector('[role="status"]');
+  const help = document.createElement("div");
+  help.className = "auth-help";
+  help.hidden = true;
+  panel.append(help);
+  function showSetup(user, reason) {
+    status.textContent = reason;
+    help.replaceChildren();
+    if (role === "manager") {
+      const instructions = document.createElement("p");
+      instructions.textContent = "ההזדהות ב־Firebase הצליחה. פרסם את כללי Firestore המעודכנים ב־Firebase Console ולחץ ״בדוק שוב״. הרשאת נימר תיווצר אוטומטית. ה־UID שלך:";
+      const uid = document.createElement("code"); uid.textContent = user.uid;
+      const copy = document.createElement("button"); copy.type = "button"; copy.className = "secondary-button"; copy.textContent = "העתק UID";
+      copy.addEventListener("click", async () => { await navigator.clipboard.writeText(user.uid); copy.textContent = "הועתק"; });
+      const rules = document.createElement("a"); rules.href = "https://github.com/cartonush/EzEizo/blob/main/firestore.rules"; rules.target = "_blank"; rules.rel = "noopener"; rules.textContent = "הכללים להדבקה";
+      const consoleLink = document.createElement("a"); consoleLink.href = "https://console.firebase.google.com/project/ezeizo/firestore/rules"; consoleLink.target = "_blank"; consoleLink.rel = "noopener"; consoleLink.textContent = "פתח את Rules ב־Firebase";
+      help.append(instructions, uid, copy, rules, document.createTextNode(" · "), consoleLink);
+    } else {
+      const instructions = document.createElement("p");
+      instructions.textContent = `ההזדהות הצליחה, אך חשבון זה עדיין לא הוגדר כטכנאי פעיל. מסור למנהל את ה־UID: ${user.uid}`;
+      help.append(instructions);
+    }
+    const retry = document.createElement("button"); retry.type = "button"; retry.className = "primary-button"; retry.textContent = "בדוק שוב";
+    retry.addEventListener("click", () => location.reload());
+    help.append(retry);
+    help.hidden = false;
+  }
   panel.querySelector("form").addEventListener("submit", async (event) => {
     event.preventDefault();
+    help.hidden = true;
     status.textContent = "מתחבר…";
     try {
       await signInWithEmailAndPassword(auth, panel.querySelector('[type="email"]').value.trim(), panel.querySelector('[type="password"]').value);
+      if (status.textContent === "מתחבר…") status.textContent = "ההזדהות הצליחה. בודק הרשאות Firestore…";
     } catch (error) {
       status.textContent = error.code === "auth/invalid-credential" ? "הפרטים אינם נכונים." : `ההתחברות נכשלה: ${error.code || error.message}`;
     }
@@ -36,11 +64,21 @@ export function gate(role) {
   return new Promise((resolve) => {
     let active = false;
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { if (active) location.reload(); status.textContent = "יש להתחבר כדי לראות תקלות."; return; }
+      if (!user) { if (active) location.reload(); help.hidden = true; status.textContent = "יש להתחבר כדי לראות תקלות."; return; }
+      status.textContent = "ההזדהות הצליחה. בודק הרשאות Firestore…";
       try {
-        const roleDoc = await getDoc(doc(db, "roles", user.uid));
+        const roleRef = doc(db, "roles", user.uid);
+        let roleDoc = await Promise.race([
+          getDoc(roleRef),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 15000))
+        ]);
+        if (!roleDoc.exists() && role === "manager" && user.email === "roisuissa6@gmail.com") {
+          status.textContent = "יוצר הרשאת מנהל…";
+          await setDoc(roleRef, { role: "manager", name: "נימר", email: user.email, active: true, createdAt: new Date().toISOString() });
+          roleDoc = await getDoc(roleRef);
+        }
         if (roleDoc.data()?.role !== role || roleDoc.data()?.active === false || (role === "manager" && user.email !== "roisuissa6@gmail.com")) {
-          status.textContent = `לחשבון זה אין הרשאת ${role === "manager" ? "מנהל" : "טכנאי"} פעילה. בדוק את המסמך roles/${user.uid} ורענן.`;
+          showSetup(user, `לא נמצאה הרשאת ${role === "manager" ? "מנהל" : "טכנאי"} פעילה עבור החשבון הזה.`);
           return;
         }
         if (active) return;
@@ -54,7 +92,9 @@ export function gate(role) {
           if (!snapshot.exists() || snapshot.data().active === false || snapshot.data().role !== role) location.reload();
         }, () => { main.hidden = true; location.reload(); });
         resolve(user);
-      } catch (error) { status.textContent = `לא ניתן לבדוק הרשאה: ${error.message}`; }
+      } catch (error) {
+        showSetup(user, error.code === "permission-denied" ? "הסיסמה נכונה, אבל כללי Firestore עדיין חוסמים את בדיקת ההרשאה." : error.message === "timeout" ? "ההזדהות הצליחה, אך בדיקת ההרשאה מתעכבת. בדוק חיבור אינטרנט או נסה שוב." : `לא ניתן לבדוק הרשאה: ${error.message}`);
+      }
     }, (error) => { status.textContent = `שגיאת התחברות: ${error.message}`; });
   });
 }

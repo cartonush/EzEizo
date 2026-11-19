@@ -1,5 +1,5 @@
-import "../sheet-data.js?v=1.8.0";
-import { gate, watchIssues, watchTechnicians, createIssue, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.8.0";
+import "../sheet-data.js?v=1.8.1";
+import { gate, watchIssues, watchTechnicians, createIssue, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.8.1";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";

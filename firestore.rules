@@ -18,6 +18,14 @@ service cloud.firestore {
     match /roles/{uid} {
       allow get: if (request.auth != null && request.auth.uid == uid) || isManager();
       allow list: if isManager();
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.auth.token.email == 'roisuissa6@gmail.com'
+        && request.resource.data.keys().hasOnly(['role', 'name', 'email', 'active', 'createdAt'])
+        && request.resource.data.role == 'manager'
+        && request.resource.data.name == 'נימר'
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.active == true
+        && request.resource.data.createdAt is string;
       allow create: if isManager() && request.resource.data.keys().hasOnly(['role', 'name', 'email', 'active', 'createdAt'])
         && request.resource.data.role == 'technician'
         && request.resource.data.active == true
