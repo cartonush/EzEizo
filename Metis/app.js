@@ -1,3 +1,8 @@
+import "../sheet-data.js?v=1.7.0";
+import { gate, watchIssues, createIssue } from "../firebase-sync.js?v=1.7.0";
+
+await gate("manager");
+let cloudIssues = [];
 const DRAFT_KEY = "ezeizo-metis-draft-v1";
 let draft = loadDraft();
 const draftStatus = document.querySelector("#draft-status");
@@ -69,14 +74,17 @@ function renderActions() {
   });
 }
 
-document.querySelector("#create-link").addEventListener("click", () => {
+document.querySelector("#create-link").addEventListener("click", async () => {
+  const button = document.querySelector("#create-link");
+  button.disabled = true;
   const sheet = EzEizoData.normalizeSheet(draft);
   sheet.id = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  sheet.serial = EzEizoData.nextSerial();
-  EzEizoData.saveIssue(sheet);
-  document.querySelector("#created-status").textContent = `תקלה מספר ${sheet.serial} נשמרה. בחר אותה בתקלות פתוחות ולחץ ״העתק לטכנאי״.`;
-  renderIssueLists();
-  window.location.hash = "open";
+  try {
+    sheet.serial = await createIssue(sheet);
+    document.querySelector("#created-status").textContent = `תקלה מספר ${sheet.serial} נפתחה ותופיע אוטומטית אצל הטכנאי.`;
+    window.location.hash = "open";
+  } catch (error) { document.querySelector("#created-status").textContent = `פתיחת התקלה נכשלה: ${error.message}`; }
+  finally { button.disabled = false; }
 });
 
 function addIssueCard(container, item, isClosed) {
@@ -99,31 +107,27 @@ function addIssueCard(container, item, isClosed) {
     tables.textContent = `יחידות שפורקו: ${item.removedCount || 0} · יחידות שהורכבו: ${item.installedCount || 0} · כלים: ${item.toolsCount || 0} · קשיחים שנלקחו: ${item.takenCount || 0} · קשיחים שנפסלו: ${item.rejectedCount || 0}`;
     details.append(heading, description, repair, tables);
     card.append(details);
-    const view = document.createElement("a");
-    view.href = `../mechanic/?id=${encodeURIComponent(item.id)}`;
-    view.textContent = "צפה בדף הסגור";
-    card.append(view);
-  } else {
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.className = "primary-button";
-    copy.textContent = "העתק לטכנאי";
-    copy.addEventListener("click", async () => {
-      try { await EzEizoData.copyTransfer("issue", item); copy.textContent = "הועתק · פתח את הטכנאי ולחץ קבל מהלוח"; }
-      catch { copy.textContent = "לא ניתן להעתיק · השתמש בשיתוף קובץ"; }
-    });
-    card.append(copy);
-    const transfer = document.createElement("button");
-    transfer.type = "button";
-    transfer.className = "secondary-button";
-    transfer.textContent = "העבר לטכנאי";
-    transfer.addEventListener("click", async () => {
-      try {
-        const result = await EzEizoData.shareTransfer("issue", item, item.serial);
-        if (result !== "cancelled") transfer.textContent = result === "shared" ? "הקובץ שותף" : "הקובץ נשמר";
-      } catch { transfer.textContent = "ההעברה נכשלה. נסה שוב."; }
-    });
-    card.append(transfer);
+    const full = cloudIssues.find((issue) => issue.id === item.id);
+    const state = full?.closed?.state;
+    if (state) {
+      const work = document.createElement("p");
+      work.textContent = `פעולות: ${state.actions?.map((checked, index) => `${index + 1}: ${checked ? "✓" : "—"}`).join(" · ") || "—"}`;
+      details.append(work);
+      for (const [label, rows] of [["יחידות שפורקו", state.removed], ["יחידות שהורכבו", state.installed], ["כלים", state.tools], ["קשיחים שנלקחו", state.taken], ["קשיחים שנפסלו", state.rejected]]) {
+        const list = document.createElement("p");
+        list.textContent = `${label}: ${(rows || []).filter((row) => Object.values(row).some((value) => String(value).trim())).map((row) => Object.values(row).filter(Boolean).join(" · ")).join(" | ") || "אין"}`;
+        details.append(list);
+      }
+      const names = document.createElement("p");
+      names.textContent = `בודקים: ${[state.interimInspectorName, state.interimToolsName, state.finalInspectorName, state.finalLeadName].filter(Boolean).join(" · ") || "—"} · שעת עזיבה: ${state.departureTime || "—"} · חתימת קשיחים: ${[state.takenFullName, state.takenPersonalNumber, state.takenRank].filter(Boolean).join(" · ") || "—"}`;
+      details.append(names);
+      Object.entries(state).filter(([key, value]) => key.endsWith("Signature") && typeof value === "string" && value.startsWith("data:image/")).forEach(([key, value]) => {
+        const figure = document.createElement("figure");
+        const caption = document.createElement("figcaption"); caption.textContent = `חתימה: ${key}`;
+        const signature = document.createElement("img"); signature.src = value; signature.alt = "חתימה"; signature.className = "closed-signature";
+        figure.append(caption, signature); details.append(figure);
+      });
+    }
   }
   container.append(card);
 }
@@ -133,13 +137,12 @@ function renderIssueLists() {
   const closed = document.querySelector("#closed-list");
   opened.replaceChildren();
   closed.replaceChildren();
-  const allClosed = EzEizoData.readClosed().filter((item) => item && typeof item.id === "string" && item.closedAt);
-  const closedIds = new Set(allClosed.map((item) => item.id));
-  const active = EzEizoData.readIssues().filter((item) => item && typeof item.id === "string" && !closedIds.has(item.id));
+  const allClosed = cloudIssues.filter((item) => item.status === "closed" && item.closed?.record).map((item) => item.closed.record);
+  const active = cloudIssues.filter((item) => item.status === "open").map((item) => item.sheet);
   active.forEach((item) => addIssueCard(opened, item, false));
   allClosed.forEach((item) => addIssueCard(closed, item, true));
-  if (!active.length) opened.textContent = "אין תקלות פתוחות במכשיר הזה.";
-  if (!allClosed.length) closed.textContent = "אין תקלות סגורות במכשיר הזה.";
+  if (!active.length) opened.textContent = "אין תקלות פתוחות.";
+  if (!allClosed.length) closed.textContent = "אין תקלות סגורות.";
 }
 
 function showManagerView() {
@@ -164,36 +167,22 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   document.querySelector("#manager-details-title").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-window.addEventListener("storage", renderIssueLists);
-window.addEventListener("pageshow", renderIssueLists);
-function importClosedPayload(payload) {
-  const issue = EzEizoData.readIssues().find((item) => item.id === payload?.issue?.id);
-  if (!issue || issue.serial !== payload?.issue?.serial) throw new Error("התקלה הזו אינה קיימת אצל המנהל.");
-  const record = payload?.record;
-  if (!record || record.id !== issue.id || record.serial !== issue.serial || !record.closedAt || record.actionsComplete !== true) throw new Error("הדף הסגור אינו תקין.");
-  const state = payload?.state;
-  if (!state || !Array.isArray(state.actions) || state.actions.length !== 12 || !state.actions.every(Boolean) || !state.completionTime || state.closedAt !== record.closedAt) throw new Error("דף הטיפול אינו תקין.");
-  localStorage.setItem(`fault-sheet-v2:${issue.id}`, JSON.stringify(state));
-  EzEizoData.saveClosed(record);
-  renderIssueLists();
-  return issue.serial;
+watchIssues((issues) => { cloudIssues = issues; renderIssueLists(); }, (error) => {
+  document.querySelector("#issued-list").textContent = `לא ניתן לטעון תקלות: ${error.message}`;
+  document.querySelector("#closed-list").textContent = `לא ניתן לטעון תקלות: ${error.message}`;
+});
+const locallyClosed = new Set(EzEizoData.readClosed().map((item) => item.id));
+const legacy = EzEizoData.readIssues().filter((item) => item?.id && item.id !== "example" && !locallyClosed.has(item.id));
+if (legacy.length) {
+  const status = document.querySelector("#legacy-status");
+  status.textContent = `נמצאו ${legacy.length} תקלות מקומיות ישנות. מעביר אותן למסד המשותף…`;
+  let imported = 0;
+  for (const item of legacy) {
+    try { await createIssue(EzEizoData.normalizeSheet(item), true); imported++; }
+    catch (error) { status.textContent = `הועברו ${imported} מתוך ${legacy.length}. שגיאה: ${error.message}`; break; }
+  }
+  if (imported === legacy.length) status.textContent = `${imported} תקלות מקומיות הועברו למסד המשותף.`;
 }
-document.querySelector("#manager-import-closed").addEventListener("change", async (event) => {
-  const input = event.currentTarget;
-  const status = document.querySelector("#manager-transfer-status");
-  try {
-    const file = input.files?.[0];
-    if (!file || file.size > 2_000_000) throw new Error("בחר קובץ EzEizo שגודלו עד 2MB.");
-    const serial = importClosedPayload(EzEizoData.parseTransfer(await file.text(), "closed"));
-    status.textContent = `תקלה ${serial} עודכנה כסגורה במנהל.`;
-  } catch (error) { status.textContent = error.message || "הייבוא נכשל."; }
-  finally { input.value = ""; }
-});
-document.querySelector("#manager-paste-closed").addEventListener("click", async () => {
-  const status = document.querySelector("#manager-transfer-status");
-  try { status.textContent = `תקלה ${importClosedPayload(await EzEizoData.readTransfer("closed"))} עודכנה כסגורה במנהל.`; }
-  catch (error) { status.textContent = error.message || "לא ניתן לקלוט מהלוח. בחר קובץ במקום."; }
-});
 renderConstants();
 renderActions();
 renderIssueLists();

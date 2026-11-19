@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.6.1">
+  <link rel="stylesheet" href="../styles.css?v=1.7.0">
 </head>
 <body>
   <div class="app-shell">
@@ -22,8 +22,8 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.6.1</span>
-      <span class="offline-pill"><i></i> טיוטה מקומית</span>
+      <span class="version-pill">v1.7.0</span>
+      <span class="offline-pill"><i></i> סנכרון תקלות</span>
     </header>
 
     <main>
@@ -31,13 +31,6 @@
         <div class="section-heading"><div><p class="section-kicker">תקלות שהתקבלו</p><h2 id="queue-title">רשימת תקלות</h2></div><span class="step-badge">01</span></div>
         <p class="section-note">בחר תקלה פתוחה מהרשימה כדי למלא את הדף שלה.</p>
         <div id="mechanic-issues" class="issue-list"></div>
-        <div class="transfer-panel">
-          <button id="mechanic-paste-issue" class="primary-button" type="button">קבל תקלה מהלוח</button>
-          <label class="secondary-button file-button" for="mechanic-import-issues">בחר קובץ תקלה</label>
-          <input id="mechanic-import-issues" class="file-input" type="file" accept=".json,application/json">
-          <p class="section-note">לאחר העתקה במנהל לחץ ״קבל תקלה מהלוח״. אפשר גם לבחור קובץ ששיתף המנהל. אין צורך בהרשאת GitHub.</p>
-          <p id="mechanic-transfer-status" class="copy-status" role="status" aria-live="polite"></p>
-        </div>
       </section>
       <div id="sheet-form" hidden>
       <a class="back-to-queue" href="./">← חזרה לתקלות פתוחות</a>
@@ -218,11 +211,10 @@
         <p id="close-message" class="section-note" role="status" aria-live="polite">ניתן לסגור אחרי סימון כל הפעולות, כולל שעת סיום התקלה.</p>
         <button id="close-sheet" type="button" class="primary-button">שמירה וסגירה</button>
       </section>
-      <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span>המידע נשמר כרגע במכשיר הזה בלבד</span></footer>
+      <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span>טיוטה נשמרת במכשיר; הסגירה נשלחת למסד המשותף</span></footer>
       </div>
     </main>
   </div>
-  <script src="../sheet-data.js?v=1.6.1" defer></script>
-  <script src="../app.js?v=1.6.1" defer></script>
+  <script type="module" src="../app.js?v=1.7.0"></script>
 </body>
 </html>

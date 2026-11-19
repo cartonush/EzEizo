@@ -166,3 +166,7 @@ td input:focus { border-color: #5da8c5; }
 .close-card .share-link { width: 100%; min-height: 72px; margin: 7px 0; font-size: 11px; word-break: break-all; }
 .is-closed { opacity: .83; }
 .is-closed .close-card { opacity: 1; }
+.auth-card { max-width: 600px; margin: 24px auto; }
+.auth-card form { display: grid; gap: 14px; margin-top: 18px; }
+.auth-logout { display: block; margin: 12px auto; }
+.closed-signature { max-width: 280px; width: 100%; background: #fff; border: 1px solid #d5e3e9; border-radius: 8px; }
