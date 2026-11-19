@@ -1,6 +1,6 @@
-import "./sheet-data.js?v=1.10.0";
-import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.10.0";
-import { validateTreatment } from "./mechanic-validation.js?v=1.10.0";
+import "./sheet-data.js?v=1.11.0";
+import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.11.0";
+import { validateTreatment } from "./mechanic-validation.js?v=1.11.0";
 
 const currentUser = await gate("technician");
 let cloudIssues = [];
@@ -48,7 +48,7 @@ const TABLES = {
   ]
 };
 const defaultState = {
-  repair: "", actions: ACTIONS.map(() => false), action11Result: "", completionTime: "", closedAt: "",
+  repair: "", technicianNotes: [], actions: ACTIONS.map(() => false), action11Result: "", completionTime: "", closedAt: "",
   unitsEnabled: false, removed: [], installed: [], constantsEnabled: false,
   toolsEnabled: false, tools: [], interimEnabled: false, finalEnabled: false,
   takenEnabled: false, taken: [], rejectedEnabled: false, rejected: [],
@@ -63,6 +63,7 @@ if (remoteIssue?.status === "closed" && remoteIssue.closed?.state) {
 }
 state.completionTime = state.completionTime || "";
 if (!Array.isArray(state.actions)) state.actions = ACTIONS.map(() => false);
+if (!Array.isArray(state.technicianNotes)) state.technicianNotes = [];
 state.action11Result = ["done", "notRequired"].includes(state.action11Result) ? state.action11Result : state.actions[10] ? "done" : "";
 state.actions[10] = Boolean(state.action11Result);
 state.actions[ACTIONS.length - 1] = Boolean(state.completionTime);
@@ -83,9 +84,10 @@ function saveState() {
 
 function renderSheetDetails() {
   document.querySelectorAll("[data-sheet-field]").forEach((element) => {
-    element.textContent = (element.dataset.sheetField === "technicians" ? remoteIssue?.assigneeName : sheet[element.dataset.sheetField]) || "—";
+    element.textContent = sheet[element.dataset.sheetField] || "—";
   });
   document.querySelector("#fault-description").value = sheet.fault;
+  document.querySelector("#manager-notes-display").value = sheet.managerNotes || "";
   const grid = document.querySelector("#constants-grid");
   grid.replaceChildren();
   Object.entries(sheet.constants).forEach(([groupName, entries]) => {
@@ -107,6 +109,24 @@ function renderSheetDetails() {
     grid.append(group);
   });
 }
+
+function renderTechnicianNotes() {
+  const list = document.querySelector("#technician-notes");
+  list.replaceChildren();
+  if (!state.technicianNotes.length) { list.textContent = "טרם נוספו הערות."; return; }
+  state.technicianNotes.forEach((note) => {
+    const paragraph = document.createElement("p"); paragraph.textContent = note; list.append(paragraph);
+  });
+}
+document.querySelector("#add-technician-note").addEventListener("click", () => {
+  const input = document.querySelector("#technician-note-input");
+  const note = input.value.trim();
+  if (!note) { input.focus(); return; }
+  state.technicianNotes.push(note);
+  input.value = "";
+  renderTechnicianNotes();
+  saveState();
+});
 
 function renderActions() {
   actionList.replaceChildren();
@@ -210,7 +230,8 @@ function closureRecord() {
   return {
     id: sheet.id, serial: sheet.serial, location: sheet.location, aircraft: sheet.aircraft,
     systemCode: sheet.systemCode, systemName: sheet.systemName,
-    technicians: remoteIssue?.assigneeName || sheet.technicians, fault: sheet.fault,
+    technicians: sheet.technicians, fault: sheet.fault,
+    managerNotes: sheet.managerNotes || "", technicianNotes: state.technicianNotes,
     closedAt: state.closedAt, completionTime: state.completionTime,
     repair: state.repair.slice(0, 1200),
     actionsComplete: state.actions.every(Boolean) && Boolean(state.action11Result),
@@ -454,6 +475,7 @@ unitsToggle.addEventListener("change", () => {
 });
 
 renderSheetDetails();
+renderTechnicianNotes();
 renderActions();
 Object.keys(TABLES).forEach((table) => renderRows(table));
 bindToggleInputs();

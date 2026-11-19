@@ -1,6 +1,6 @@
-import "../sheet-data.js?v=1.10.0";
-import { gate, watchIssues, watchTechnicians, createIssue, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.10.0";
-import { SQUADRONS, SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.10.0";
+import "../sheet-data.js?v=1.11.0";
+import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.11.0";
+import { SQUADRONS, SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.11.0";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -84,7 +84,7 @@ function renderOptions(key) {
     option.setAttribute("aria-selected", String(value === selections[key]));
     option.textContent = value;
     option.addEventListener("pointerdown", (event) => { event.preventDefault(); choosePicker(key, value); });
-    option.addEventListener("click", () => choosePicker(key, value));
+    option.addEventListener("click", () => { if (selections[key] !== value || !picker.list.hidden) choosePicker(key, value); });
     picker.list.append(option);
   });
   picker.list.hidden = false;
@@ -100,7 +100,7 @@ function refreshPickers() {
     closePicker(key);
   }
   document.querySelector('[data-sheet-field="systemCode"]').value = draft.systemCode;
-  document.querySelector('[data-sheet-field="ewSystem"]').value = draft.ewSystem;
+  document.querySelector("#ew-system-display").textContent = draft.ewSystem || "בחר מטוס להצגת החליפה";
 }
 
 function clearPicker(key) {
@@ -130,7 +130,7 @@ function choosePicker(key, value) {
   draft.location = [draft.shelter, draft.squadron].filter(Boolean).join("/");
   refreshPickers();
   saveDraft();
-  pickers[key].input.focus({ preventScroll: true });
+  pickers[key].input.blur();
   setStatus("#created-status", "");
 }
 
@@ -224,9 +224,9 @@ document.querySelector("#create-link").addEventListener("click", async () => {
   const button = document.querySelector("#create-link");
   const catalogError = validateCatalogSelection(selections, draft);
   if (catalogError) { setStatus("#created-status", catalogError.message, true); pickers[catalogError.field].input.focus(); return; }
-  const uid = document.querySelector("#new-assignee").value;
-  const assignee = technicians.find((person) => person.uid === uid && person.active);
-  if (!assignee) { setStatus("#created-status", "בחר טכנאי פעיל לפני פתיחת התקלה.", true); document.querySelector("#new-assignee").focus(); return; }
+  const selectedUids = [...document.querySelectorAll('#new-assignees input:checked')].map((input) => input.value);
+  const assignees = selectedUids.map((uid) => technicians.find((person) => person.uid === uid && person.active));
+  if (assignees.length < 2 || assignees.some((person) => !person)) { setStatus("#created-status", "יש לבחור לפחות שני טכנאים פעילים לפתיחת תקלה.", true); document.querySelector("#new-assignees").scrollIntoView({ block: "center" }); return; }
   button.disabled = true;
   const sheet = EzEizoData.normalizeSheet(draft);
   if (!sheet.fault.trim()) {
@@ -237,8 +237,8 @@ document.querySelector("#create-link").addEventListener("click", async () => {
   }
   sheet.id = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   try {
-    sheet.serial = await createIssue(sheet, { uid, name: assignee.name });
-    setStatus("#created-status", `תקלה מספר ${sheet.serial} הוקצתה ל־${assignee.name}.`);
+    sheet.serial = await createAssignedIssues(sheet, assignees);
+    setStatus("#created-status", `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. לכל טכנאי דף מילוי משלו.`);
     window.location.hash = "open";
   } catch (error) { setStatus("#created-status", `פתיחת התקלה נכשלה: ${error.message}`, true); }
   finally { button.disabled = false; }
@@ -260,7 +260,7 @@ function addIssueCard(container, item, isClosed) {
     const description = document.createElement("p");
     description.textContent = `נסגרה: ${new Date(item.closedAt).toLocaleString("he-IL")} · שעת סיום: ${item.completionTime || "—"} · כל הפעולות סומנו: ${item.actionsComplete ? "כן" : "לא"} · טכנאים: ${item.technicians || "—"}`;
     const repair = document.createElement("p");
-    repair.textContent = `תיאור תקלה: ${item.fault || "—"} · תיאור תיקון: ${item.repair || "—"}`;
+    repair.textContent = `תיאור תקלה: ${item.fault || "—"} · תיאור תיקון: ${item.repair || "—"} · הערות מנהל: ${item.managerNotes || "—"} · הערות טכנאי: ${(item.technicianNotes || []).join(" | ") || "—"}`;
     const tables = document.createElement("p");
     tables.textContent = `יחידות שפורקו: ${item.removedCount || 0} · יחידות שהורכבו: ${item.installedCount || 0} · כלים: ${item.toolsCount || 0} · קשיחים שנלקחו: ${item.takenCount || 0} · קשיחים שנפסלו: ${item.rejectedCount || 0}`;
     details.append(heading, description, repair, tables);
@@ -347,8 +347,10 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   draft.systemCode = "";
   draft.ewSystem = "";
   draft.location = "";
+  draft.technicians = "";
   document.querySelectorAll("[data-sheet-field]").forEach((input) => { input.value = draft[input.dataset.sheetField] || ""; });
   refreshPickers();
+  document.querySelectorAll('#new-assignees input').forEach((input) => { input.checked = false; });
   renderConstants();
   renderActions();
   saveDraft();
@@ -362,13 +364,26 @@ watchIssues((issues) => { cloudIssues = issues; renderIssueLists(); renderUsers(
   setStatus("#closed-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
 });
 function updateUserSelectors() {
-  for (const selector of ["#new-assignee", "#closed-filter"]) {
-    const element = document.querySelector(selector);
-    const previous = element.value;
-    element.replaceChildren(new Option(selector === "#new-assignee" ? "בחר טכנאי פעיל" : "כל הטכנאים", ""));
-    technicians.filter((person) => selector === "#closed-filter" || person.active).forEach((person) => element.append(new Option(`${person.name}${person.active ? "" : " (מושבת)"}`, person.uid)));
-    element.value = previous;
-  }
+  const selected = new Set([...document.querySelectorAll('#new-assignees input:checked')].map((input) => input.value));
+  const container = document.querySelector('#new-assignees');
+  container.replaceChildren();
+  technicians.filter((person) => person.active).forEach((person) => {
+    const label = document.createElement('label'); label.className = 'assignee-option';
+    const input = document.createElement('input'); input.type = 'checkbox'; input.value = person.uid; input.checked = selected.has(person.uid);
+    input.addEventListener('change', () => {
+      draft.technicians = [...container.querySelectorAll('input:checked')].map((checkbox) => technicians.find((person) => person.uid === checkbox.value)?.name).filter(Boolean).join(' · ');
+      document.querySelector('[data-sheet-field="technicians"]').value = draft.technicians;
+      saveDraft();
+    });
+    label.append(input, document.createTextNode(person.name)); container.append(label);
+  });
+  const filter = document.querySelector('#closed-filter');
+  const previous = filter.value;
+  filter.replaceChildren(new Option('כל הטכנאים', ''));
+  technicians.forEach((person) => filter.append(new Option(`${person.name}${person.active ? '' : ' (מושבת)'}`, person.uid)));
+  filter.value = previous;
+  draft.technicians = [...container.querySelectorAll('input:checked')].map((checkbox) => technicians.find((person) => person.uid === checkbox.value)?.name).filter(Boolean).join(' · ');
+  document.querySelector('[data-sheet-field="technicians"]').value = draft.technicians;
 }
 document.querySelector("#closed-filter").addEventListener("change", renderIssueLists);
 function renderUsers() {

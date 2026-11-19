@@ -11,6 +11,7 @@
     ewSystem: "גרניט",
     technicians: "רועי סויסה · צוק עינב",
     fault: "פירוק והרכבה אנטנת מכם",
+    managerNotes: "",
     constants: {
       HUD: [["k1", "0"], ["K2", "74"], ["K3", "829"], ["K4", "-949"], ["K5", "90"], ["K6", "-719"], ["K7", "0"], ["K8", "7"], ["K9", "-88890"]],
       CTVS: [["T1", "78"], ["T2", "789"], ["T3", "13"], ["T4", "781"], ["T5", "99"], ["T6", "11"], ["T7", "9"], ["T8", "0"], ["T9", "72939"]],
@@ -34,13 +35,13 @@
     ]
   };
 
-  const scalarKeys = ["serial", "location", "shelter", "squadron", "aircraft", "systemCode", "systemName", "ewSystem", "technicians", "fault"];
+  const scalarKeys = ["serial", "location", "shelter", "squadron", "aircraft", "systemCode", "systemName", "ewSystem", "technicians", "fault", "managerNotes"];
   function normalizeSheet(input) {
     if (!input || typeof input !== "object") return null;
     const sheet = structuredClone(defaultSheet);
     sheet.id = String(input.id || sheet.id).slice(0, 80);
     scalarKeys.forEach((key) => {
-      if (typeof input[key] === "string") sheet[key] = input[key].slice(0, key === "fault" ? 2000 : 200);
+      if (typeof input[key] === "string") sheet[key] = input[key].slice(0, ["fault", "managerNotes"].includes(key) ? 2000 : 200);
     });
     if (typeof input.location === "string" && (typeof input.shelter !== "string" || typeof input.squadron !== "string")) {
       const parts = input.location.split("/");

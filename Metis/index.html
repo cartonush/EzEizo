@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.10.0">
-  <link rel="stylesheet" href="styles.css?v=1.10.0">
+  <link rel="stylesheet" href="../styles.css?v=1.11.0">
+  <link rel="stylesheet" href="styles.css?v=1.11.0">
 </head>
 <body>
   <div class="app-shell">
@@ -23,7 +23,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.10.0</span>
+      <span class="version-pill">v1.11.0</span>
     </header>
 
     <main>
@@ -48,14 +48,16 @@
           <div class="input-field"><label for="picker-aircraft">מספר מטוס</label><div class="search-picker" data-picker="aircraft"><input id="picker-aircraft" data-sheet-field="aircraft" type="search" inputmode="numeric" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-aircraft" placeholder="בחר טייסת תחילה" autocomplete="off" disabled><div id="options-aircraft" class="picker-list" role="listbox" hidden></div></div></div>
           <div class="input-field"><label for="picker-systemName">שם מערכת</label><div class="search-picker" data-picker="systemName"><input id="picker-systemName" data-sheet-field="systemName" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-systemName" placeholder="חפש ובחר מערכת" autocomplete="off"><div id="options-systemName" class="picker-list" role="listbox" hidden></div></div></div>
           <label class="input-field">קוד מערכת<input data-sheet-field="systemCode" type="text" readonly placeholder="מתמלא עם בחירת מערכת"></label>
-          <label class="input-field">חליפת ל״א<input data-sheet-field="ewSystem" type="text" readonly placeholder="מתמלא עם בחירת מטוס"></label>
-          <label class="input-field">שמות טכנאים<input data-sheet-field="technicians" type="text" autocomplete="off"></label>
+          <div class="input-field">חליפת ל״א<strong id="ew-system-display" class="read-only-value">בחר מטוס להצגת החליפה</strong></div>
+          <label class="input-field">שמות טכנאים<input data-sheet-field="technicians" type="text" readonly placeholder="מתמלא עם בחירת טכנאים"></label>
         </div>
       </section>
 
       <section class="card" aria-labelledby="manager-fault-title">
         <div class="section-heading"><div><p class="section-kicker">נשלח לטכנאי</p><h2 id="manager-fault-title">תיאור תקלה</h2></div><span class="step-badge">03</span></div>
         <textarea class="text-box" data-sheet-field="fault" rows="4" maxlength="2000" required placeholder="תאר את התקלה לטכנאי…"></textarea>
+        <label class="field-label" for="manager-notes">הערות לטכנאי</label>
+        <textarea id="manager-notes" class="text-box" data-sheet-field="managerNotes" rows="3" maxlength="2000" placeholder="הערות שיוצגו לטכנאים…"></textarea>
       </section>
 
       <details class="card manager-constants-card" aria-labelledby="manager-constants-title">
@@ -64,15 +66,15 @@
         <div id="manager-constants" class="constants-grid"></div>
       </details>
 
-      <section class="card" aria-labelledby="manager-actions-title">
-        <div class="section-heading"><div><p class="section-kicker">רשימת ביצוע</p><h2 id="manager-actions-title">פעולות לטכנאי</h2></div><span class="step-badge">05</span></div>
+      <details class="card manager-constants-card" aria-labelledby="manager-actions-title">
+        <summary class="section-heading"><div><p class="section-kicker">רשימת ביצוע</p><h2 id="manager-actions-title">12 משימות חובה</h2></div><span class="step-badge">05</span></summary>
         <p class="section-note">12 הפעולות קבועות. השורה האחרונה מוצגת לטכנאי כבחירת שעת סיום.</p>
         <div id="manager-actions" class="manager-actions"></div>
-      </section>
+      </details>
 
       <section class="card send-card" aria-labelledby="send-title">
         <div class="section-heading"><div><p class="section-kicker">סיום יצירה</p><h2 id="send-title">פתיחת התקלה</h2></div><span class="step-badge">06</span></div>
-        <label class="input-field">הקצאה לטכנאי<select id="new-assignee" required><option value="">בחר טכנאי פעיל</option></select></label>
+        <fieldset class="assignee-fieldset"><legend>הקצאה לטכנאים (לפחות שניים)</legend><div id="new-assignees" class="assignee-options"></div></fieldset>
         <button id="new-draft" class="secondary-button" type="button">טופס לתקלה חדשה</button>
         <button id="create-link" class="primary-button" type="button">פתח תקלה</button>
         <p id="created-status" class="copy-status" role="status" aria-live="polite"></p>
@@ -112,6 +114,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.10.0"></script>
+  <script type="module" src="app.js?v=1.11.0"></script>
 </body>
 </html>

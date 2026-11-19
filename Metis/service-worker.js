@@ -1,5 +1,5 @@
-const CACHE_NAME = "ezeizo-metis-v1.10.0";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png", "./styles.css?v=1.10.0", "./app.js?v=1.10.0", "./catalog.js?v=1.10.0", "../styles.css?v=1.10.0", "../sheet-data.js?v=1.10.0", "../firebase-sync.js?v=1.10.0"];
+const CACHE_NAME = "ezeizo-metis-v1.11.0";
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png", "./styles.css?v=1.11.0", "./app.js?v=1.11.0", "./catalog.js?v=1.11.0", "../styles.css?v=1.11.0", "../sheet-data.js?v=1.11.0", "../firebase-sync.js?v=1.11.0"];
 const ASSET_URLS = new Set(ASSETS.map((path) => new URL(path, self.location.href).href));
 
 self.addEventListener("install", (event) => {

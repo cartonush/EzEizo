@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.10.0">
+  <link rel="stylesheet" href="../styles.css?v=1.11.0">
 </head>
 <body>
   <div class="app-shell">
@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.10.0</span>
+      <span class="version-pill">v1.11.0</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
     </header>
 
@@ -79,6 +79,12 @@
         </div>
         <label class="field-label" for="fault-description">תיאור תקלה <span class="locked-tag">נשלח מהמנהל</span></label>
         <textarea id="fault-description" class="text-box locked" rows="3" readonly>פירוק והרכבה אנטנת מכם</textarea>
+        <label class="field-label" for="manager-notes-display">הערות מהמנהל</label>
+        <textarea id="manager-notes-display" class="text-box locked" rows="3" readonly></textarea>
+        <label class="field-label" for="technician-note-input">הוספת הערה <span class="edit-tag">אפשר להוסיף בלבד</span></label>
+        <div id="technician-notes" class="note-history" aria-live="polite"></div>
+        <textarea id="technician-note-input" class="text-box" rows="2" maxlength="1000" placeholder="כתוב הערה חדשה…"></textarea>
+        <button id="add-technician-note" class="secondary-button" type="button">הוסף הערה</button>
         <label class="field-label repair-label" for="repair-description">תיאור תיקון <span class="edit-tag">ניתן לעריכה</span></label>
         <textarea id="repair-description" class="text-box" rows="4" placeholder="תאר את פעולות התיקון שבוצעו…" maxlength="1200"></textarea>
         <div class="field-foot"><span id="save-state">נשמר אוטומטית במכשיר</span><span id="repair-count">0 / 1200</span></div>
@@ -215,6 +221,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.10.0"></script>
+  <script type="module" src="../app.js?v=1.11.0"></script>
 </body>
 </html>

@@ -18,6 +18,12 @@
 .manager-constants-card > summary::after { content: "⌄"; margin-inline-start: auto; color: #176b96; font-size: 22px; }
 .manager-constants-card[open] > summary { margin-bottom: 16px; }
 .manager-constants-card[open] > summary::after { transform: rotate(180deg); }
+.read-only-value { display: flex; align-items: center; min-height: 43px; padding: 8px 10px; border: 1px solid #dce6eb; border-radius: 9px; background: #f0f5f7; color: #203a4d; font-size: 14px; font-weight: 600; }
+.assignee-fieldset { margin: 12px 0; padding: 12px; border: 1px solid #cbdce5; border-radius: 10px; }
+.assignee-fieldset legend { color: #344e61; font-weight: 700; }
+.assignee-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 10px; }
+.assignee-option { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
+.assignee-option input { width: 19px; height: 19px; accent-color: #176b96; }
 .manager-constant-row { display: flex; flex-direction: column; gap: 4px; }
 .manager-constant-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .manager-constant-row span { color: #647b8b; font-size: 10px; font-weight: 700; direction: ltr; text-align: left; }

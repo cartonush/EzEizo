@@ -148,6 +148,27 @@ export async function createIssue(sheet, assignee, preserveSerial = false) {
   });
 }
 
+// One serial represents the job; each technician gets a private form and closure.
+export async function createAssignedIssues(sheet, assignees) {
+  if (assignees.length < 2 || new Set(assignees.map(({ uid }) => uid)).size !== assignees.length) throw new Error("יש לבחור לפחות שני טכנאים שונים.");
+  const refs = assignees.map(() => doc(collection(db, "issues")));
+  return runTransaction(db, async (transaction) => {
+    const counter = await transaction.get(counterRef);
+    const next = (Number(counter.data()?.last) || 0) + 1;
+    if (next > 999999) throw new Error("מספרי התקלות אזלו.");
+    const serial = String(next).padStart(6, "0");
+    transaction.set(counterRef, { last: next });
+    refs.forEach((ref, index) => {
+      const assignee = assignees[index];
+      transaction.set(ref, {
+        sheet: storedSheet({ ...sheet, id: ref.id, serial, technicians: assignees.map(({ name }) => name).join(" · ") }),
+        status: "open", assigneeUid: assignee.uid, assigneeName: assignee.name, createdAt: new Date().toISOString()
+      });
+    });
+    return serial;
+  });
+}
+
 export function watchTechnicians(onChange, onError) {
   return onSnapshot(collection(db, "roles"), (snapshot) => {
     onChange(snapshot.docs.filter((entry) => entry.data().role === "technician").map((entry) => ({ uid: entry.id, ...entry.data() })));
