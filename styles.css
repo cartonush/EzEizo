@@ -174,4 +174,5 @@ td input:focus { border-color: #5da8c5; }
 .auth-help p { margin: 0 0 10px; }
 .auth-help code { display: block; direction: ltr; text-align: left; overflow-wrap: anywhere; margin-bottom: 10px; }
 .auth-help button { margin: 8px 0 8px 8px; }
+[data-state="error"] { color: #a80018 !important; background: #fff0f1; border: 2px solid #ff243e; border-radius: 10px; padding: 10px 12px; font-weight: 700; line-height: 1.6; }
 .closed-signature { max-width: 280px; width: 100%; background: #fff; border: 1px solid #d5e3e9; border-radius: 8px; }

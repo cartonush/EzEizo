@@ -1,5 +1,5 @@
-import "./sheet-data.js?v=1.8.1";
-import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.8.1";
+import "./sheet-data.js?v=1.8.2";
+import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.8.2";
 
 const currentUser = await gate("technician");
 let cloudIssues = [];
@@ -7,7 +7,7 @@ const selectedId = new URLSearchParams(window.location.search).get("id");
 let remoteIssue = null;
 if (selectedId) {
   try { remoteIssue = await getIssue(selectedId); }
-  catch (error) { document.querySelector("#mechanic-issues").textContent = `טעינת התקלה נכשלה: ${error.message}`; }
+  catch (error) { const list = document.querySelector("#mechanic-issues"); list.textContent = `טעינת התקלה נכשלה: ${error.message}`; list.dataset.state = "error"; }
 }
 const sheet = EzEizoData.normalizeSheet(remoteIssue?.sheet || EzEizoData.defaultSheet);
 const selectedSheet = Boolean(remoteIssue?.assigneeUid === currentUser.uid);
@@ -159,6 +159,7 @@ function updateProgress() {
 function renderIssueList() {
   const list = document.querySelector("#mechanic-issues");
   list.replaceChildren();
+  delete list.dataset.state;
   const issues = cloudIssues.filter((item) => item.status === "open").map((item) => item.sheet);
   if (!issues.length) { list.textContent = "אין תקלות פתוחות כרגע."; return; }
   issues.forEach((item) => {
@@ -198,13 +199,17 @@ function showClosed() {
   });
   document.querySelectorAll("canvas[data-signature]").forEach((canvas) => { canvas.style.pointerEvents = "none"; });
   document.querySelector("#close-sheet").hidden = true;
-  document.querySelector("#close-message").textContent = `הדף נסגר ב־${new Date(state.closedAt).toLocaleString("he-IL")}. אי אפשר לערוך אותו.`;
+  const message = document.querySelector("#close-message");
+  delete message.dataset.state;
+  message.textContent = `הדף נסגר ב־${new Date(state.closedAt).toLocaleString("he-IL")}. אי אפשר לערוך אותו.`;
 }
 
 document.querySelector("#close-sheet").addEventListener("click", async () => {
   const missing = ACTIONS.findIndex((_, index) => index === ACTIONS.length - 1 ? !state.completionTime : !state.actions[index]);
   if (missing !== -1) {
-    document.querySelector("#close-message").textContent = `אי אפשר לסגור: פעולה ${missing + 1} עדיין לא סומנה${missing === ACTIONS.length - 1 ? " (בחר שעת סיום)" : ""}.`;
+    const message = document.querySelector("#close-message");
+    message.textContent = `אי אפשר לסגור: פעולה ${missing + 1} עדיין לא סומנה${missing === ACTIONS.length - 1 ? " (בחר שעת סיום)" : ""}.`;
+    message.dataset.state = "error";
     const row = actionList.children[missing];
     row.scrollIntoView({ behavior: "smooth", block: "center" });
     row.querySelector("input")?.focus({ preventScroll: true });
@@ -222,7 +227,9 @@ document.querySelector("#close-sheet").addEventListener("click", async () => {
     showClosed();
     document.querySelector("#close-title").scrollIntoView({ behavior: "smooth", block: "center" });
   } catch (error) {
-    document.querySelector("#close-message").textContent = `השמירה נכשלה: ${error.message}. נסה שוב.`;
+    const message = document.querySelector("#close-message");
+    message.textContent = `השמירה נכשלה: ${error.message}. נסה שוב.`;
+    message.dataset.state = "error";
     button.disabled = false;
   }
 });
@@ -236,7 +243,7 @@ watchIssues((issues) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     location.reload();
   }
-}, (error) => { document.querySelector("#mechanic-issues").textContent = `לא ניתן לטעון תקלות: ${error.message}`; }, currentUser.uid);
+}, (error) => { const list = document.querySelector("#mechanic-issues"); list.textContent = `לא ניתן לטעון תקלות: ${error.message}`; list.dataset.state = "error"; }, currentUser.uid);
 
 function rowHasValue(item, fields) {
   return fields.some(({ key }) => String(item[key] ?? "").trim() !== "");

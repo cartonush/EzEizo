@@ -1,5 +1,5 @@
-import "../sheet-data.js?v=1.8.1";
-import { gate, watchIssues, watchTechnicians, createIssue, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.8.1";
+import "../sheet-data.js?v=1.8.2";
+import { gate, watchIssues, watchTechnicians, createIssue, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.8.2";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -8,6 +8,13 @@ let technicians = [];
 const DRAFT_KEY = "ezeizo-metis-draft-v1";
 let draft = loadDraft();
 const draftStatus = document.querySelector("#draft-status");
+
+function setStatus(selector, message, error = false) {
+  const element = document.querySelector(selector);
+  element.textContent = message;
+  if (error) element.dataset.state = "error";
+  else delete element.dataset.state;
+}
 
 function loadDraft() {
   try {
@@ -80,15 +87,15 @@ document.querySelector("#create-link").addEventListener("click", async () => {
   const button = document.querySelector("#create-link");
   const uid = document.querySelector("#new-assignee").value;
   const assignee = technicians.find((person) => person.uid === uid && person.active);
-  if (!assignee) { document.querySelector("#created-status").textContent = "בחר טכנאי פעיל לפני פתיחת התקלה."; return; }
+  if (!assignee) { setStatus("#created-status", "בחר טכנאי פעיל לפני פתיחת התקלה.", true); document.querySelector("#new-assignee").focus(); return; }
   button.disabled = true;
   const sheet = EzEizoData.normalizeSheet(draft);
   sheet.id = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   try {
     sheet.serial = await createIssue(sheet, { uid, name: assignee.name });
-    document.querySelector("#created-status").textContent = `תקלה מספר ${sheet.serial} הוקצתה ל־${assignee.name}.`;
+    setStatus("#created-status", `תקלה מספר ${sheet.serial} הוקצתה ל־${assignee.name}.`);
     window.location.hash = "open";
-  } catch (error) { document.querySelector("#created-status").textContent = `פתיחת התקלה נכשלה: ${error.message}`; }
+  } catch (error) { setStatus("#created-status", `פתיחת התקלה נכשלה: ${error.message}`, true); }
   finally { button.disabled = false; }
 });
 
@@ -144,16 +151,19 @@ function addIssueCard(container, item, isClosed) {
       select.append(new Option(`${person.name}${person.active ? "" : " (מושבת)"}`, person.uid));
     });
     select.value = fullIssue?.assigneeUid || "";
+    const assignFeedback = document.createElement("p");
+    assignFeedback.className = "copy-status";
+    assignFeedback.setAttribute("role", "status");
     select.addEventListener("change", async () => {
       const person = technicians.find((entry) => entry.uid === select.value && entry.active);
       if (!person) { select.value = fullIssue?.assigneeUid || ""; return; }
       select.disabled = true;
       try { await assignIssue(item.id, person.uid, person.name); }
-      catch (error) { alert(`השיבוץ נכשל: ${error.message}`); select.value = fullIssue?.assigneeUid || ""; }
+      catch (error) { assignFeedback.textContent = `השיבוץ נכשל: ${error.message}`; assignFeedback.dataset.state = "error"; select.value = fullIssue?.assigneeUid || ""; }
       finally { select.disabled = false; }
     });
     assignLabel.append(select);
-    card.append(assignLabel);
+    card.append(assignLabel, assignFeedback);
   }
   container.append(card);
 }
@@ -163,6 +173,8 @@ function renderIssueLists() {
   const closed = document.querySelector("#closed-list");
   opened.replaceChildren();
   closed.replaceChildren();
+  delete opened.dataset.state;
+  delete closed.dataset.state;
   const filter = document.querySelector("#closed-filter").value;
   const allClosed = cloudIssues.filter((item) => item.status === "closed" && item.closed?.record && (!filter || item.assigneeUid === filter)).map((item) => item.closed.record);
   const active = cloudIssues.filter((item) => item.status === "open").map((item) => item.sheet);
@@ -189,14 +201,14 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   renderConstants();
   renderActions();
   saveDraft();
-  document.querySelector("#created-status").textContent = "";
+  setStatus("#created-status", "");
   window.location.hash = "new";
   document.querySelector("#manager-details-title").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 watchIssues((issues) => { cloudIssues = issues; renderIssueLists(); renderUsers(); }, (error) => {
-  document.querySelector("#issued-list").textContent = `לא ניתן לטעון תקלות: ${error.message}`;
-  document.querySelector("#closed-list").textContent = `לא ניתן לטעון תקלות: ${error.message}`;
+  setStatus("#issued-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
+  setStatus("#closed-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
 });
 function updateUserSelectors() {
   for (const selector of ["#new-assignee", "#closed-filter"]) {
@@ -227,29 +239,28 @@ function renderUsers() {
     toggle.addEventListener("click", async () => {
       toggle.disabled = true;
       try { await setTechnicianActive(person.uid, !person.active); }
-      catch (error) { document.querySelector("#user-status").textContent = `שינוי המשתמש נכשל: ${error.message}`; }
+      catch (error) { setStatus("#user-status", `שינוי המשתמש נכשל: ${error.message}`, true); }
       finally { toggle.disabled = false; }
     });
     card.append(title, email, history, view, toggle); list.append(card);
   });
 }
 watchTechnicians((items) => { technicians = items.sort((a, b) => a.name.localeCompare(b.name, "he")); updateUserSelectors(); renderUsers(); renderIssueLists(); }, (error) => {
-  document.querySelector("#user-status").textContent = `טעינת המשתמשים נכשלה: ${error.message}`;
+  setStatus("#user-status", `טעינת המשתמשים נכשלה: ${error.message}`, true);
 });
 const userForm = document.querySelector("#create-user-form");
 userForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = userForm.querySelector('button[type="submit"]'); button.disabled = true;
-  const status = document.querySelector("#user-status"); status.textContent = "יוצר משתמש…";
+  setStatus("#user-status", "יוצר משתמש…");
   try {
     await createTechnician(userForm.elements.name.value, userForm.elements.email.value, userForm.elements.password.value);
-    userForm.reset(); status.textContent = "הטכנאי נוצר. מסור לו את פרטי הכניסה בערוץ מתאים.";
-  } catch (error) { status.textContent = `יצירת המשתמש נכשלה: ${error.message}`; }
+    userForm.reset(); setStatus("#user-status", "הטכנאי נוצר. מסור לו את פרטי הכניסה בערוץ מתאים.");
+  } catch (error) { setStatus("#user-status", `יצירת המשתמש נכשלה: ${error.message}`, true); }
   finally { button.disabled = false; }
 });
 document.querySelector("#create-demo-users").addEventListener("click", async (event) => {
   const button = event.currentTarget; button.disabled = true;
-  const status = document.querySelector("#user-status");
   const panel = document.querySelector("#demo-credentials"); panel.hidden = false;
   panel.textContent = "שמור את פרטי הכניסה כעת; הסיסמאות לא יוצגו שוב לאחר רענון.";
   for (let index = 1; index <= 2; index++) {
@@ -259,22 +270,21 @@ document.querySelector("#create-demo-users").addEventListener("click", async (ev
     try {
       await createTechnician(`טכנאי דוגמה ${index}`, email, password);
       const detail = document.createElement("p"); detail.textContent = `טכנאי דוגמה ${index}: ${email} · סיסמה: ${password}`; panel.append(detail);
-      status.textContent = `${index} חשבונות דוגמה נוצרו.`;
-    } catch (error) { status.textContent = `יצירת טכנאי דוגמה ${index} נכשלה: ${error.message}`; break; }
+      setStatus("#user-status", `${index} חשבונות דוגמה נוצרו.`);
+    } catch (error) { setStatus("#user-status", `יצירת טכנאי דוגמה ${index} נכשלה: ${error.message}`, true); break; }
   }
   button.disabled = false;
 });
 const locallyClosed = new Set(EzEizoData.readClosed().map((item) => item.id));
 const legacy = EzEizoData.readIssues().filter((item) => item?.id && item.id !== "example" && !locallyClosed.has(item.id));
 if (legacy.length) {
-  const status = document.querySelector("#legacy-status");
-  status.textContent = `נמצאו ${legacy.length} תקלות מקומיות ישנות. מעביר אותן למסד המשותף…`;
+  setStatus("#legacy-status", `נמצאו ${legacy.length} תקלות מקומיות ישנות. מעביר אותן למסד המשותף…`);
   let imported = 0;
   for (const item of legacy) {
     try { await createIssue(EzEizoData.normalizeSheet(item), { uid: "", name: "" }, true); imported++; }
-    catch (error) { status.textContent = `הועברו ${imported} מתוך ${legacy.length}. שגיאה: ${error.message}`; break; }
+    catch (error) { setStatus("#legacy-status", `הועברו ${imported} מתוך ${legacy.length}. שגיאה: ${error.message}`, true); break; }
   }
-  if (imported === legacy.length) status.textContent = `${imported} תקלות מקומיות הועברו למסד המשותף.`;
+  if (imported === legacy.length) setStatus("#legacy-status", `${imported} תקלות מקומיות הועברו למסד המשותף.`);
 }
 renderConstants();
 renderActions();

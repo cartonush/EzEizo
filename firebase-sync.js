@@ -15,6 +15,23 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const counterRef = doc(db, "metadata", "serial");
 
+// Firestore cannot store an array inside another array. Keep the UI's [label, value]
+// pairs and store each group as a map of scalar values instead.
+function storedSheet(sheet) {
+  return {
+    ...sheet,
+    constants: Object.fromEntries(Object.entries(sheet.constants || {}).map(([group, entries]) => [group, Object.fromEntries(entries)]))
+  };
+}
+
+function restoredSheet(sheet) {
+  if (!sheet) return sheet;
+  return {
+    ...sheet,
+    constants: Object.fromEntries(Object.entries(sheet.constants || {}).map(([group, entries]) => [group, Array.isArray(entries) ? entries : Object.entries(entries)]))
+  };
+}
+
 export function gate(role) {
   const main = document.querySelector("main");
   main.hidden = true;
@@ -30,6 +47,7 @@ export function gate(role) {
   panel.append(help);
   function showSetup(user, reason) {
     status.textContent = reason;
+    status.dataset.state = "error";
     help.replaceChildren();
     if (role === "manager") {
       const instructions = document.createElement("p");
@@ -54,18 +72,21 @@ export function gate(role) {
     event.preventDefault();
     help.hidden = true;
     status.textContent = "מתחבר…";
+    delete status.dataset.state;
     try {
       await signInWithEmailAndPassword(auth, panel.querySelector('[type="email"]').value.trim(), panel.querySelector('[type="password"]').value);
       if (status.textContent === "מתחבר…") status.textContent = "ההזדהות הצליחה. בודק הרשאות Firestore…";
     } catch (error) {
       status.textContent = error.code === "auth/invalid-credential" ? "הפרטים אינם נכונים." : `ההתחברות נכשלה: ${error.code || error.message}`;
+      status.dataset.state = "error";
     }
   });
   return new Promise((resolve) => {
     let active = false;
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { if (active) location.reload(); help.hidden = true; status.textContent = "יש להתחבר כדי לראות תקלות."; return; }
+      if (!user) { if (active) location.reload(); help.hidden = true; status.textContent = "יש להתחבר כדי לראות תקלות."; delete status.dataset.state; return; }
       status.textContent = "ההזדהות הצליחה. בודק הרשאות Firestore…";
+      delete status.dataset.state;
       try {
         const roleRef = doc(db, "roles", user.uid);
         let roleDoc = await Promise.race([
@@ -102,13 +123,13 @@ export function gate(role) {
 export function watchIssues(onChange, onError, technicianUid = null) {
   const source = technicianUid ? query(collection(db, "issues"), where("assigneeUid", "==", technicianUid)) : collection(db, "issues");
   return onSnapshot(source, (snapshot) => {
-    onChange(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })));
+    onChange(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data(), sheet: restoredSheet(entry.data().sheet) })));
   }, onError);
 }
 
 export async function getIssue(id) {
   const snapshot = await getDoc(doc(db, "issues", id));
-  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data(), sheet: restoredSheet(snapshot.data().sheet) } : null;
 }
 
 export async function createIssue(sheet, assignee, preserveSerial = false) {
@@ -122,7 +143,7 @@ export async function createIssue(sheet, assignee, preserveSerial = false) {
     if (next > 999999) throw new Error("מספרי התקלות אזלו.");
     const serial = String(next).padStart(6, "0");
     transaction.set(counterRef, { last: next });
-    transaction.set(issueRef, { sheet: { ...sheet, serial }, status: "open", assigneeUid: assignee.uid, assigneeName: assignee.name, createdAt: new Date().toISOString() });
+    transaction.set(issueRef, { sheet: storedSheet({ ...sheet, serial }), status: "open", assigneeUid: assignee.uid, assigneeName: assignee.name, createdAt: new Date().toISOString() });
     return serial;
   });
 }
