@@ -1,6 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, inMemoryPersistence, deleteUser, signOut } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, runTransaction } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDOFQALbwB8LTkdV3MSLE2BV7y6L0Tj1_g",
@@ -22,6 +22,7 @@ export function gate(role) {
   panel.className = "card auth-card";
   panel.innerHTML = '<h2>כניסה למערכת</h2><p>התחבר לחשבון שהוגדר עבורך ב־Firebase.</p><form><label class="input-field">דואר אלקטרוני<input type="email" required autocomplete="username"></label><label class="input-field">סיסמה<input type="password" required autocomplete="current-password"></label><button class="primary-button" type="submit">התחבר</button></form><p class="copy-status" role="status" aria-live="polite">בודק התחברות…</p>';
   main.before(panel);
+  if (role === "manager") panel.querySelector('[type="email"]').value = "roisuissa6@gmail.com";
   const status = panel.querySelector('[role="status"]');
   panel.querySelector("form").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -38,8 +39,8 @@ export function gate(role) {
       if (!user) { if (active) location.reload(); status.textContent = "יש להתחבר כדי לראות תקלות."; return; }
       try {
         const roleDoc = await getDoc(doc(db, "roles", user.uid));
-        if (roleDoc.data()?.role !== role) {
-          status.textContent = `לחשבון זה אין הרשאת ${role === "manager" ? "מנהל" : "טכנאי"}. הגדר מסמך roles/${user.uid} עם role: ${role} ורענן.`;
+        if (roleDoc.data()?.role !== role || roleDoc.data()?.active === false || (role === "manager" && user.email !== "roisuissa6@gmail.com")) {
+          status.textContent = `לחשבון זה אין הרשאת ${role === "manager" ? "מנהל" : "טכנאי"} פעילה. בדוק את המסמך roles/${user.uid} ורענן.`;
           return;
         }
         if (active) return;
@@ -49,14 +50,18 @@ export function gate(role) {
         logout.type = "button"; logout.className = "secondary-button auth-logout"; logout.textContent = "התנתק";
         logout.addEventListener("click", () => signOut(auth));
         document.querySelector(".topbar").after(logout);
+        onSnapshot(doc(db, "roles", user.uid), (snapshot) => {
+          if (!snapshot.exists() || snapshot.data().active === false || snapshot.data().role !== role) location.reload();
+        }, () => { main.hidden = true; location.reload(); });
         resolve(user);
       } catch (error) { status.textContent = `לא ניתן לבדוק הרשאה: ${error.message}`; }
     }, (error) => { status.textContent = `שגיאת התחברות: ${error.message}`; });
   });
 }
 
-export function watchIssues(onChange, onError) {
-  return onSnapshot(collection(db, "issues"), (snapshot) => {
+export function watchIssues(onChange, onError, technicianUid = null) {
+  const source = technicianUid ? query(collection(db, "issues"), where("assigneeUid", "==", technicianUid)) : collection(db, "issues");
+  return onSnapshot(source, (snapshot) => {
     onChange(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })));
   }, onError);
 }
@@ -66,7 +71,7 @@ export async function getIssue(id) {
   return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
 }
 
-export async function createIssue(sheet, preserveSerial = false) {
+export async function createIssue(sheet, assignee, preserveSerial = false) {
   const issueRef = doc(db, "issues", sheet.id);
   return runTransaction(db, async (transaction) => {
     const [existing, counter] = await Promise.all([transaction.get(issueRef), transaction.get(counterRef)]);
@@ -77,9 +82,42 @@ export async function createIssue(sheet, preserveSerial = false) {
     if (next > 999999) throw new Error("מספרי התקלות אזלו.");
     const serial = String(next).padStart(6, "0");
     transaction.set(counterRef, { last: next });
-    transaction.set(issueRef, { sheet: { ...sheet, serial }, status: "open", createdAt: new Date().toISOString() });
+    transaction.set(issueRef, { sheet: { ...sheet, serial }, status: "open", assigneeUid: assignee.uid, assigneeName: assignee.name, createdAt: new Date().toISOString() });
     return serial;
   });
+}
+
+export function watchTechnicians(onChange, onError) {
+  return onSnapshot(collection(db, "roles"), (snapshot) => {
+    onChange(snapshot.docs.filter((entry) => entry.data().role === "technician").map((entry) => ({ uid: entry.id, ...entry.data() })));
+  }, onError);
+}
+
+export async function createTechnician(name, email, password) {
+  const secondary = initializeApp(firebaseConfig, `provision-${crypto.randomUUID()}`);
+  const provisioningAuth = getAuth(secondary);
+  let createdUser = null;
+  try {
+    await setPersistence(provisioningAuth, inMemoryPersistence);
+    const credential = await createUserWithEmailAndPassword(provisioningAuth, email.trim(), password);
+    createdUser = credential.user;
+    await setDoc(doc(db, "roles", createdUser.uid), { role: "technician", name: name.trim(), email: email.trim(), active: true, createdAt: new Date().toISOString() });
+    return createdUser.uid;
+  } catch (error) {
+    if (createdUser) await deleteUser(createdUser).catch(() => {});
+    throw error;
+  } finally {
+    await signOut(provisioningAuth).catch(() => {});
+    await deleteApp(secondary);
+  }
+}
+
+export async function setTechnicianActive(uid, active) {
+  await updateDoc(doc(db, "roles", uid), { active });
+}
+
+export async function assignIssue(id, uid, name) {
+  await updateDoc(doc(db, "issues", id), { assigneeUid: uid, assigneeName: name });
 }
 
 export async function closeIssue(id, record, state) {

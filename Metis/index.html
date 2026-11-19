@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.7.0">
-  <link rel="stylesheet" href="styles.css?v=1.7.0">
+  <link rel="stylesheet" href="../styles.css?v=1.8.0">
+  <link rel="stylesheet" href="styles.css?v=1.8.0">
 </head>
 <body>
   <div class="app-shell">
@@ -23,7 +23,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.7.0</span>
+      <span class="version-pill">v1.8.0</span>
     </header>
 
     <main>
@@ -31,6 +31,7 @@
         <a class="manager-nav-link" href="#new" data-view-link="new">פתיחת תקלה חדשה</a>
         <a class="manager-nav-link" href="#open" data-view-link="open">תקלות פתוחות</a>
         <a class="manager-nav-link" href="#closed" data-view-link="closed">תקלות סגורות</a>
+        <a class="manager-nav-link" href="#users" data-view-link="users">ניהול משתמשים</a>
       </nav>
       <div id="view-new" data-manager-view="new">
       <section class="card manager-intro">
@@ -71,6 +72,7 @@
 
       <section class="card send-card" aria-labelledby="send-title">
         <div class="section-heading"><div><p class="section-kicker">סיום יצירה</p><h2 id="send-title">פתיחת התקלה</h2></div><span class="step-badge">06</span></div>
+        <label class="input-field">הקצאה לטכנאי<select id="new-assignee" required><option value="">בחר טכנאי פעיל</option></select></label>
         <button id="new-draft" class="secondary-button" type="button">טופס לתקלה חדשה</button>
         <button id="create-link" class="primary-button" type="button">פתח תקלה</button>
         <p id="created-status" class="copy-status" role="status" aria-live="polite"></p>
@@ -88,11 +90,28 @@
       <div id="view-closed" data-manager-view="closed" hidden>
       <section class="card" aria-labelledby="closed-list-title">
         <div class="section-heading"><div><p class="section-kicker">מעקב משותף</p><h2 id="closed-list-title">תקלות סגורות</h2></div></div>
+        <label class="input-field">הצג לפי טכנאי<select id="closed-filter"><option value="">כל הטכנאים</option></select></label>
         <div id="closed-list" class="issue-list"></div>
       </section>
       </div>
+      <div id="view-users" data-manager-view="users" hidden>
+        <section class="card" aria-labelledby="users-title">
+          <div class="section-heading"><div><p class="section-kicker">ניהול צוות</p><h2 id="users-title">משתמשים</h2></div></div>
+          <p>נימר יכול ליצור חשבונות טכנאי ולהשבית את הגישה שלהם. ההיסטוריה נשמרת גם אחרי השבתה.</p>
+          <form id="create-user-form" class="user-form">
+            <label class="input-field">שם הטכנאי<input name="name" required maxlength="80" autocomplete="off"></label>
+            <label class="input-field">דואר אלקטרוני<input name="email" type="email" required autocomplete="off"></label>
+            <label class="input-field">סיסמה ראשונית<input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+            <button class="primary-button" type="submit">צור משתמש טכנאי</button>
+          </form>
+          <button id="create-demo-users" class="secondary-button" type="button">צור שני חשבונות טכנאי לדוגמה</button>
+          <p id="user-status" class="copy-status" role="status" aria-live="polite"></p>
+          <div id="demo-credentials" class="credentials-panel" hidden></div>
+          <div id="users-list" class="issue-list"></div>
+        </section>
+      </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.7.0"></script>
+  <script type="module" src="app.js?v=1.8.0"></script>
 </body>
 </html>

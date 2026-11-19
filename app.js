@@ -1,7 +1,7 @@
-import "./sheet-data.js?v=1.7.0";
-import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.7.0";
+import "./sheet-data.js?v=1.8.0";
+import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.8.0";
 
-await gate("technician");
+const currentUser = await gate("technician");
 let cloudIssues = [];
 const selectedId = new URLSearchParams(window.location.search).get("id");
 let remoteIssue = null;
@@ -10,7 +10,7 @@ if (selectedId) {
   catch (error) { document.querySelector("#mechanic-issues").textContent = `טעינת התקלה נכשלה: ${error.message}`; }
 }
 const sheet = EzEizoData.normalizeSheet(remoteIssue?.sheet || EzEizoData.defaultSheet);
-const selectedSheet = Boolean(remoteIssue);
+const selectedSheet = Boolean(remoteIssue?.assigneeUid === currentUser.uid);
 document.querySelector("#sheet-form").hidden = !selectedSheet;
 const ACTIONS = sheet.actions;
 const STORAGE_KEY = selectedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
@@ -80,7 +80,7 @@ function saveState() {
 
 function renderSheetDetails() {
   document.querySelectorAll("[data-sheet-field]").forEach((element) => {
-    element.textContent = sheet[element.dataset.sheetField] || "—";
+    element.textContent = (element.dataset.sheetField === "technicians" ? remoteIssue?.assigneeName : sheet[element.dataset.sheetField]) || "—";
   });
   document.querySelector("#fault-description").value = sheet.fault;
   const grid = document.querySelector("#constants-grid");
@@ -178,7 +178,7 @@ function closureRecord() {
   return {
     id: sheet.id, serial: sheet.serial, location: sheet.location, aircraft: sheet.aircraft,
     systemCode: sheet.systemCode, systemName: sheet.systemName,
-    technicians: sheet.technicians, fault: sheet.fault,
+    technicians: remoteIssue?.assigneeName || sheet.technicians, fault: sheet.fault,
     closedAt: state.closedAt, completionTime: state.completionTime,
     repair: state.repair.slice(0, 1200),
     actionsComplete: state.actions.every(Boolean),
@@ -236,7 +236,7 @@ watchIssues((issues) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     location.reload();
   }
-}, (error) => { document.querySelector("#mechanic-issues").textContent = `לא ניתן לטעון תקלות: ${error.message}`; });
+}, (error) => { document.querySelector("#mechanic-issues").textContent = `לא ניתן לטעון תקלות: ${error.message}`; }, currentUser.uid);
 
 function rowHasValue(item, fields) {
   return fields.some(({ key }) => String(item[key] ?? "").trim() !== "");

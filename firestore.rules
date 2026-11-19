@@ -3,18 +3,37 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function hasRole(role) {
       return request.auth != null &&
-        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == role;
+        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == role &&
+        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.get('active', true) == true;
+    }
+    function isManager() {
+      return hasRole('manager') && request.auth.token.email == 'roisuissa6@gmail.com';
+    }
+    function activeTechnician(uid) {
+      return exists(/databases/$(database)/documents/roles/$(uid)) &&
+        get(/databases/$(database)/documents/roles/$(uid)).data.role == 'technician' &&
+        get(/databases/$(database)/documents/roles/$(uid)).data.active == true;
     }
 
     match /roles/{uid} {
-      allow get: if request.auth != null && request.auth.uid == uid;
-      allow list, create, update, delete: if false;
+      allow get: if (request.auth != null && request.auth.uid == uid) || isManager();
+      allow list: if isManager();
+      allow create: if isManager() && request.resource.data.keys().hasOnly(['role', 'name', 'email', 'active', 'createdAt'])
+        && request.resource.data.role == 'technician'
+        && request.resource.data.active == true
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.createdAt is string;
+      allow update: if isManager() && resource.data.role == 'technician'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active'])
+        && request.resource.data.active is bool;
+      allow delete: if false;
     }
 
     match /metadata/{id} {
-      allow get: if id == 'serial' && hasRole('manager');
+      allow get: if id == 'serial' && isManager();
       allow list: if false;
-      allow create, update: if id == 'serial' && hasRole('manager')
+      allow create, update: if id == 'serial' && isManager()
         && request.resource.data.keys().hasOnly(['last'])
         && request.resource.data.last is int
         && request.resource.data.last >= 1
@@ -24,17 +43,27 @@ service cloud.firestore {
     }
 
     match /issues/{id} {
-      allow read: if hasRole('manager') || hasRole('technician');
-      allow create: if hasRole('manager')
-        && request.resource.data.keys().hasOnly(['sheet', 'status', 'createdAt'])
+      allow get, list: if isManager() || (hasRole('technician') && resource.data.assigneeUid == request.auth.uid);
+      allow create: if isManager()
+        && request.resource.data.keys().hasOnly(['sheet', 'status', 'createdAt', 'assigneeUid', 'assigneeName'])
         && request.resource.data.status == 'open'
+        && request.resource.data.assigneeUid is string
+        && request.resource.data.assigneeName is string
+        && (request.resource.data.assigneeUid == '' || activeTechnician(request.resource.data.assigneeUid))
         && request.resource.data.sheet.id == id
         && request.resource.data.sheet.serial is string
         && request.resource.data.sheet.serial.matches('[0-9]{6}')
         && request.resource.data.sheet.actions.size() == 12
         && request.resource.data.createdAt is string;
+      allow update: if isManager()
+        && resource.data.status == 'open'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assigneeUid', 'assigneeName'])
+        && request.resource.data.assigneeUid is string
+        && request.resource.data.assigneeName is string
+        && activeTechnician(request.resource.data.assigneeUid);
       allow update: if hasRole('technician')
         && resource.data.status == 'open'
+        && resource.data.assigneeUid == request.auth.uid
         && request.resource.data.status == 'closed'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'closed'])
         && request.resource.data.closed.keys().hasOnly(['record', 'state'])
