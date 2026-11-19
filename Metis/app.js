@@ -1,6 +1,7 @@
-import "../sheet-data.js?v=1.11.0";
-import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.11.0";
-import { SQUADRONS, SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.11.0";
+import "../sheet-data.js?v=1.12.0";
+import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.12.0";
+import { SQUADRONS, SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.12.0";
+import { resolveAssignees } from "./assignee-selection.js?v=1.12.0";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -224,9 +225,8 @@ document.querySelector("#create-link").addEventListener("click", async () => {
   const button = document.querySelector("#create-link");
   const catalogError = validateCatalogSelection(selections, draft);
   if (catalogError) { setStatus("#created-status", catalogError.message, true); pickers[catalogError.field].input.focus(); return; }
-  const selectedUids = [...document.querySelectorAll('#new-assignees input:checked')].map((input) => input.value);
-  const assignees = selectedUids.map((uid) => technicians.find((person) => person.uid === uid && person.active));
-  if (assignees.length < 2 || assignees.some((person) => !person)) { setStatus("#created-status", "יש לבחור לפחות שני טכנאים פעילים לפתיחת תקלה.", true); document.querySelector("#new-assignees").scrollIntoView({ block: "center" }); return; }
+  const { assignees, error: assigneeError } = resolveAssignees(selectedAssigneeUids(), technicians);
+  if (assigneeError) { setStatus("#created-status", assigneeError, true); document.querySelector("#new-assignees").scrollIntoView({ block: "center" }); return; }
   button.disabled = true;
   const sheet = EzEizoData.normalizeSheet(draft);
   if (!sheet.fault.trim()) {
@@ -350,7 +350,7 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   draft.technicians = "";
   document.querySelectorAll("[data-sheet-field]").forEach((input) => { input.value = draft[input.dataset.sheetField] || ""; });
   refreshPickers();
-  document.querySelectorAll('#new-assignees input').forEach((input) => { input.checked = false; });
+  renderAssigneeSelectors(["", ""]);
   renderConstants();
   renderActions();
   saveDraft();
@@ -363,27 +363,48 @@ watchIssues((issues) => { cloudIssues = issues; renderIssueLists(); renderUsers(
   setStatus("#issued-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
   setStatus("#closed-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
 });
-function updateUserSelectors() {
-  const selected = new Set([...document.querySelectorAll('#new-assignees input:checked')].map((input) => input.value));
+function selectedAssigneeUids() {
+  return [...document.querySelectorAll('#new-assignees select')].map((select) => select.value);
+}
+function syncAssigneeNames() {
+  const selected = selectedAssigneeUids().filter(Boolean);
+  const duplicate = selected.length !== new Set(selected).size;
+  document.querySelectorAll('#new-assignees select').forEach((select) => { select.setAttribute('aria-invalid', String(Boolean(select.value && selected.filter((uid) => uid === select.value).length > 1))); });
+  setStatus('#assignee-feedback', duplicate ? 'כל טכנאי יכול להיבחר פעם אחת בלבד.' : '', duplicate);
+  draft.technicians = selected.map((uid) => technicians.find((person) => person.uid === uid)?.name).filter(Boolean).join(' · ');
+  document.querySelector('[data-sheet-field="technicians"]').value = draft.technicians;
+  saveDraft();
+}
+function renderAssigneeSelectors(values = selectedAssigneeUids()) {
   const container = document.querySelector('#new-assignees');
   container.replaceChildren();
-  technicians.filter((person) => person.active).forEach((person) => {
-    const label = document.createElement('label'); label.className = 'assignee-option';
-    const input = document.createElement('input'); input.type = 'checkbox'; input.value = person.uid; input.checked = selected.has(person.uid);
-    input.addEventListener('change', () => {
-      draft.technicians = [...container.querySelectorAll('input:checked')].map((checkbox) => technicians.find((person) => person.uid === checkbox.value)?.name).filter(Boolean).join(' · ');
-      document.querySelector('[data-sheet-field="technicians"]').value = draft.technicians;
-      saveDraft();
-    });
-    label.append(input, document.createTextNode(person.name)); container.append(label);
+  (values.length >= 2 ? values : ["", ""]).forEach((uid, index) => {
+    const row = document.createElement('div'); row.className = 'assignee-row';
+    const label = document.createElement('label'); label.className = 'input-field'; label.textContent = `טכנאי ${index + 1}`;
+    const select = document.createElement('select'); select.setAttribute('aria-label', `טכנאי ${index + 1}`);
+    select.append(new Option('בחר טכנאי', ''));
+    technicians.filter((person) => person.active).forEach((person) => select.append(new Option(person.name, person.uid)));
+    select.value = uid;
+    select.addEventListener('change', syncAssigneeNames);
+    label.append(select); row.append(label);
+    if (index >= 2) {
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'secondary-button'; remove.textContent = 'הסר';
+      remove.setAttribute('aria-label', `הסר טכנאי ${index + 1}`);
+      remove.addEventListener('click', () => renderAssigneeSelectors(selectedAssigneeUids().filter((_, position) => position !== index)));
+      row.append(remove);
+    }
+    container.append(row);
   });
+  syncAssigneeNames();
+}
+document.querySelector('#add-assignee').addEventListener('click', () => renderAssigneeSelectors([...selectedAssigneeUids(), '']));
+function updateUserSelectors() {
+  renderAssigneeSelectors();
   const filter = document.querySelector('#closed-filter');
   const previous = filter.value;
   filter.replaceChildren(new Option('כל הטכנאים', ''));
   technicians.forEach((person) => filter.append(new Option(`${person.name}${person.active ? '' : ' (מושבת)'}`, person.uid)));
   filter.value = previous;
-  draft.technicians = [...container.querySelectorAll('input:checked')].map((checkbox) => technicians.find((person) => person.uid === checkbox.value)?.name).filter(Boolean).join(' · ');
-  document.querySelector('[data-sheet-field="technicians"]').value = draft.technicians;
 }
 document.querySelector("#closed-filter").addEventListener("change", renderIssueLists);
 function renderUsers() {
