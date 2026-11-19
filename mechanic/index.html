@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.16.0">
+  <link rel="stylesheet" href="../styles.css?v=1.17.0">
 </head>
 <body>
   <div class="app-shell">
@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.16.0</span>
+      <span class="version-pill">v1.17.0</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
     </header>
 
@@ -34,6 +34,7 @@
         <div id="mechanic-issues" class="issue-list"></div>
       </section>
       <div id="sheet-form" hidden>
+      <div id="closed-times" class="closed-times" hidden><div><span>שעת פתיחה</span><strong id="opened-at">—</strong></div><div><span>שעת סגירה</span><strong id="closed-at">—</strong></div></div>
       <section class="card summary-card" aria-labelledby="details-title">
         <div class="section-heading">
           <div>
@@ -98,7 +99,7 @@
           </div>
           <span class="heading-meta"><span class="step-badge">03</span><span class="progress-count" id="action-progress">0 מתוך 12</span></span>
         </div>
-        <p class="section-note">סמן ✓ לאחר השלמת כל פעולה. בפעולה 11 בחר ✓ אם בוצעה, או X אם לא נדרשה.</p>
+        <p class="section-note">בפעולות 2 ו־12 בחר שעה. בפעולה 11 בחר ✓ אם בוצעה, או X אם לא נדרשה. בשאר הפעולות סמן ✓.</p>
         <ol class="action-list" id="action-list"></ol>
       </section>
 
@@ -221,6 +222,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.16.0"></script>
+  <script type="module" src="../app.js?v=1.17.0"></script>
 </body>
 </html>

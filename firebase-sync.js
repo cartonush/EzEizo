@@ -1,6 +1,7 @@
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, inMemoryPersistence, deleteUser, signOut } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, runTransaction } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDOFQALbwB8LTkdV3MSLE2BV7y6L0Tj1_g",
@@ -200,6 +201,11 @@ export async function setTechnicianActive(uid, active) {
   await updateDoc(doc(db, "roles", uid), { active });
 }
 
+export async function deleteTechnicianPermanently(uid) {
+  const callable = httpsCallable(getFunctions(app, "us-central1"), "deleteTechnicianPermanently");
+  return (await callable({ uid })).data;
+}
+
 export async function assignIssue(id, uid, name) {
   await updateDoc(doc(db, "issues", id), { assigneeUid: uid, assigneeName: name });
 }
@@ -211,5 +217,18 @@ export async function closeIssue(id, record, state) {
     if (!current.exists() || current.data().status !== "open") throw new Error("התקלה כבר נסגרה או אינה קיימת. רענן את הדף.");
     if (current.data().sheet.serial !== record.serial) throw new Error("מספר התקלה אינו תואם.");
     transaction.update(issueRef, { status: "closed", closed: { record, state } });
+  });
+}
+
+export async function reviseClosedIssue(id, sheet, record, state, edit, expectedEdits) {
+  const issueRef = doc(db, "issues", id);
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(issueRef);
+    if (!current.exists() || current.data().status !== "closed") throw new Error("הדף אינו סגור עוד. רענן את הדף.");
+    const previous = current.data();
+    const edits = Array.isArray(previous.edits) ? previous.edits : [];
+    if (edits.length !== expectedEdits) throw new Error("הדף עודכן בינתיים. רענן לפני שמירה כדי לא לדרוס שינויים.");
+    if (state.closedAt !== previous.closed.state.closedAt || sheet.serial !== previous.sheet.serial) throw new Error("אי אפשר לשנות את זמן הסגירה או המספר הסידורי.");
+    transaction.update(issueRef, { sheet: storedSheet(sheet), closed: { record, state }, edits: [...edits, edit] });
   });
 }

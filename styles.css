@@ -187,5 +187,9 @@ td input:focus { border-color: #5da8c5; }
 .auth-help button { margin: 8px 0 8px 8px; }
 .back-to-queue { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; margin: 0 0 14px; padding: 9px 14px; border: 1px solid #bdd5e2; border-radius: 10px; background: #fff; color: #17668f; text-decoration: none; font-weight: 700; }
 .back-to-queue:focus-visible { outline: 3px solid #6fb1cf; }
+.closed-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 0 14px; }
+.closed-times > div { display: grid; gap: 5px; padding: 12px; border: 1px solid #d7e5ec; border-radius: 11px; background: #fff; }
+.closed-times span { color: #617a89; font-size: 12px; }
+.closed-times strong { color: #173b5d; font-size: 14px; }
 [data-state="error"] { color: #a80018 !important; background: #fff0f1; border: 2px solid #ff243e; border-radius: 10px; padding: 10px 12px; font-weight: 700; line-height: 1.6; }
 .closed-signature { max-width: 280px; width: 100%; background: #fff; border: 1px solid #d5e3e9; border-radius: 8px; }

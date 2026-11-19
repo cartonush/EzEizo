@@ -1,7 +1,7 @@
-import "../sheet-data.js?v=1.16.0";
-import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.16.0";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.16.0";
-import { resolveAssignees } from "./assignee-selection.js?v=1.16.0";
+import "../sheet-data.js?v=1.17.0";
+import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.17.0";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.17.0";
+import { resolveAssignees } from "./assignee-selection.js?v=1.17.0";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -264,37 +264,11 @@ function addIssueCard(container, item, isClosed) {
   subtitle.textContent = `${item.fault || "ללא תיאור"} · ${isClosed ? "סגורה" : "פתוחה"} · ${fullIssue?.assigneeName || "לא שובצה"}`;
   card.append(title, subtitle);
   if (isClosed) {
-    const details = document.createElement("details");
-    const heading = document.createElement("summary");
-    heading.textContent = "הצג דף סגור";
-    const description = document.createElement("p");
-    description.textContent = `נסגרה: ${new Date(item.closedAt).toLocaleString("he-IL")} · שעת סיום: ${item.completionTime || "—"} · כל הפעולות סומנו: ${item.actionsComplete ? "כן" : "לא"} · טכנאים: ${item.technicians || "—"}`;
-    const repair = document.createElement("p");
-    repair.textContent = `תיאור תקלה: ${item.fault || "—"} · תיאור תיקון: ${item.repair || "—"} · הערות מנהל: ${item.managerNotes || "—"} · הערות טכנאי: ${(item.technicianNotes || []).join(" | ") || "—"}`;
-    const tables = document.createElement("p");
-    tables.textContent = `יחידות שפורקו: ${item.removedCount || 0} · יחידות שהורכבו: ${item.installedCount || 0} · כלים: ${item.toolsCount || 0} · קשיחים שנלקחו: ${item.takenCount || 0} · קשיחים שנפסלו: ${item.rejectedCount || 0}`;
-    details.append(heading, description, repair, tables);
-    card.append(details);
-    const state = fullIssue?.closed?.state;
-    if (state) {
-      const work = document.createElement("p");
-      work.textContent = `פעולות: ${state.actions?.map((checked, index) => `${index + 1}: ${index === 10 && state.action11Result === "notRequired" ? "X" : checked ? "✓" : "—"}`).join(" · ") || "—"}`;
-      details.append(work);
-      for (const [label, rows] of [["יחידות שפורקו", state.removed], ["יחידות שהורכבו", state.installed], ["כלים", state.tools], ["קשיחים שנלקחו", state.taken], ["קשיחים שנפסלו", state.rejected]]) {
-        const list = document.createElement("p");
-        list.textContent = `${label}: ${(rows || []).filter((row) => Object.values(row).some((value) => String(value).trim())).map((row) => Object.values(row).filter(Boolean).join(" · ")).join(" | ") || "אין"}`;
-        details.append(list);
-      }
-      const names = document.createElement("p");
-      names.textContent = `בודקים: ${[state.interimInspectorName, state.interimToolsName, state.finalInspectorName, state.finalLeadName].filter(Boolean).join(" · ") || "—"} · שעת עזיבה: ${state.departureTime || "—"} · חתימת קשיחים: ${[state.takenFullName, state.takenPersonalNumber, state.takenRank].filter(Boolean).join(" · ") || "—"}`;
-      details.append(names);
-      Object.entries(state).filter(([key, value]) => key.endsWith("Signature") && typeof value === "string" && value.startsWith("data:image/")).forEach(([key, value]) => {
-        const figure = document.createElement("figure");
-        const caption = document.createElement("figcaption"); caption.textContent = `חתימה: ${key}`;
-        const signature = document.createElement("img"); signature.src = value; signature.alt = "חתימה"; signature.className = "closed-signature";
-        figure.append(caption, signature); details.append(figure);
-      });
-    }
+    const view = document.createElement("a");
+    view.className = "secondary-button";
+    view.href = `./closed.html?id=${encodeURIComponent(item.id)}`;
+    view.textContent = "פתח דף סגור";
+    card.append(view);
   } else {
     const assignLabel = document.createElement("label");
     assignLabel.className = "input-field";
@@ -413,7 +387,7 @@ function updateUserSelectors() {
   const filter = document.querySelector('#closed-filter');
   const previous = filter.value;
   filter.replaceChildren(new Option('כל הטכנאים', ''));
-  technicians.forEach((person) => filter.append(new Option(`${person.name}${person.active ? '' : ' (מושבת)'}`, person.uid)));
+  technicians.forEach((person) => filter.append(new Option(`${person.name}${person.deleted ? ' (נמחק)' : person.active ? '' : ' (הוסר)'}`, person.uid)));
   filter.value = previous;
 }
 document.querySelector("#closed-filter").addEventListener("change", renderIssueLists);
@@ -422,9 +396,10 @@ function renderUsers() {
   const removedList = document.querySelector("#removed-users-list");
   list.replaceChildren();
   removedList.replaceChildren();
-  if (!technicians.some((person) => person.active)) list.textContent = "אין טכנאים פעילים. צור משתמש חדש.";
-  if (!technicians.some((person) => !person.active)) removedList.textContent = "אין משתמשים שהוסרו.";
+  if (!technicians.some((person) => person.active && !person.deleted)) list.textContent = "אין טכנאים פעילים. צור משתמש חדש.";
+  if (!technicians.some((person) => !person.active && !person.deleted)) removedList.textContent = "אין משתמשים שהוסרו.";
   technicians.forEach((person) => {
+    if (person.deleted) return;
     const card = document.createElement("div"); card.className = "issue-item";
     const title = document.createElement("strong"); title.textContent = `${person.name} · ${person.active ? "פעיל" : "הוסר"}`;
     const email = document.createElement("span"); email.textContent = person.email || person.uid;
@@ -449,7 +424,21 @@ function renderUsers() {
       catch (error) { setStatus("#user-status", `שינוי המשתמש נכשל: ${error.message}`, true); }
       finally { action.disabled = false; }
     });
-    card.append(title, email, history, view, action); (person.active ? list : removedList).append(card);
+    card.append(title, email, history, view, action);
+    if (!person.active) {
+      const destroy = document.createElement("button"); destroy.type = "button"; destroy.className = "secondary-button danger-button";
+      destroy.textContent = "מחק סופית";
+      destroy.addEventListener("click", async () => {
+        if (!window.confirm(`למחוק סופית את חשבון ההתחברות של ${person.name} (${person.email || person.uid})? לא ניתן לשחזר אותו; תקלות סגורות יישמרו.`)) return;
+        destroy.disabled = true;
+        setStatus("#user-status", `מוחק את חשבון ההתחברות של ${person.name}…`);
+        try { await deleteTechnicianPermanently(person.uid); setStatus("#user-status", `${person.name} נמחק סופית מ־Firebase Authentication. היסטוריית התקלות נשמרה.`); }
+        catch (error) { setStatus("#user-status", error.code === "functions/not-found" ? "פונקציית המחיקה עדיין לא נפרסה ב־Firebase. יש לפרוס את deleteTechnicianPermanently כדי למחוק את החשבון סופית." : `המחיקה הסופית נכשלה: ${error.message}`, true); }
+        finally { destroy.disabled = false; }
+      });
+      card.append(destroy);
+    }
+    (person.active ? list : removedList).append(card);
   });
 }
 watchTechnicians((items) => { technicians = items.sort((a, b) => a.name.localeCompare(b.name, "he")); updateUserSelectors(); renderUsers(); renderIssueLists(); }, (error) => {

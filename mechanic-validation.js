@@ -6,6 +6,9 @@ export function validateTreatment(sheet, state, tables) {
   if (!filled(state.repair)) return missing("לא ניתן לסגור: חובה למלא תיאור תיקון.", "#repair-description");
 
   for (let index = 0; index < sheet.actions.length; index++) {
+    if (index === 1 && !/^([01]\d|2[0-3]):[0-5]\d$/.test(state.arrivalTime || "")) {
+      return missing("לא ניתן לסגור: חובה לבחור שעת הגעה לדת״ק בפעולה 2.", "#action-list li:nth-child(2) input");
+    }
     if (index === 10 && !["done", "notRequired"].includes(state.action11Result)) {
       return missing("לא ניתן לסגור: בפעולה 11 חובה לבחור ✓ אם בוצעה או X אם לא נדרשה.", "#action-list li:nth-child(11) input");
     }

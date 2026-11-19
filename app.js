@@ -1,8 +1,9 @@
-import "./sheet-data.js?v=1.16.0";
-import { gate, watchIssues, getIssue, closeIssue } from "./firebase-sync.js?v=1.16.0";
-import { validateTreatment } from "./mechanic-validation.js?v=1.16.0";
+import "./sheet-data.js?v=1.17.0";
+import { gate, watchIssues, getIssue, closeIssue, reviseClosedIssue } from "./firebase-sync.js?v=1.17.0";
+import { validateTreatment } from "./mechanic-validation.js?v=1.17.0";
 
-const currentUser = await gate("technician");
+const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
+const currentUser = await gate(managerClosedView ? "manager" : "technician");
 let cloudIssues = [];
 const selectedId = new URLSearchParams(window.location.search).get("id");
 let remoteIssue = null;
@@ -11,9 +12,11 @@ if (selectedId) {
   catch (error) { const list = document.querySelector("#mechanic-issues"); list.textContent = `טעינת התקלה נכשלה: ${error.message}`; list.dataset.state = "error"; }
 }
 const sheet = EzEizoData.normalizeSheet(remoteIssue?.sheet || EzEizoData.defaultSheet);
-const selectedSheet = Boolean(remoteIssue?.assigneeUid === currentUser.uid);
+const selectedSheet = Boolean(remoteIssue && (managerClosedView ? remoteIssue.status === "closed" : remoteIssue.assigneeUid === currentUser.uid));
+let managerEditing = false;
+let managerEditContext = null;
 document.querySelector("#sheet-form").hidden = !selectedSheet;
-document.querySelector("#mechanic-back").hidden = !selectedSheet;
+document.querySelector("#mechanic-back").hidden = !selectedSheet && !managerClosedView;
 document.querySelector(".queue-card").hidden = selectedSheet;
 const ACTIONS = sheet.actions;
 const STORAGE_KEY = selectedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
@@ -50,7 +53,7 @@ const TABLES = {
   ]
 };
 const defaultState = {
-  repair: "", technicianNotes: [], actions: ACTIONS.map(() => false), action11Result: "", completionTime: "", closedAt: "",
+  repair: "", technicianNotes: [], actions: ACTIONS.map(() => false), action11Result: "", arrivalTime: "", completionTime: "", closedAt: "",
   unitsEnabled: false, removed: [], installed: [], constantsEnabled: false,
   toolsEnabled: false, tools: [], interimEnabled: false, finalEnabled: false,
   takenEnabled: false, taken: [], rejectedEnabled: false, rejected: [],
@@ -64,10 +67,12 @@ if (remoteIssue?.status === "closed" && remoteIssue.closed?.state) {
   state = { ...defaultState, ...remoteIssue.closed.state };
 }
 state.completionTime = state.completionTime || "";
+state.arrivalTime = state.arrivalTime || "";
 if (!Array.isArray(state.actions)) state.actions = ACTIONS.map(() => false);
 if (!Array.isArray(state.technicianNotes)) state.technicianNotes = [];
 state.action11Result = ["done", "notRequired"].includes(state.action11Result) ? state.action11Result : state.actions[10] ? "done" : "";
 state.actions[10] = Boolean(state.action11Result);
+state.actions[1] = Boolean(state.arrivalTime) || Boolean(remoteIssue?.status === "closed" && state.actions[1]);
 state.actions[ACTIONS.length - 1] = Boolean(state.completionTime);
 
 function loadState() {
@@ -76,6 +81,10 @@ function loadState() {
 }
 
 function saveState() {
+  if (managerClosedView) {
+    document.querySelector("#save-state").textContent = "שינויי המנהל טרם נשמרו בענן";
+    return;
+  }
   if (state.closedAt) return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   const status = document.querySelector("#save-state");
@@ -85,6 +94,15 @@ function saveState() {
 }
 
 function renderSheetDetails() {
+  const times = document.querySelector("#closed-times");
+  if (times) {
+    times.hidden = remoteIssue?.status !== "closed";
+    if (!times.hidden) {
+      const format = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
+      document.querySelector("#opened-at").textContent = format(remoteIssue.createdAt);
+      document.querySelector("#closed-at").textContent = format(remoteIssue.closed?.state?.closedAt);
+    }
+  }
   document.querySelector("#workshop-detail").hidden = !sheet.workshop;
   document.querySelectorAll("[data-sheet-field]").forEach((element) => {
     element.textContent = sheet[element.dataset.sheetField] || "—";
@@ -170,17 +188,19 @@ function renderActions() {
         option.append(radio, mark); choices.append(option);
       });
       row.append(number, text, choices);
-    } else if (index === ACTIONS.length - 1) {
+    } else if (index === 1 || index === ACTIONS.length - 1) {
+      const isArrival = index === 1;
       const timePicker = document.createElement("input");
       timePicker.className = "time-picker";
       timePicker.type = "time";
       timePicker.step = "60";
-      timePicker.value = state.completionTime;
+      timePicker.value = isArrival ? state.arrivalTime : state.completionTime;
       timePicker.dir = "ltr";
-      timePicker.setAttribute("aria-label", "בחר שעת סיום תקלה");
+      timePicker.setAttribute("aria-label", isArrival ? "בחר שעת הגעה לדת״ק" : "בחר שעת סיום תקלה");
       timePicker.addEventListener("change", () => {
-        state.completionTime = timePicker.value;
-        state.actions[index] = Boolean(state.completionTime);
+        if (isArrival) state.arrivalTime = timePicker.value;
+        else state.completionTime = timePicker.value;
+        state.actions[index] = Boolean(timePicker.value);
         row.classList.toggle("done", state.actions[index]);
         updateProgress();
         saveState();
@@ -214,6 +234,10 @@ function renderIssueList() {
   const list = document.querySelector("#mechanic-issues");
   list.replaceChildren();
   delete list.dataset.state;
+  if (managerClosedView) {
+    if (!selectedSheet) list.textContent = "התקלה הסגורה לא נמצאה. חזור לרשימת התקלות הסגורות.";
+    return;
+  }
   const issues = cloudIssues.filter((item) => item.status === "open").map((item) => item.sheet);
   if (!issues.length) { list.textContent = "אין תקלות פתוחות כרגע."; return; }
   issues.forEach((item) => {
@@ -235,7 +259,7 @@ function closureRecord() {
     systemCode: sheet.systemCode, systemName: sheet.systemName,
     technicians: sheet.technicians, fault: sheet.fault,
     managerNotes: sheet.managerNotes || "", technicianNotes: state.technicianNotes,
-    closedAt: state.closedAt, completionTime: state.completionTime,
+    closedAt: state.closedAt, arrivalTime: state.arrivalTime, completionTime: state.completionTime,
     repair: state.repair.slice(0, 1200),
     actionsComplete: state.actions.every(Boolean) && Boolean(state.action11Result),
     removedCount: state.removed.filter((row) => row.name || row.serial).length,
@@ -256,10 +280,71 @@ function showClosed() {
   document.querySelector("#close-sheet").hidden = true;
   const message = document.querySelector("#close-message");
   delete message.dataset.state;
-  message.textContent = `הדף נסגר ב־${new Date(state.closedAt).toLocaleString("he-IL")}. אי אפשר לערוך אותו.`;
+  message.textContent = `הדף נסגר ב־${new Date(state.closedAt).toLocaleString("he-IL")}. ${managerClosedView ? "לעריכה מתועדת, לחץ על פתיחת הטופס למעלה." : "אי אפשר לערוך אותו."}`;
+}
+
+function changeLog(beforeSheet, beforeState) {
+  const compact = (value) => {
+    if (typeof value === "string" && value.startsWith("data:image/")) return "[חתימה]";
+    return JSON.stringify(value ?? null).slice(0, 500);
+  };
+  const changes = [];
+  for (const key of ["fault", "managerNotes"]) {
+    if (JSON.stringify(beforeSheet[key]) !== JSON.stringify(sheet[key])) changes.push({ field: key, before: compact(beforeSheet[key]), after: compact(sheet[key]) });
+  }
+  for (const key of Object.keys(state)) {
+    if (key === "closedAt") continue;
+    if (JSON.stringify(beforeState[key]) !== JSON.stringify(state[key])) changes.push({ field: key, before: compact(beforeState[key]), after: compact(state[key]) });
+  }
+  return changes;
+}
+
+if (managerClosedView && selectedSheet) {
+  const panel = document.querySelector("#manager-edit-panel");
+  panel.hidden = false;
+  const history = document.querySelector("#manager-edit-history");
+  const edits = Array.isArray(remoteIssue.edits) ? remoteIssue.edits : [];
+  const heading = document.createElement("h3"); heading.textContent = "תיעוד עריכות מנהל"; history.append(heading);
+  if (!edits.length) { const empty = document.createElement("p"); empty.textContent = "לא בוצעו עריכות לאחר הסגירה."; history.append(empty); }
+  edits.forEach((edit) => {
+    const item = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = `${edit.name || "מנהל"} · ${new Date(edit.at).toLocaleString("he-IL")} · ${(edit.changes || []).length} שדות שונו`;
+    item.append(summary);
+    (edit.changes || []).forEach((change) => {
+      const line = document.createElement("p");
+      line.textContent = `${change.field}: לפני ${change.before} | אחרי ${change.after}`;
+      item.append(line);
+    });
+    history.append(item);
+  });
+  const originalSheet = structuredClone(sheet);
+  let originalState;
+  document.querySelector("#manager-edit-open").addEventListener("click", () => {
+    if (managerEditing) { location.reload(); return; }
+    originalState = structuredClone(state);
+    managerEditing = true;
+    document.querySelector("#manager-edit-open").textContent = "בטל עריכה";
+    const form = document.querySelector("#sheet-form");
+    form.classList.remove("is-closed");
+    form.querySelectorAll("input, textarea, button").forEach((element) => { element.disabled = false; });
+    form.querySelectorAll("canvas[data-signature]").forEach((canvas) => { canvas.style.pointerEvents = "auto"; });
+    document.querySelector("#fault-description").readOnly = false;
+    document.querySelector("#manager-notes-display").readOnly = false;
+    document.querySelector("#fault-description").classList.remove("locked");
+    document.querySelector("#manager-notes-display").classList.remove("locked");
+    document.querySelector("#close-sheet").hidden = false;
+    document.querySelector("#close-sheet").textContent = "שמור שינויי מנהל";
+    document.querySelector("#close-message").textContent = "שינויי הטופס יתועדו עם שם המנהל, זמן העריכה והשדות ששונו.";
+    document.querySelector("#manager-edit-status").textContent = "מצב עריכה פעיל. השינויים טרם נשמרו.";
+  });
+  document.querySelector("#fault-description").addEventListener("input", (event) => { sheet.fault = event.target.value; saveState(); });
+  document.querySelector("#manager-notes-display").addEventListener("input", (event) => { sheet.managerNotes = event.target.value; saveState(); });
+  managerEditContext = { originalSheet, getOriginalState: () => originalState, editCount: edits.length };
 }
 
 document.querySelector("#close-sheet").addEventListener("click", async () => {
+  if (managerClosedView && !managerEditing) return;
   const validation = validateTreatment(sheet, state, TABLES);
   if (validation) {
     const message = document.querySelector("#close-message");
@@ -272,10 +357,18 @@ document.querySelector("#close-sheet").addEventListener("click", async () => {
   }
   const button = document.querySelector("#close-sheet");
   button.disabled = true;
-  const closedAt = new Date().toISOString();
+  const closedAt = managerClosedView ? state.closedAt : new Date().toISOString();
   const closingState = { ...state, closedAt };
   const record = { ...closureRecord(), closedAt, actionsComplete: true };
   try {
+    if (managerClosedView) {
+      const context = managerEditContext;
+      const changes = changeLog(context.originalSheet, context.getOriginalState());
+      if (!changes.length) throw new Error("לא בוצעו שינויים בטופס.");
+      await reviseClosedIssue(sheet.id, sheet, record, closingState, { uid: currentUser.uid, name: "נימר", at: new Date().toISOString(), changes }, context.editCount);
+      location.reload();
+      return;
+    }
     await closeIssue(sheet.id, record, closingState);
     state.closedAt = closedAt;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -298,7 +391,7 @@ watchIssues((issues) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     location.reload();
   }
-}, (error) => { const list = document.querySelector("#mechanic-issues"); list.textContent = `לא ניתן לטעון תקלות: ${error.message}`; list.dataset.state = "error"; }, currentUser.uid);
+}, (error) => { const list = document.querySelector("#mechanic-issues"); list.textContent = `לא ניתן לטעון תקלות: ${error.message}`; list.dataset.state = "error"; }, managerClosedView ? null : currentUser.uid);
 
 function rowHasValue(item, fields) {
   return fields.some(({ key }) => String(item[key] ?? "").trim() !== "");
@@ -478,6 +571,7 @@ unitsToggle.addEventListener("change", () => {
 });
 
 renderSheetDetails();
+if (managerClosedView) document.querySelector("#save-state").textContent = "דף סגור · קריאה בלבד";
 renderTechnicianNotes();
 renderActions();
 Object.keys(TABLES).forEach((table) => renderRows(table));

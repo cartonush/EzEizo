@@ -53,6 +53,10 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .removed-users { margin-top: 18px; padding: 12px; border: 1px solid #dbe6ec; border-radius: 10px; }
 .removed-users summary { cursor: pointer; color: #355b70; font-weight: 700; }
 .removed-users .issue-list { margin-top: 12px; }
+.danger-button { margin-inline-start: 8px; color: #b3152b; border-color: #e8b5bd; background: #fff3f4; }
+.manager-controls .back-to-queue { margin: 0; }
+#manager-edit-history details { margin-top: 9px; padding: 10px; border: 1px solid #dbe6ec; border-radius: 9px; overflow-wrap: anywhere; }
+#manager-edit-history summary { cursor: pointer; font-weight: 700; }
 .manager-nav-link { display: grid; place-items: center; min-height: 54px; padding: 7px 5px; border: 1px solid #cbdce5; border-radius: 12px; background: #fff; color: #355b70; font-size: 12px; font-weight: 700; text-align: center; line-height: 1.25; text-decoration: none; }
 .manager-nav-link[aria-current="page"] { color: #fff; background: #176b96; border-color: #176b96; }
 .manager-nav-link:focus-visible { outline: 3px solid #6fb1cf; }
