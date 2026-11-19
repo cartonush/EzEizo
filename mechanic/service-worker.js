@@ -1,5 +1,5 @@
-const CACHE_NAME = "ezeizo-mechanic-v1.17.0";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./apple-touch-icon.png", "../styles.css?v=1.17.0", "../app.js?v=1.17.0", "../sheet-data.js?v=1.17.0", "../firebase-sync.js?v=1.17.0", "../mechanic-validation.js?v=1.17.0", "../icon.svg"];
+const CACHE_NAME = "ezeizo-mechanic-v1.1.8";
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./apple-touch-icon.png", "../styles.css?v=1.1.8", "../app.js?v=1.1.8", "../sheet-data.js?v=1.1.8", "../firebase-sync.js?v=1.1.8", "../mechanic-validation.js?v=1.1.8", "../icon.svg"];
 const ASSET_URLS = new Set(ASSETS.map((path) => new URL(path, self.location.href).href));
 
 self.addEventListener("install", (event) => {

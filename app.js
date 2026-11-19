@@ -1,6 +1,6 @@
-import "./sheet-data.js?v=1.17.0";
-import { gate, watchIssues, getIssue, closeIssue, reviseClosedIssue } from "./firebase-sync.js?v=1.17.0";
-import { validateTreatment } from "./mechanic-validation.js?v=1.17.0";
+import "./sheet-data.js?v=1.1.8";
+import { gate, watchIssues, getIssue, closeIssue, reviseClosedIssue } from "./firebase-sync.js?v=1.1.8";
+import { validateTreatment } from "./mechanic-validation.js?v=1.1.8";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
