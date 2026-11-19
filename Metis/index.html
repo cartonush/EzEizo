@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.1.8">
-  <link rel="stylesheet" href="styles.css?v=1.1.8">
+  <link rel="stylesheet" href="../styles.css?v=1.1.9">
+  <link rel="stylesheet" href="styles.css?v=1.1.9">
 </head>
 <body>
   <div class="app-shell">
@@ -23,10 +23,10 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.1.8</span>
+      <span class="version-pill">v1.1.9</span>
     </header>
 
-    <main>
+    <main hidden>
       <div id="manager-controls" class="manager-controls">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
       </div>
@@ -77,7 +77,8 @@
 
       <section class="card send-card" aria-labelledby="send-title">
         <div class="section-heading"><div><p class="section-kicker">סיום יצירה</p><h2 id="send-title">פתיחת התקלה</h2></div><span class="step-badge">06</span></div>
-        <fieldset class="assignee-fieldset"><legend>הקצאה לטכנאים (לפחות שניים שונים)</legend><div id="new-assignees" class="assignee-options"></div><button id="add-assignee" class="secondary-button" type="button">+ הוסף טכנאי</button><p id="assignee-feedback" class="copy-status" role="status" aria-live="polite"></p></fieldset>
+        <label class="replaced-toggle" for="creation-ack"><input id="creation-ack" type="checkbox"><span class="custom-check" aria-hidden="true"></span><span><strong>אישור לפני פתיחת תקלה</strong><small>בדקתי את פרטי התקלה, את הוראות העבודה ואת שיוך הטכנאים לפני שליחתה.</small></span></label>
+        <fieldset class="assignee-fieldset"><legend>הקצאה לטכנאים (לפחות טכנאי אחד)</legend><div id="new-assignees" class="assignee-options"></div><button id="add-assignee" class="secondary-button" type="button">+ הוסף טכנאי</button><p id="assignee-feedback" class="copy-status" role="status" aria-live="polite"></p></fieldset>
         <button id="new-draft" class="secondary-button" type="button">טופס לתקלה חדשה</button>
         <button id="create-link" class="primary-button" type="button">פתח תקלה</button>
         <p id="created-status" class="copy-status" role="status" aria-live="polite"></p>
@@ -116,6 +117,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.1.8"></script>
+  <script type="module" src="app.js?v=1.1.9"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
-import "../sheet-data.js?v=1.1.8";
-import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.1.8";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.1.8";
-import { resolveAssignees } from "./assignee-selection.js?v=1.1.8";
+import "../sheet-data.js?v=1.1.9";
+import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.1.9";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.1.9";
+import { resolveAssignees } from "./assignee-selection.js?v=1.1.9";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -234,6 +234,8 @@ function renderActions() {
 
 document.querySelector("#create-link").addEventListener("click", async () => {
   const button = document.querySelector("#create-link");
+  const acknowledgment = document.querySelector("#creation-ack");
+  if (!acknowledgment.checked) { setStatus("#created-status", "יש לאשר את בדיקת פרטי התקלה לפני פתיחתה.", true); acknowledgment.focus(); return; }
   const catalogError = validateCatalogSelection(selections, draft);
   if (catalogError) { setStatus("#created-status", catalogError.message, true); (pickers[catalogError.field]?.input || document.querySelector("#ew-system-select")).focus(); return; }
   const { assignees, error: assigneeError } = resolveAssignees(selectedAssigneeUids(), technicians);
@@ -249,6 +251,7 @@ document.querySelector("#create-link").addEventListener("click", async () => {
   sheet.id = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   try {
     sheet.serial = await createAssignedIssues(sheet, assignees);
+    acknowledgment.checked = false;
     setStatus("#created-status", `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. לכל טכנאי דף מילוי משלו.`);
     window.location.hash = "open";
   } catch (error) { setStatus("#created-status", `פתיחת התקלה נכשלה: ${error.message}`, true); }
@@ -337,6 +340,7 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   document.querySelectorAll("[data-sheet-field]").forEach((input) => { input.value = draft[input.dataset.sheetField] || ""; });
   refreshPickers();
   renderAssigneeSelectors(["", ""]);
+  document.querySelector("#creation-ack").checked = false;
   renderConstants();
   renderActions();
   saveDraft();

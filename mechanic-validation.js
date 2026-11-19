@@ -46,10 +46,18 @@ export function validateTreatment(sheet, state, tables) {
   if (state.toolsEnabled) {
     const error = checkRows("tools", "כלים");
     if (error) return error;
+    if (state.entryEnabled) {
+      const entry = checkFields([
+        ["entryTechnicianSignature", "חתימת הטכנאי בביקורת כניסה", true],
+        ["entryInspectorSignature", "חתימת הבודק בביקורת כניסה", true],
+        ["entryInspectorNumber", "מספר אישי של הבודק בביקורת כניסה"]
+      ]);
+      if (entry) return entry;
+    }
     if (state.interimEnabled) {
       const interim = checkFields([
         ["interimTechnicianSignature", "חתימת הטכנאי בביקורת במהלך העבודה", true],
-        ["interimInspectorName", "שם הבודק בביקורת במהלך העבודה"],
+        ["interimInspectorNumber", "מספר אישי של הבודק בביקורת במהלך העבודה"],
         ["interimInspectorSignature", "חתימת הבודק בביקורת במהלך העבודה", true],
         ["interimToolsName", "שם פ.כלים / מ״ע בביקורת במהלך העבודה"],
         ["interimToolsSignature", "חתימת פ.כלים / מ״ע בביקורת במהלך העבודה", true]
@@ -59,7 +67,7 @@ export function validateTreatment(sheet, state, tables) {
     if (state.finalEnabled) {
       const final = checkFields([
         ["finalTechnicianSignature", "חתימת הטכנאי בביקורת בסיום העבודה", true],
-        ["finalInspectorName", "שם הבודק בביקורת בסיום העבודה"],
+        ["finalInspectorNumber", "מספר אישי של הבודק בביקורת בסיום העבודה"],
         ["finalInspectorSignature", "חתימת הבודק בביקורת בסיום העבודה", true],
         ["finalLeadName", "שם ר״צ / מ״ע בביקורת בסיום העבודה"],
         ["finalLeadSignature", "חתימת ר״צ / מ״ע בביקורת בסיום העבודה", true],

@@ -38,7 +38,8 @@ export function gate(role) {
   main.hidden = true;
   const panel = document.createElement("section");
   panel.className = "card auth-card";
-  panel.innerHTML = '<h2>כניסה למערכת</h2><p>התחבר לחשבון שהוגדר עבורך ב־Firebase.</p><form><label class="input-field">דואר אלקטרוני<input type="email" required autocomplete="username"></label><label class="input-field">סיסמה<input type="password" required autocomplete="current-password"></label><button class="primary-button" type="submit">התחבר</button></form><p class="copy-status" role="status" aria-live="polite">בודק התחברות…</p>';
+  panel.hidden = true;
+  panel.innerHTML = '<h2>כניסה למערכת</h2><p>התחבר לחשבון שלך.</p><form><label class="input-field">דואר אלקטרוני<input type="email" required autocomplete="username"></label><label class="input-field">סיסמה<input type="password" required autocomplete="current-password"></label><button class="primary-button" type="submit">התחבר</button></form><p class="copy-status" role="status" aria-live="polite">בודק התחברות…</p>';
   main.before(panel);
   if (role === "manager") panel.querySelector('[type="email"]').value = "roisuissa6@gmail.com";
   const status = panel.querySelector('[role="status"]');
@@ -59,10 +60,6 @@ export function gate(role) {
       const rules = document.createElement("a"); rules.href = "https://github.com/cartonush/EzEizo/blob/main/firestore.rules"; rules.target = "_blank"; rules.rel = "noopener"; rules.textContent = "הכללים להדבקה";
       const consoleLink = document.createElement("a"); consoleLink.href = "https://console.firebase.google.com/project/ezeizo/firestore/rules"; consoleLink.target = "_blank"; consoleLink.rel = "noopener"; consoleLink.textContent = "פתח את Rules ב־Firebase";
       help.append(instructions, uid, copy, rules, document.createTextNode(" · "), consoleLink);
-    } else {
-      const instructions = document.createElement("p");
-      instructions.textContent = `ההזדהות הצליחה, אך חשבון זה עדיין לא הוגדר כטכנאי פעיל. מסור למנהל את ה־UID: ${user.uid}`;
-      help.append(instructions);
     }
     const retry = document.createElement("button"); retry.type = "button"; retry.className = "primary-button"; retry.textContent = "בדוק שוב";
     retry.addEventListener("click", () => location.reload());
@@ -85,7 +82,7 @@ export function gate(role) {
   return new Promise((resolve) => {
     let active = false;
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { if (active) location.reload(); help.hidden = true; status.textContent = "יש להתחבר כדי לראות תקלות."; delete status.dataset.state; return; }
+      if (!user) { if (active) location.reload(); panel.hidden = false; help.hidden = true; status.textContent = "יש להתחבר כדי לראות תקלות."; delete status.dataset.state; return; }
       status.textContent = "ההזדהות הצליחה. בודק הרשאות Firestore…";
       delete status.dataset.state;
       try {
@@ -100,7 +97,8 @@ export function gate(role) {
           roleDoc = await getDoc(roleRef);
         }
         if (roleDoc.data()?.role !== role || roleDoc.data()?.active === false || (role === "manager" && user.email !== "roisuissa6@gmail.com")) {
-          showSetup(user, `לא נמצאה הרשאת ${role === "manager" ? "מנהל" : "טכנאי"} פעילה עבור החשבון הזה.`);
+          panel.hidden = false;
+          showSetup(user, `אין לחשבון הזה הרשאת ${role === "manager" ? "מנהל" : "טכנאי"} פעילה.`);
           return;
         }
         if (active) return;
@@ -117,9 +115,10 @@ export function gate(role) {
         }, () => { main.hidden = true; location.reload(); });
         resolve(user);
       } catch (error) {
+        panel.hidden = false;
         showSetup(user, error.code === "permission-denied" ? "הסיסמה נכונה, אבל כללי Firestore עדיין חוסמים את בדיקת ההרשאה." : error.message === "timeout" ? "ההזדהות הצליחה, אך בדיקת ההרשאה מתעכבת. בדוק חיבור אינטרנט או נסה שוב." : `לא ניתן לבדוק הרשאה: ${error.message}`);
       }
-    }, (error) => { status.textContent = `שגיאת התחברות: ${error.message}`; });
+    }, (error) => { panel.hidden = false; status.textContent = `שגיאת התחברות: ${error.message}`; });
   });
 }
 
@@ -153,7 +152,7 @@ export async function createIssue(sheet, assignee, preserveSerial = false) {
 
 // One serial represents the job; each technician gets a private form and closure.
 export async function createAssignedIssues(sheet, assignees) {
-  if (assignees.length < 2 || new Set(assignees.map(({ uid }) => uid)).size !== assignees.length) throw new Error("יש לבחור לפחות שני טכנאים שונים.");
+  if (assignees.length < 1 || new Set(assignees.map(({ uid }) => uid)).size !== assignees.length) throw new Error("יש לבחור לפחות טכנאי אחד, ללא כפילויות.");
   const refs = assignees.map(() => doc(collection(db, "issues")));
   return runTransaction(db, async (transaction) => {
     const counter = await transaction.get(counterRef);
@@ -220,15 +219,17 @@ export async function closeIssue(id, record, state) {
   });
 }
 
-export async function reviseClosedIssue(id, sheet, record, state, edit, expectedEdits) {
+export async function reopenIssue(id, managerUid) {
   const issueRef = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {
-    const current = await transaction.get(issueRef);
-    if (!current.exists() || current.data().status !== "closed") throw new Error("הדף אינו סגור עוד. רענן את הדף.");
-    const previous = current.data();
-    const edits = Array.isArray(previous.edits) ? previous.edits : [];
-    if (edits.length !== expectedEdits) throw new Error("הדף עודכן בינתיים. רענן לפני שמירה כדי לא לדרוס שינויים.");
-    if (state.closedAt !== previous.closed.state.closedAt || sheet.serial !== previous.sheet.serial) throw new Error("אי אפשר לשנות את זמן הסגירה או המספר הסידורי.");
-    transaction.update(issueRef, { sheet: storedSheet(sheet), closed: { record, state }, edits: [...edits, edit] });
+    const snapshot = await transaction.get(issueRef);
+    if (!snapshot.exists() || snapshot.data().status !== "closed") throw new Error("התקלה כבר פתוחה או אינה קיימת.");
+    const issue = snapshot.data();
+    if (!issue.assigneeUid) throw new Error("לא הוגדר טכנאי לתקלה.");
+    const reopenedAt = new Date().toISOString();
+    transaction.update(issueRef, {
+      status: "open", reopenedAt, reopenedBy: managerUid,
+      reopenEvents: [...(issue.reopenEvents || []), { at: reopenedAt, by: managerUid, priorClosedAt: issue.closed.state.closedAt }]
+    });
   });
 }

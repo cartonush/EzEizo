@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.1.8">
-  <link rel="stylesheet" href="styles.css?v=1.1.8">
+  <link rel="stylesheet" href="../styles.css?v=1.1.9">
+  <link rel="stylesheet" href="styles.css?v=1.1.9">
 </head>
 <body>
   <div class="app-shell">
@@ -23,12 +23,12 @@
         <h1>Metis · דף תקלה סגורה</h1>
         <p class="header-subtitle">צפייה ותיעוד תיקוני מנהל</p>
       </div>
-      <span class="version-pill">v1.1.8</span>
+      <span class="version-pill">v1.1.9</span>
     </header>
 
-    <main>
+    <main hidden>
       <div id="manager-controls" class="manager-controls"><a id="mechanic-back" class="back-to-queue" href="./#closed" hidden>→ חזרה לתקלות סגורות</a></div>
-      <div id="manager-edit-panel" class="card" hidden><button id="manager-edit-open" class="primary-button" type="button">פתח טופס לעריכה</button><p id="manager-edit-status" class="copy-status" role="status" aria-live="polite"></p><div id="manager-edit-history"></div></div>
+      <div id="manager-edit-panel" class="card" hidden><button id="manager-edit-open" class="primary-button" type="button">החזר לטכנאי לעריכה</button><p id="manager-edit-status" class="copy-status" role="status" aria-live="polite"></p><div id="manager-edit-history"></div></div>
       <section class="card queue-card" aria-labelledby="queue-title">
         <div class="section-heading"><div><p class="section-kicker">תקלות שהתקבלו</p><h2 id="queue-title">רשימת תקלות</h2></div><span class="step-badge">01</span></div>
         <p class="section-note">בחר תקלה פתוחה מהרשימה כדי למלא את הדף שלה.</p>
@@ -56,21 +56,6 @@
         </div>
       </section>
 
-      <section class="card constants-card" aria-labelledby="constants-title">
-        <div class="section-heading">
-          <div><p class="section-kicker">נתוני מערכת</p><h2 id="constants-title">קבועים</h2></div>
-          <span class="step-badge">i</span>
-        </div>
-        <label class="replaced-toggle" for="constants-toggle">
-          <input id="constants-toggle" type="checkbox" data-toggle-state="constantsEnabled" data-target="constants-area">
-          <span class="custom-check" aria-hidden="true"></span>
-          <span><strong>הצג קבועים</strong><small>הערכים מוצגים לקריאה בלבד</small></span>
-        </label>
-        <div id="constants-area" class="conditional-area" hidden>
-          <div id="constants-grid" class="constants-grid"></div>
-        </div>
-      </section>
-
       <section class="card descriptions-card" aria-labelledby="description-title">
         <div class="section-heading">
           <div>
@@ -81,12 +66,8 @@
         </div>
         <label class="field-label" for="fault-description">תיאור תקלה <span class="locked-tag">נשלח מהמנהל</span></label>
         <textarea id="fault-description" class="text-box locked" rows="3" readonly>פירוק והרכבה אנטנת מכם</textarea>
-        <label class="field-label" for="manager-notes-display">הערות מהמנהל</label>
-        <textarea id="manager-notes-display" class="text-box locked" rows="3" readonly></textarea>
-        <label class="field-label" for="technician-note-input">הוספת הערה <span class="edit-tag">אפשר להוסיף בלבד</span></label>
-        <div id="technician-notes" class="note-history" aria-live="polite"></div>
-        <textarea id="technician-note-input" class="text-box" rows="2" maxlength="1000" placeholder="כתוב הערה חדשה…"></textarea>
-        <button id="add-technician-note" class="secondary-button" type="button">הוסף הערה</button>
+        <label class="field-label" for="combined-notes">הערות מנהל וטכנאי <span class="edit-tag">הערות המנהל מוגנות; הטכנאי יכול להוסיף בהמשך</span></label>
+        <textarea id="combined-notes" class="text-box" rows="5" placeholder="הוסף הערות לטופס…"></textarea>
         <label class="field-label repair-label" for="repair-description">תיאור תיקון <span class="edit-tag">ניתן לעריכה</span></label>
         <textarea id="repair-description" class="text-box" rows="4" placeholder="תאר את פעולות התיקון שבוצעו…" maxlength="1200"></textarea>
         <div class="field-foot"><span id="save-state">נשמר אוטומטית במכשיר</span><span id="repair-count">0 / 1200</span></div>
@@ -129,6 +110,21 @@
         </div>
       </section>
 
+      <section class="card constants-card" aria-labelledby="constants-title">
+        <div class="section-heading">
+          <div><p class="section-kicker">נתוני מערכת</p><h2 id="constants-title">קבועים</h2></div>
+          <span class="step-badge">i</span>
+        </div>
+        <label class="replaced-toggle" for="constants-toggle">
+          <input id="constants-toggle" type="checkbox" data-toggle-state="constantsEnabled" data-target="constants-area">
+          <span class="custom-check" aria-hidden="true"></span>
+          <span><strong>הצג קבועים</strong><small>הערכים מוצגים לקריאה בלבד</small></span>
+        </label>
+        <div id="constants-area" class="conditional-area" hidden>
+          <div id="constants-grid" class="constants-grid"></div>
+        </div>
+      </section>
+
       <section class="card tools-card" aria-labelledby="tools-title">
         <div class="section-heading">
           <div><p class="section-kicker">ציוד וביקורות</p><h2 id="tools-title">כלים</h2></div>
@@ -145,6 +141,16 @@
             <div class="table-wrap"><table><thead><tr><th>שם כלי</th><th>מספר כלי</th><th>הערות</th><th aria-label="פעולות"></th></tr></thead><tbody id="tools-rows"></tbody></table></div>
           </div>
           <div class="inspection-checks">
+            <label class="replaced-toggle sub-toggle" for="entry-check">
+              <input id="entry-check" type="checkbox" data-toggle-state="entryEnabled" data-target="entry-fields">
+              <span class="custom-check" aria-hidden="true"></span>
+              <span><strong>ביקורת כניסה</strong><small>סמן כדי למלא חתימות ומספר אישי</small></span>
+            </label>
+            <div id="entry-fields" class="signature-grid" hidden>
+              <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="entryTechnicianSignature" aria-label="חתימת הטכנאי בביקורת כניסה"></canvas><button type="button" class="clear-signature" data-clear-signature="entryTechnicianSignature">נקה חתימה</button></div>
+              <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="entryInspectorSignature" aria-label="חתימת הבודק בביקורת כניסה"></canvas><button type="button" class="clear-signature" data-clear-signature="entryInspectorSignature">נקה חתימה</button></div>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" data-state-field="entryInspectorNumber"></label>
+            </div>
             <label class="replaced-toggle sub-toggle" for="interim-check">
               <input id="interim-check" type="checkbox" data-toggle-state="interimEnabled" data-target="interim-fields">
               <span class="custom-check" aria-hidden="true"></span>
@@ -152,7 +158,7 @@
             </label>
             <div id="interim-fields" class="signature-grid" hidden>
               <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="interimTechnicianSignature" aria-label="חתימת הטכנאי"></canvas><button type="button" class="clear-signature" data-clear-signature="interimTechnicianSignature">נקה חתימה</button></div>
-              <label class="input-field">שם הבודק<input type="text" data-state-field="interimInspectorName" autocomplete="name"></label>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" data-state-field="interimInspectorNumber"></label>
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="interimInspectorSignature" aria-label="חתימת הבודק"></canvas><button type="button" class="clear-signature" data-clear-signature="interimInspectorSignature">נקה חתימה</button></div>
               <div class="named-signature"><label class="input-field">שם פ.כלים / מ״ע<input type="text" data-state-field="interimToolsName"></label><div class="signature-field"><span class="field-label">חתימת פ.כלים / מ״ע</span><canvas class="signature-pad" data-signature="interimToolsSignature" aria-label="חתימת פ.כלים או מ״ע"></canvas><button type="button" class="clear-signature" data-clear-signature="interimToolsSignature">נקה חתימה</button></div></div>
             </div>
@@ -163,7 +169,7 @@
             </label>
             <div id="final-fields" class="signature-grid" hidden>
               <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="finalTechnicianSignature" aria-label="חתימת הטכנאי בסיום"></canvas><button type="button" class="clear-signature" data-clear-signature="finalTechnicianSignature">נקה חתימה</button></div>
-              <label class="input-field">שם הבודק<input type="text" data-state-field="finalInspectorName" autocomplete="name"></label>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" data-state-field="finalInspectorNumber"></label>
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="finalInspectorSignature" aria-label="חתימת הבודק בסיום"></canvas><button type="button" class="clear-signature" data-clear-signature="finalInspectorSignature">נקה חתימה</button></div>
               <div class="named-signature"><label class="input-field">שם ר״צ / מ״ע<input type="text" data-state-field="finalLeadName"></label><div class="signature-field"><span class="field-label">חתימת ר״צ / מ״ע</span><canvas class="signature-pad" data-signature="finalLeadSignature" aria-label="חתימת ר״צ או מ״ע"></canvas><button type="button" class="clear-signature" data-clear-signature="finalLeadSignature">נקה חתימה</button></div></div>
               <label class="input-field">שעת עזיבה<input type="time" step="60" data-state-field="departureTime"></label>
@@ -223,6 +229,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.1.8"></script>
+  <script type="module" src="../app.js?v=1.1.9"></script>
 </body>
 </html>
