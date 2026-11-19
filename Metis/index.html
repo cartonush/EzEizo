@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.9.0">
-  <link rel="stylesheet" href="styles.css?v=1.9.0">
+  <link rel="stylesheet" href="../styles.css?v=1.10.0">
+  <link rel="stylesheet" href="styles.css?v=1.10.0">
 </head>
 <body>
   <div class="app-shell">
@@ -23,7 +23,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.9.0</span>
+      <span class="version-pill">v1.10.0</span>
     </header>
 
     <main>
@@ -43,12 +43,12 @@
       <section class="card" aria-labelledby="manager-details-title">
         <div class="section-heading"><div><p class="section-kicker">פרטי אירוע</p><h2 id="manager-details-title">נתוני התקלה</h2></div><span class="step-badge">02</span></div>
         <div class="manager-grid">
-          <label class="input-field">טייסת<input data-sheet-field="squadron" type="text" autocomplete="off"></label>
-          <label class="input-field">דת״ק<input data-sheet-field="shelter" type="text" autocomplete="off"></label>
-          <label class="input-field">מספר מטוס<input data-sheet-field="aircraft" type="text" inputmode="numeric" autocomplete="off"></label>
-          <label class="input-field">קוד מערכת<input data-sheet-field="systemCode" type="text" autocomplete="off"></label>
-          <label class="input-field">שם מערכת<input data-sheet-field="systemName" type="text" autocomplete="off"></label>
-          <label class="input-field">מערכת ל״א<input data-sheet-field="ewSystem" type="text" autocomplete="off"></label>
+          <div class="input-field"><label for="picker-squadron">טייסת</label><div class="search-picker" data-picker="squadron"><input id="picker-squadron" data-sheet-field="squadron" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-squadron" placeholder="חפש ובחר טייסת" autocomplete="off"><div id="options-squadron" class="picker-list" role="listbox" hidden></div></div></div>
+          <div class="input-field"><label for="picker-shelter">דת״ק</label><div class="search-picker" data-picker="shelter"><input id="picker-shelter" data-sheet-field="shelter" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-shelter" placeholder="בחר טייסת תחילה" autocomplete="off" disabled><div id="options-shelter" class="picker-list" role="listbox" hidden></div></div></div>
+          <div class="input-field"><label for="picker-aircraft">מספר מטוס</label><div class="search-picker" data-picker="aircraft"><input id="picker-aircraft" data-sheet-field="aircraft" type="search" inputmode="numeric" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-aircraft" placeholder="בחר טייסת תחילה" autocomplete="off" disabled><div id="options-aircraft" class="picker-list" role="listbox" hidden></div></div></div>
+          <div class="input-field"><label for="picker-systemName">שם מערכת</label><div class="search-picker" data-picker="systemName"><input id="picker-systemName" data-sheet-field="systemName" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-systemName" placeholder="חפש ובחר מערכת" autocomplete="off"><div id="options-systemName" class="picker-list" role="listbox" hidden></div></div></div>
+          <label class="input-field">קוד מערכת<input data-sheet-field="systemCode" type="text" readonly placeholder="מתמלא עם בחירת מערכת"></label>
+          <label class="input-field">חליפת ל״א<input data-sheet-field="ewSystem" type="text" readonly placeholder="מתמלא עם בחירת מטוס"></label>
           <label class="input-field">שמות טכנאים<input data-sheet-field="technicians" type="text" autocomplete="off"></label>
         </div>
       </section>
@@ -58,11 +58,11 @@
         <textarea class="text-box" data-sheet-field="fault" rows="4" maxlength="2000" required placeholder="תאר את התקלה לטכנאי…"></textarea>
       </section>
 
-      <section class="card" aria-labelledby="manager-constants-title">
-        <div class="section-heading"><div><p class="section-kicker">נתוני מערכת</p><h2 id="manager-constants-title">קבועים</h2></div><span class="step-badge">04</span></div>
+      <details class="card manager-constants-card" aria-labelledby="manager-constants-title">
+        <summary class="section-heading"><div><p class="section-kicker">נתוני מערכת</p><h2 id="manager-constants-title">קבועים</h2></div><span class="step-badge">04</span></summary>
         <p class="section-note">ערוך את הערכים שיופיעו לטכנאי. שמות הקבועים נשארים כפי שהוגדרו בדוגמה.</p>
         <div id="manager-constants" class="constants-grid"></div>
-      </section>
+      </details>
 
       <section class="card" aria-labelledby="manager-actions-title">
         <div class="section-heading"><div><p class="section-kicker">רשימת ביצוע</p><h2 id="manager-actions-title">פעולות לטכנאי</h2></div><span class="step-badge">05</span></div>
@@ -112,6 +112,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.9.0"></script>
+  <script type="module" src="app.js?v=1.10.0"></script>
 </body>
 </html>

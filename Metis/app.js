@@ -1,12 +1,15 @@
-import "../sheet-data.js?v=1.9.0";
-import { gate, watchIssues, watchTechnicians, createIssue, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.9.0";
+import "../sheet-data.js?v=1.10.0";
+import { gate, watchIssues, watchTechnicians, createIssue, createTechnician, setTechnicianActive, assignIssue } from "../firebase-sync.js?v=1.10.0";
+import { SQUADRONS, SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.10.0";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
 let cloudIssues = [];
 let technicians = [];
 const DRAFT_KEY = "ezeizo-metis-draft-v1";
+const PICKER_KEY = "ezeizo-metis-picker-v1";
 let draft = loadDraft();
+let selections = loadSelections();
 const draftStatus = document.querySelector("#draft-status");
 
 function setStatus(selector, message, error = false) {
@@ -26,18 +29,152 @@ function loadDraft() {
 
 function saveDraft() {
   localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  localStorage.setItem(PICKER_KEY, JSON.stringify(selections));
   draftStatus.textContent = "הטיוטה נשמרה במכשיר הזה";
 }
 
+function loadSelections() {
+  try { const value = JSON.parse(localStorage.getItem(PICKER_KEY) || "{}"); return value && typeof value === "object" && !Array.isArray(value) ? value : {}; }
+  catch { return {}; }
+}
+
 document.querySelectorAll("[data-sheet-field]").forEach((input) => {
+  if (input.closest(".search-picker") || input.readOnly) return;
   const key = input.dataset.sheetField;
   input.value = draft[key] || "";
   input.addEventListener("input", () => {
     draft[key] = input.value;
-    if (key === "shelter" || key === "squadron") draft.location = [draft.shelter, draft.squadron].filter(Boolean).join("/");
     saveDraft();
   });
 });
+
+const pickers = Object.fromEntries([...document.querySelectorAll("[data-picker]")].map((root) => [root.dataset.picker, {
+  root, input: root.querySelector("input"), list: root.querySelector(".picker-list"), matches: [], activeIndex: 0
+}]));
+
+function availableFor(key) {
+  if (key === "squadron") return Object.keys(SQUADRONS);
+  if (key === "systemName") return SYSTEMS.map((system) => system.name);
+  return Object.hasOwn(SQUADRONS, selections.squadron) ? SQUADRONS[selections.squadron][key === "shelter" ? "shelters" : "aircraft"] : [];
+}
+
+function closePicker(key) {
+  const picker = pickers[key];
+  picker.list.hidden = true;
+  picker.input.setAttribute("aria-expanded", "false");
+  picker.input.removeAttribute("aria-activedescendant");
+}
+
+function renderOptions(key) {
+  const picker = pickers[key];
+  const search = picker.input.value.trim().toLocaleLowerCase("he");
+  picker.matches = availableFor(key).filter((value) => value.toLocaleLowerCase("he").includes(search));
+  picker.activeIndex = 0;
+  picker.list.replaceChildren();
+  if (!picker.matches.length) {
+    const empty = document.createElement("p"); empty.className = "picker-empty"; empty.textContent = "אין תוצאות מתאימות";
+    picker.list.append(empty);
+  }
+  picker.matches.forEach((value, index) => {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.id = `option-${key}-${index}`;
+    option.className = "picker-option";
+    option.setAttribute("role", "option");
+    option.setAttribute("aria-selected", String(value === selections[key]));
+    option.textContent = value;
+    option.addEventListener("pointerdown", (event) => { event.preventDefault(); choosePicker(key, value); });
+    option.addEventListener("click", () => choosePicker(key, value));
+    picker.list.append(option);
+  });
+  picker.list.hidden = false;
+  picker.input.setAttribute("aria-expanded", "true");
+  if (picker.matches.length) picker.input.setAttribute("aria-activedescendant", `option-${key}-0`);
+}
+
+function refreshPickers() {
+  for (const [key, picker] of Object.entries(pickers)) {
+    picker.input.disabled = (key === "shelter" || key === "aircraft") && !selections.squadron;
+    picker.input.placeholder = picker.input.disabled ? "בחר טייסת תחילה" : key === "aircraft" ? "חפש ובחר מספר מטוס" : key === "shelter" ? "חפש ובחר דת״ק" : key === "systemName" ? "חפש ובחר מערכת" : "חפש ובחר טייסת";
+    picker.input.value = selections[key] || "";
+    closePicker(key);
+  }
+  document.querySelector('[data-sheet-field="systemCode"]').value = draft.systemCode;
+  document.querySelector('[data-sheet-field="ewSystem"]').value = draft.ewSystem;
+}
+
+function clearPicker(key) {
+  selections[key] = "";
+  draft[key] = "";
+  if (key === "squadron") {
+    selections.shelter = ""; selections.aircraft = "";
+    draft.shelter = ""; draft.aircraft = ""; draft.ewSystem = "";
+  }
+  if (key === "aircraft") draft.ewSystem = "";
+  if (key === "systemName") draft.systemCode = "";
+  draft.location = [draft.shelter, draft.squadron].filter(Boolean).join("/");
+  refreshPickers();
+  saveDraft();
+}
+
+function choosePicker(key, value) {
+  if (!availableFor(key).includes(value)) return;
+  if (key === "squadron" && selections.squadron !== value) {
+    selections.shelter = ""; selections.aircraft = "";
+    draft.shelter = ""; draft.aircraft = ""; draft.ewSystem = "";
+  }
+  selections[key] = value;
+  draft[key] = value;
+  if (key === "aircraft") draft.ewSystem = "גרניט";
+  if (key === "systemName") draft.systemCode = SYSTEMS.find((system) => system.name === value).code;
+  draft.location = [draft.shelter, draft.squadron].filter(Boolean).join("/");
+  refreshPickers();
+  saveDraft();
+  pickers[key].input.focus({ preventScroll: true });
+  setStatus("#created-status", "");
+}
+
+for (const [key, picker] of Object.entries(pickers)) {
+  picker.input.addEventListener("focus", () => renderOptions(key));
+  picker.input.addEventListener("input", () => {
+    const search = picker.input.value;
+    clearPicker(key);
+    picker.input.value = search;
+    renderOptions(key);
+  });
+  picker.input.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") { closePicker(key); return; }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (picker.list.hidden) renderOptions(key);
+      if (!picker.matches.length) return;
+      picker.activeIndex = (picker.activeIndex + (event.key === "ArrowDown" ? 1 : -1) + picker.matches.length) % picker.matches.length;
+      picker.input.setAttribute("aria-activedescendant", `option-${key}-${picker.activeIndex}`);
+      picker.list.children[picker.activeIndex].scrollIntoView({ block: "nearest" });
+    }
+    if (event.key === "Enter" && !picker.list.hidden && picker.matches.length) {
+      event.preventDefault(); choosePicker(key, picker.matches[picker.activeIndex]);
+    }
+  });
+  picker.input.addEventListener("blur", () => setTimeout(() => {
+    if (!picker.root.contains(document.activeElement)) closePicker(key);
+  }, 120));
+}
+
+function restorePickers() {
+  if (!Object.hasOwn(SQUADRONS, selections.squadron) || draft.squadron !== selections.squadron) selections.squadron = "";
+  for (const key of ["shelter", "aircraft", "systemName"]) {
+    if (!availableFor(key).includes(selections[key]) || draft[key] !== selections[key]) selections[key] = "";
+  }
+  for (const key of Object.keys(pickers)) draft[key] = selections[key] || "";
+  draft.systemCode = SYSTEMS.find((system) => system.name === selections.systemName)?.code || "";
+  draft.ewSystem = selections.aircraft ? "גרניט" : "";
+  draft.location = [draft.shelter, draft.squadron].filter(Boolean).join("/");
+  refreshPickers();
+  saveDraft();
+}
+
+restorePickers();
 
 function renderConstants() {
   const container = document.querySelector("#manager-constants");
@@ -85,6 +222,8 @@ function renderActions() {
 
 document.querySelector("#create-link").addEventListener("click", async () => {
   const button = document.querySelector("#create-link");
+  const catalogError = validateCatalogSelection(selections, draft);
+  if (catalogError) { setStatus("#created-status", catalogError.message, true); pickers[catalogError.field].input.focus(); return; }
   const uid = document.querySelector("#new-assignee").value;
   const assignee = technicians.find((person) => person.uid === uid && person.active);
   if (!assignee) { setStatus("#created-status", "בחר טכנאי פעיל לפני פתיחת התקלה.", true); document.querySelector("#new-assignee").focus(); return; }
@@ -203,7 +342,13 @@ function showManagerView() {
 window.addEventListener("hashchange", showManagerView);
 document.querySelector("#new-draft").addEventListener("click", () => {
   draft = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
+  selections = {};
+  for (const key of Object.keys(pickers)) draft[key] = "";
+  draft.systemCode = "";
+  draft.ewSystem = "";
+  draft.location = "";
   document.querySelectorAll("[data-sheet-field]").forEach((input) => { input.value = draft[input.dataset.sheetField] || ""; });
+  refreshPickers();
   renderConstants();
   renderActions();
   saveDraft();

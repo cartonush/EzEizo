@@ -5,6 +5,19 @@
 .preview-link:hover { text-decoration: underline; }
 .manager-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
 .manager-grid .input-field input { height: 43px; }
+.search-picker { position: relative; }
+.search-picker input { width: 100%; min-width: 0; font-size: 16px; }
+.search-picker input:disabled { color: #6d8190; background: #f0f5f7; }
+.picker-list { position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; left: 0; max-height: 210px; overflow-y: auto; padding: 5px; border: 1px solid #bfd6e3; border-radius: 10px; background: #fff; box-shadow: 0 9px 24px #102e4440; }
+.picker-list[hidden] { display: none; }
+.picker-option { display: block; width: 100%; padding: 11px 12px; border: 0; border-radius: 7px; background: #fff; color: #203a4d; text-align: right; font: inherit; cursor: pointer; }
+.picker-option:hover, .picker-option:focus-visible { background: #e9f4f9; outline: none; }
+.picker-empty { padding: 10px; margin: 0; color: #607686; }
+.manager-constants-card > summary { cursor: pointer; list-style: none; margin-bottom: 0; }
+.manager-constants-card > summary::-webkit-details-marker { display: none; }
+.manager-constants-card > summary::after { content: "⌄"; margin-inline-start: auto; color: #176b96; font-size: 22px; }
+.manager-constants-card[open] > summary { margin-bottom: 16px; }
+.manager-constants-card[open] > summary::after { transform: rotate(180deg); }
 .manager-constant-row { display: flex; flex-direction: column; gap: 4px; }
 .manager-constant-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .manager-constant-row span { color: #647b8b; font-size: 10px; font-weight: 700; direction: ltr; text-align: left; }
