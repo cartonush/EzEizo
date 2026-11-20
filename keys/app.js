@@ -1,6 +1,6 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.3";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.3";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.3";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.4";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.4";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.4";
 
 const manager = !location.pathname.toLowerCase().includes("/mechanic/");
 const user = await gate(manager ? "manager" : "technician");
@@ -102,11 +102,14 @@ $("#create-key-load").addEventListener("click", async () => {
   if (!rows.length || rows.some((row) => !aircraftFor(draft.squadron).includes(row.aircraft) || !(row.blue || row.shach)) || new Set(rows.map((row) => row.aircraft)).size !== rows.length) return setMessage("#create-status", "בכל שורה בחר מטוס ייחודי מהרשימה וסמן לפחות מפתח אחד.", true);
   if (!$("#key-briefed").checked || !dispatchSignature) return setMessage("#create-status", "יש לאשר את התדריך ולחתום כמשלח המשימה.", true);
   button.disabled = true;
+  const loading = $("#key-create-loading");
+  loading.hidden = false;
+  setMessage("#create-status", "פותח הטענת מפתחות…");
   try {
     await createKeyLoad({ date: draft.date, time: draft.time, squadron: draft.squadron, shelter: draft.shelter, teamUids, teamNames: teamUids.map((uid) => technicians.find((person) => person.uid === uid).name), rows, aircraftIds: rows.map((row) => row.aircraft), period: period.label, dispatcherSignature: dispatchSignature });
     draft = defaultDraft(); saveDraft(); renderCreateFields(); $("#key-briefed").checked = false; clearDispatch(); setMessage("#create-status", "הטענת המפתחות נפתחה לצוות."); location.hash = "open";
   } catch (error) { setMessage("#create-status", `פתיחת ההטענה נכשלה: ${error.message}`, true); }
-  finally { button.disabled = false; }
+  finally { loading.hidden = true; button.disabled = false; }
 });
 function renderHistory() {
   const tabs = $("#history-tabs"); tabs.replaceChildren();
@@ -151,14 +154,15 @@ function renderWork() {
   if (!activeLoad) return;
   const load = activeLoad, closed = load.status === "closed" || manager;
   $("#work-summary").textContent = `${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${closed ? " · נסגר" : ""}`;
-  const table = document.createElement("table"); const head = document.createElement("thead"), header = document.createElement("tr");
+  const table = document.createElement("table"); table.className = "work-aircraft-table";
+  const head = document.createElement("thead"), header = document.createElement("tr");
   ["מס׳ מטוס", "ארז כחול", "שחק", "הערות"].forEach((name) => header.append(make("th", name))); head.append(header); table.append(head);
   const body = document.createElement("tbody");
   load.rows.forEach((row, index) => {
     const tr = document.createElement("tr"); tr.append(make("td", row.aircraft));
     ["blue", "shach"].forEach((key) => {
       const td = document.createElement("td");
-      if (row[key]) { const label = make("label", "בוצע "); const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.checked = Boolean(work.aircraft[index]?.[`${key}Done`]); checkbox.disabled = closed; checkbox.addEventListener("change", () => { work.aircraft[index][`${key}Done`] = checkbox.checked; saveWork(); }); label.prepend(checkbox); td.append(label); }
+      if (row[key]) { const label = make("label", undefined, "work-check"); const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.setAttribute("aria-label", `${key === "blue" ? "ארז כחול" : "שחק"} בוצע במטוס ${row.aircraft}`); checkbox.checked = Boolean(work.aircraft[index]?.[`${key}Done`]); checkbox.disabled = closed; checkbox.addEventListener("change", () => { work.aircraft[index][`${key}Done`] = checkbox.checked; saveWork(); }); label.append(checkbox, make("span", "בוצע")); td.append(label); }
       else td.textContent = "—";
       tr.append(td);
     }); tr.append(make("td", row.notes || "—")); body.append(tr);
@@ -177,7 +181,7 @@ function renderWork() {
     if (index === 0) { const image = document.createElement("img"); image.src = load.dispatcherSignature; image.alt = "חתימת משלח המשימה"; image.style.cssText = "display:block;max-width:220px;max-height:80px;margin:10px"; row.append(image); }
   });
   const period = periodFor(load.date);
-  const reference = document.createElement("table");
+  const reference = document.createElement("table"); reference.className = "key-reference-table";
   reference.innerHTML = `<thead><tr><th>שם הפריט</th><th>סימול</th><th>משמעות</th><th>תוקף</th></tr></thead><tbody><tr><td rowspan="3">כר-156<br>ארז כחול</td><td>6003-216</td><td>ארז כחול כרטיס מחיקה שנתי</td><td>${period.year}</td></tr><tr><td>6001-295</td><td>ארז כחול חודש נוכחי</td><td>${period.current}</td></tr><tr><td>6001-296</td><td>ארז כחול חודש הבא</td><td>${period.next}</td></tr><tr><td rowspan="2">כר-116<br>שחק</td><td>6016-385</td><td>שחק חודש נוכחי</td><td>${period.current}</td></tr><tr><td>6016-386</td><td>שחק חודש הבא</td><td>${period.next}</td></tr></tbody>`;
   $("#reference-table").replaceChildren(reference);
   bindExtraTables(closed);
@@ -282,8 +286,9 @@ if (manager) {
   watchTechnicians((users) => { technicians = users; renderTeam([...draft.teamUids]); }, (error) => setMessage("#create-status", `טעינת טכנאים נכשלה: ${error.message}`, true));
   watchKeyHistory((records) => { history = records; renderHistory(); }, (error) => setMessage("#history-status", `טעינת ההיסטוריה נכשלה: ${error.message}`, true));
 }
-watchKeyLoads((items) => { loads = items; loadsReady = true; if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); showView(); }, (error) => {
+watchKeyLoads((items) => { loads = items; loadsReady = true; if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); showView(); revealApp(); }, (error) => {
   $("#open-key-loads").textContent = `טעינת ההטענות נכשלה: ${error.message}`;
   $("#open-key-loads").style.color = "#d40000";
+  revealApp();
 }, manager ? null : user.uid);
-revealApp(); showView();
+showView();

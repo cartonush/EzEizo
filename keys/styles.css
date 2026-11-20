@@ -55,7 +55,29 @@
 #work-rows td,#work-rows th,#reference-table td,#reference-table th { overflow-wrap: anywhere; font-size: 11px; padding: 7px 4px; }
 #work-rows td:nth-child(2),#work-rows td:nth-child(3) { text-align: center; }
 #work-rows input[type="checkbox"] { width: 18px; height: 18px; }
+.key-create-loading:not([hidden]) { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 20px; background: #f0f6f9f5; }
+.key-create-loading .skeleton-card { width: min(100%, 720px); margin: 0 auto; box-shadow: 0 12px 32px #183b5d16; }
+.key-create-loading p { width: min(100%, 720px); margin: 0 auto; color: #173b5d; font-weight: 700; }
+/* The shared table header widths must not distort the aircraft and reference grids. */
+#work-rows .work-aircraft-table,#reference-table .key-reference-table { width: 100%; min-width: 0; table-layout: fixed; }
+#work-rows .work-aircraft-table th:nth-child(1) { width: 19%; }
+#work-rows .work-aircraft-table th:nth-child(2),#work-rows .work-aircraft-table th:nth-child(3) { width: 21%; }
+#work-rows .work-aircraft-table th:nth-child(4) { width: 39%; }
+#reference-table .key-reference-table th:nth-child(1) { width: 21%; }
+#reference-table .key-reference-table th:nth-child(2) { width: 22%; }
+#reference-table .key-reference-table th:nth-child(3) { width: 40%; }
+#reference-table .key-reference-table th:nth-child(4) { width: 17%; }
+#work-rows .work-aircraft-table td,#work-rows .work-aircraft-table th,#reference-table .key-reference-table td,#reference-table .key-reference-table th { overflow-wrap: normal; word-break: normal; font-size: 12px; line-height: 1.4; }
+#work-rows .work-aircraft-table td:nth-child(2),#work-rows .work-aircraft-table td:nth-child(3) { text-align: center; }
+.work-check { display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; }
+.work-check input { flex: none; margin: 0; }
 @media (max-width: 620px) {
+  #work-rows .work-aircraft-table td,#work-rows .work-aircraft-table th,#reference-table .key-reference-table td,#reference-table .key-reference-table th { font-size: 11px; padding: 7px 3px; }
+  .work-check span { display: none; }
+  #reference-table .key-reference-table th:nth-child(1) { width: 20%; }
+  #reference-table .key-reference-table th:nth-child(2) { width: 25%; }
+  #reference-table .key-reference-table th:nth-child(3) { width: 38%; }
+  #reference-table .key-reference-table th:nth-child(4) { width: 17%; }
   .key-load-table th,.key-load-table td { padding: 5px 2px; }
   .key-load-table input[type="search"],.key-load-table input[type="text"] { font-size: 12px; padding: 5px 2px; }
   #extra-tables .table-wrap { overflow: visible; }
