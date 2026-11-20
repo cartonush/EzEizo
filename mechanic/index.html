@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.2.0">
+  <link rel="stylesheet" href="../styles.css?v=1.2.1">
 </head>
 <body>
   <div class="app-shell">
@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.2.0</span>
+      <span class="version-pill">v1.2.1</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
     </header>
 
@@ -165,7 +165,7 @@
             <div id="entry-fields" class="signature-grid" hidden>
               <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="entryTechnicianSignature" aria-label="חתימת הטכנאי בביקורת כניסה"></canvas><button type="button" class="clear-signature" data-clear-signature="entryTechnicianSignature">נקה חתימה</button></div>
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="entryInspectorSignature" aria-label="חתימת הבודק בביקורת כניסה"></canvas><button type="button" class="clear-signature" data-clear-signature="entryInspectorSignature">נקה חתימה</button></div>
-              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" data-state-field="entryInspectorNumber"></label>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="entryInspectorNumber"></label>
             </div>
             <label class="replaced-toggle sub-toggle" for="interim-check">
               <input id="interim-check" type="checkbox" data-toggle-state="interimEnabled" data-target="interim-fields">
@@ -174,7 +174,7 @@
             </label>
             <div id="interim-fields" class="signature-grid" hidden>
               <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="interimTechnicianSignature" aria-label="חתימת הטכנאי"></canvas><button type="button" class="clear-signature" data-clear-signature="interimTechnicianSignature">נקה חתימה</button></div>
-              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" data-state-field="interimInspectorNumber"></label>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="interimInspectorNumber"></label>
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="interimInspectorSignature" aria-label="חתימת הבודק"></canvas><button type="button" class="clear-signature" data-clear-signature="interimInspectorSignature">נקה חתימה</button></div>
               <div class="named-signature"><label class="input-field">שם פ.כלים / מ״ע<input type="text" data-state-field="interimToolsName"></label><div class="signature-field"><span class="field-label">חתימת פ.כלים / מ״ע</span><canvas class="signature-pad" data-signature="interimToolsSignature" aria-label="חתימת פ.כלים או מ״ע"></canvas><button type="button" class="clear-signature" data-clear-signature="interimToolsSignature">נקה חתימה</button></div></div>
             </div>
@@ -185,7 +185,7 @@
             </label>
             <div id="final-fields" class="signature-grid" hidden>
               <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="finalTechnicianSignature" aria-label="חתימת הטכנאי בסיום"></canvas><button type="button" class="clear-signature" data-clear-signature="finalTechnicianSignature">נקה חתימה</button></div>
-              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" data-state-field="finalInspectorNumber"></label>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="finalInspectorNumber"></label>
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="finalInspectorSignature" aria-label="חתימת הבודק בסיום"></canvas><button type="button" class="clear-signature" data-clear-signature="finalInspectorSignature">נקה חתימה</button></div>
               <div class="named-signature"><label class="input-field">שם ר״צ / מ״ע<input type="text" data-state-field="finalLeadName"></label><div class="signature-field"><span class="field-label">חתימת ר״צ / מ״ע</span><canvas class="signature-pad" data-signature="finalLeadSignature" aria-label="חתימת ר״צ או מ״ע"></canvas><button type="button" class="clear-signature" data-clear-signature="finalLeadSignature">נקה חתימה</button></div></div>
               <label class="input-field">שעת עזיבה<input type="time" step="60" data-state-field="departureTime"></label>
@@ -211,7 +211,7 @@
           </div>
           <div class="signature-grid taken-signature-grid">
             <label class="input-field">שם מלא<input type="text" data-state-field="takenFullName" autocomplete="name"></label>
-            <label class="input-field">מספר אישי<input type="text" inputmode="numeric" data-state-field="takenPersonalNumber"></label>
+            <label class="input-field">מספר אישי<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="takenPersonalNumber"></label>
             <label class="input-field">דרגה<input type="text" data-state-field="takenRank"></label>
             <div class="signature-field"><span class="field-label">חתימה</span><canvas class="signature-pad" data-signature="takenSignature" aria-label="חתימה על קשיחים שנלקחו"></canvas><button type="button" class="clear-signature" data-clear-signature="takenSignature">נקה חתימה</button></div>
           </div>
@@ -250,6 +250,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.2.0"></script>
+  <script type="module" src="../app.js?v=1.2.1"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
-import "./sheet-data.js?v=1.2.0";
-import { gate, revealApp, watchIssues, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.2.0";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.2.0";
-import { validateTreatment } from "./mechanic-validation.js?v=1.2.0";
+import "./sheet-data.js?v=1.2.1";
+import { gate, revealApp, watchIssues, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.2.1";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.2.1";
+import { validateTreatment } from "./mechanic-validation.js?v=1.2.1";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -35,14 +35,14 @@ const TABLES = {
   tools: [
     { key: "toolName", label: "שם כלי", placeholder: "שם כלי" },
     { key: "toolNumber", label: "מספר כלי", placeholder: "מספר כלי" },
-    { key: "notes", label: "הערות", placeholder: "הערות" }
+    { key: "notes", label: "הערות", placeholder: "הערות", optional: true }
   ],
   taken: [
     { key: "description", label: "תיאור קשיח / נצרך", placeholder: "תיאור קשיח / נצרך" },
     { key: "removedFrom", label: "הוסר מרכיב / אזור", placeholder: "מרכיב / אזור" },
     { key: "quantityIn", label: "כמות בכניסה", placeholder: "כמות", type: "number" },
     { key: "quantityOut", label: "כמות ביציאה", placeholder: "כמות", type: "number" },
-    { key: "notes", label: "הערות", placeholder: "הערות" }
+    { key: "notes", label: "הערות", placeholder: "הערות", optional: true }
   ],
   rejected: [
     { key: "description", label: "תיאור הקשיח", placeholder: "תיאור הקשיח" },
@@ -345,10 +345,11 @@ async function submitTreatment() {
   button.disabled = true;
   const closedAt = new Date().toISOString();
   const closingState = { ...state, closedAt };
+  for (const [type, fields] of Object.entries(TABLES)) closingState[type] = compactRows(state[type], fields);
   const record = { ...closureRecord(), closedAt, actionsComplete: true };
   try {
     await submitForReview(sheet.id, record, closingState);
-    state.closedAt = closedAt;
+    Object.assign(state, closingState);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     showClosed();
     document.querySelector("#close-title").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -377,20 +378,24 @@ watchIssues((issues) => {
 }, (error) => { const list = document.querySelector("#mechanic-issues"); list.textContent = `לא ניתן לטעון תקלות: ${error.message}`; list.dataset.state = "error"; }, managerClosedView ? null : currentUser.uid);
 
 function rowHasValue(item, fields) {
-  return fields.some(({ key }) => String(item[key] ?? "").trim() !== "");
+  return fields.some(({ key }) => String(item?.[key] ?? "").trim() !== "");
 }
 
-function normalizeRows(rows, fields) {
-  const filledRows = (Array.isArray(rows) ? rows : [])
+function compactRows(rows, fields) {
+  return (Array.isArray(rows) ? rows : [])
     .filter((item) => rowHasValue(item, fields))
     .map((item) => Object.fromEntries(fields.map(({ key }) => [key, item[key] ?? ""])));
-  return [...filledRows, Object.fromEntries(fields.map(({ key }) => [key, ""]))];
+}
+
+function normalizeRows(rows, fields, editable = true) {
+  const filledRows = compactRows(rows, fields);
+  return editable ? [...filledRows, Object.fromEntries(fields.map(({ key }) => [key, ""]))] : filledRows;
 }
 
 function renderRows(type, focusTarget = null) {
   const fields = TABLES[type];
   if (!fields) return;
-  state[type] = normalizeRows(state[type], fields);
+  state[type] = normalizeRows(state[type], fields, !managerClosedView && !state.closedAt);
   const target = document.querySelector(`#${type}-rows`);
   const rows = state[type];
   target.replaceChildren();
@@ -470,7 +475,11 @@ function bindStateFields() {
     const key = input.dataset.stateField;
     input.value = state[key] || "";
     const eventName = input.type === "time" ? "change" : "input";
-    input.addEventListener(eventName, () => { state[key] = input.value; saveState(); });
+    input.addEventListener(eventName, () => {
+      if (key.endsWith("InspectorNumber") || key === "takenPersonalNumber") input.value = input.value.replace(/[^0-9]/g, "").slice(0, 7);
+      state[key] = input.value;
+      saveState();
+    });
   });
 }
 

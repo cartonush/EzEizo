@@ -27,7 +27,8 @@ export function validateTreatment(sheet, state, tables) {
     const active = rows.map((row, index) => ({ row, index })).filter(({ row }) => fields.some(({ key }) => filled(row?.[key])));
     if (!active.length) return missing(`לא ניתן לסגור: חובה למלא לפחות שורה אחת בטבלת ${title}.`, `#${type}-rows input`);
     for (const { row, index } of active) {
-      for (const { key, label } of fields) {
+      for (const { key, label, optional } of fields) {
+        if (optional) continue;
         if (!filled(row[key])) return missing(`לא ניתן לסגור: בשורה ${index + 1} בטבלת ${title} חסר ${label}.`, `#${type}-rows input[data-row-index="${index}"][data-field="${key}"]`);
       }
     }
@@ -36,6 +37,9 @@ export function validateTreatment(sheet, state, tables) {
   function checkFields(fields) {
     for (const [key, label, signature = false] of fields) {
       if (!filled(state[key])) return missing(`לא ניתן לסגור: חובה למלא ${label}.`, signature ? `canvas[data-signature="${key}"]` : `[data-state-field="${key}"]`);
+      if (key.endsWith("InspectorNumber") || key === "takenPersonalNumber") {
+        if (!/^[0-9]{1,7}$/.test(String(state[key]))) return missing(`לא ניתן לסגור: ${label} חייב להכיל ספרות בלבד, עד 7 ספרות.`, `[data-state-field="${key}"]`);
+      }
     }
     return null;
   }
