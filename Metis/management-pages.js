@@ -1,9 +1,9 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.5.9";
-import { SQUADRONS } from "./catalog.js?v=1.5.9";
-import { downloadReportPdf } from "./report-pdf.js?v=1.5.9";
-import { downloadFile } from "./report-pdf.js?v=1.5.9";
-import { createFormPdf } from "./form-pdf.js?v=1.5.9";
-import { zipFiles } from "./zip.js?v=1.5.9";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.6.0";
+import { SQUADRONS } from "./catalog.js?v=1.6.0";
+import { downloadReportPdf } from "./report-pdf.js?v=1.6.0";
+import { downloadFile } from "./report-pdf.js?v=1.6.0";
+import { createFormPdf } from "./form-pdf.js?v=1.6.0";
+import { zipFiles } from "./zip.js?v=1.6.0";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -20,6 +20,7 @@ let reportLoads = [];
 let reportUsers = [];
 let reportRows = [];
 let reportBusy = false;
+let squadronSummary = false;
 
 function uniqueForms(rows) {
   return [...new Map(rows.map((row) => [`${row.type}:${row.id}`, row])).values()];
@@ -138,9 +139,10 @@ function reportRecords() {
 
 const reportTitles = { journal: "יומן פעילות", "squadron-journal": "יומן טייסת", aircraft: "היסטוריית מטוס", technician: "היסטוריית טכנאי", "issue-open": "תקלות פתוחות", "issue-closed": "תקלות סגורות", squadron: "סיכום טייסת", pending: "דפים הממתינים לסגירה" };
 function reportState() {
-  const kind = $("#report-kind").value;
+  const selectedKind = $("#report-kind").value;
+  const kind = selectedKind === "squadron-journal" && squadronSummary ? "squadron" : selectedKind;
   const squadron = $("#report-squadron").value;
-  const mode = kind === "technician" ? "technician" : kind === "journal" ? "multi" : "aircraft";
+  const mode = kind === "technician" ? "technician" : ["journal", "issue-open", "issue-closed", "pending"].includes(kind) ? "multi" : "aircraft";
   const aircraft = [...$("#report-aircraft-options").querySelectorAll('input:checked')].map((box) => box.value);
   const technicians = [...$("#report-technician-options").querySelectorAll('input:checked')].map((box) => box.value);
   const technicianSquadrons = [...$("#report-technician-squadron-options").querySelectorAll('input:checked')].map((box) => box.value);
@@ -223,12 +225,16 @@ function renderReport() {
 function refreshReportSelectors() {
   const squadron = $("#report-squadron").value;
   $("#report-aircraft-fields-picker").hidden = !squadron;
-  const kind = $("#report-kind").value;
+  const selectedKind = $("#report-kind").value;
+  const kind = selectedKind === "squadron-journal" && squadronSummary ? "squadron" : selectedKind;
   const isTechnician = kind === "technician";
-  const isMultiSquadron = isTechnician || kind === "journal";
+  const isMultiSquadron = isTechnician || ["journal", "issue-open", "issue-closed", "pending"].includes(kind);
   $("#report-after-kind").hidden = !kind;
   $("#report-aircraft-fields").hidden = isMultiSquadron;
   $("#report-aircraft-fields-picker").hidden = !squadron || kind === "squadron";
+  $("#report-squadron-summary").hidden = selectedKind !== "squadron-journal";
+  $("#report-squadron-summary").disabled = !squadron;
+  $("#report-squadron-summary").textContent = squadronSummary ? "חזרה ליומן הטייסת" : "סיכום טייסת";
   $("#report-select-all-squadron-aircraft").hidden = kind === "aircraft";
   $("#report-technician-field").hidden = !isMultiSquadron;
   $("#report-technician-header").hidden = !isTechnician;
@@ -237,7 +243,7 @@ function refreshReportSelectors() {
   const issueKind = ["pending", "issue-open", "issue-closed", "squadron"].includes(kind);
   $("#report-form").closest("label").hidden = issueKind;
   $("#report-status").closest("label").hidden = issueKind;
-  $("#report-form-status").hidden = kind === "squadron";
+  $("#report-form-status").hidden = issueKind;
   $("#report-help").hidden = kind === "squadron";
 }
 
@@ -346,6 +352,7 @@ export function initReports() {
     updateTechnicianSummary(); renderReport();
   });
   $("#report-kind").addEventListener("change", () => {
+    squadronSummary = false;
     const kind = $("#report-kind").value;
     if (kind === "aircraft") {
       const checked = [...$("#report-aircraft-options").querySelectorAll('input:checked')];
@@ -356,6 +363,11 @@ export function initReports() {
       box.name = kind === "aircraft" ? "history-aircraft" : "";
     });
     updateAircraftSummary();
+    refreshReportSelectors(); renderReport();
+  });
+  $("#report-squadron-summary").addEventListener("click", () => {
+    if (!$("#report-squadron").value) return;
+    squadronSummary = !squadronSummary;
     refreshReportSelectors(); renderReport();
   });
   $("#report-print").addEventListener("click", () => {
