@@ -1,6 +1,6 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.7";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.7";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.7";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.8";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.8";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.8";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -67,10 +67,13 @@ function normalizedAircraftRows() {
 }
 function renderAircraftRows() {
   const body = $("#key-aircraft-rows"); body.replaceChildren();
+  const squadronSelected = KEY_SQUADRONS.includes(draft.squadron);
+  const hint = $("#key-aircraft-hint");
+  if (hint) hint.textContent = squadronSelected ? "חפש ובחר מטוס מהתוצאות, וסמן לפחות סוג מפתח אחד. שורה נוספת תיפתח אוטומטית." : "ראשית יש לבחור טייסת רצויה";
   normalizedAircraftRows().forEach((item, index) => {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    const input = document.createElement("input"); input.type = "search"; input.inputMode = "numeric"; input.placeholder = "בחר מטוס"; input.autocomplete = "off"; input.value = item.aircraft || "";
+    const input = document.createElement("input"); input.type = "search"; input.inputMode = "numeric"; input.placeholder = squadronSelected ? "בחר מטוס" : "ראשית יש לבחור טייסת רצויה"; input.autocomplete = "off"; input.value = item.aircraft || ""; input.disabled = !squadronSelected;
     input.setAttribute("role", "combobox"); input.setAttribute("aria-autocomplete", "list"); input.setAttribute("aria-expanded", "false");
     const choices = make("div", undefined, "picker-list"); choices.hidden = true; choices.id = `key-options-${index}`; choices.setAttribute("role", "listbox"); input.setAttribute("aria-controls", choices.id);
     const holder = make("div", undefined, "search-picker");
@@ -83,8 +86,8 @@ function renderAircraftRows() {
     input.addEventListener("keydown", (event) => { if (event.key === "Escape") { choices.hidden = true; input.setAttribute("aria-expanded", "false"); } else if (event.key === "Enter" && !choices.hidden && choices.querySelector("button")) { event.preventDefault(); choices.querySelector("button").click(); } else if (event.key === "ArrowDown") showChoices(); });
     input.addEventListener("blur", () => setTimeout(() => { choices.hidden = true; input.setAttribute("aria-expanded", "false"); input.value = draft.rows[index]?.aircraft || ""; }, 150));
     holder.append(input, choices); cell.append(holder); row.append(cell);
-    ["blue", "shach"].forEach((key) => { const td = document.createElement("td"), box = document.createElement("input"); box.type = "checkbox"; box.checked = Boolean(item[key]); box.setAttribute("aria-label", `${key === "blue" ? "ארז כחול" : "שחק"}, שורה ${index + 1}`); box.addEventListener("change", () => { const target = draft.rows[index] || (draft.rows[index] = { aircraft: "", blue: false, shach: false, notes: "" }); target[key] = box.checked; saveDraft(); if (index === draft.rows.length - 1 && box.checked && !target.aircraft) renderAircraftRows(); }); td.append(box); row.append(td); });
-    const noteCell = document.createElement("td"), note = document.createElement("input"); note.type = "text"; note.placeholder = "לא חובה"; note.maxLength = 500; note.value = item.notes || ""; note.setAttribute("aria-label", `הערות, שורה ${index + 1}`); note.addEventListener("input", () => { const target = draft.rows[index] || (draft.rows[index] = { aircraft: "", blue: false, shach: false, notes: "" }); target.notes = note.value; saveDraft(); }); noteCell.append(note); row.append(noteCell);
+    ["blue", "shach"].forEach((key) => { const td = document.createElement("td"), box = document.createElement("input"); box.type = "checkbox"; box.checked = Boolean(item[key]); box.disabled = !squadronSelected; box.setAttribute("aria-label", `${key === "blue" ? "ארז כחול" : "שחק"}, שורה ${index + 1}`); box.addEventListener("change", () => { const target = draft.rows[index] || (draft.rows[index] = { aircraft: "", blue: false, shach: false, notes: "" }); target[key] = box.checked; saveDraft(); if (index === draft.rows.length - 1 && box.checked && !target.aircraft) renderAircraftRows(); }); td.append(box); row.append(td); });
+    const noteCell = document.createElement("td"), note = document.createElement("input"); note.type = "text"; note.placeholder = "לא חובה"; note.maxLength = 500; note.value = item.notes || ""; note.disabled = !squadronSelected; note.setAttribute("aria-label", `הערות, שורה ${index + 1}`); note.addEventListener("input", () => { const target = draft.rows[index] || (draft.rows[index] = { aircraft: "", blue: false, shach: false, notes: "" }); target.notes = note.value; saveDraft(); }); noteCell.append(note); row.append(noteCell);
     const removeCell = document.createElement("td"); if (index < draft.rows.length) { const remove = make("button", "×", "remove-row"); remove.type = "button"; remove.setAttribute("aria-label", `הסר שורה ${index + 1}`); remove.addEventListener("click", () => { draft.rows.splice(index, 1); renderAircraftRows(); saveDraft(); }); removeCell.append(remove); } row.append(removeCell); body.append(row);
   });
 }
