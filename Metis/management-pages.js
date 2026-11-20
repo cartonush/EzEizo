@@ -1,9 +1,9 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.5.7";
-import { SQUADRONS } from "./catalog.js?v=1.5.7";
-import { downloadReportPdf } from "./report-pdf.js?v=1.5.7";
-import { downloadFile } from "./report-pdf.js?v=1.5.7";
-import { createFormPdf } from "./form-pdf.js?v=1.5.7";
-import { zipFiles } from "./zip.js?v=1.5.7";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.5.8";
+import { SQUADRONS } from "./catalog.js?v=1.5.8";
+import { downloadReportPdf } from "./report-pdf.js?v=1.5.8";
+import { downloadFile } from "./report-pdf.js?v=1.5.8";
+import { createFormPdf } from "./form-pdf.js?v=1.5.8";
+import { zipFiles } from "./zip.js?v=1.5.8";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -34,7 +34,8 @@ function formForRow(row) {
 function formFilename(row) {
   const opened = new Date(row.openedAt);
   const date = Number.isNaN(opened.getTime()) ? "תאריך לא ידוע" : `${String(opened.getDate()).padStart(2, "0")}-${String(opened.getMonth() + 1).padStart(2, "0")}-${opened.getFullYear()}`;
-  return `${row.type === "key" ? "הטענת מפתחות" : "תקלה"} - ${row.serial} - ${date}.pdf`.replace(/[\\/:*?"<>|]/g, "-");
+  const title = row.type === "key" ? `הטענת מפתחות ${row.serial} ${date}` : `תקלה - ${row.serial} - ${date}`;
+  return `${title}.pdf`.replace(/[\\/:*?"<>|]/g, "-");
 }
 
 function baseConstants() {
