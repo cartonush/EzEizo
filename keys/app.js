@@ -1,9 +1,11 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.6";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.6";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.6";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.7";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.7";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.7";
 
-const manager = !location.pathname.toLowerCase().includes("/mechanic/");
-const user = await gate(manager ? "manager" : "technician");
+export function initKeyPages({ user, embedded = false }) {
+const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
+const route = (part) => embedded ? `keys/${part}` : part;
+const backSelector = embedded ? "#key-back-link" : "#back-link";
 const $ = (selector) => document.querySelector(selector);
 const make = (tag, text, className) => { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; };
 const setMessage = (selector, message, bad = false) => { const node = $(selector); node.textContent = message; node.dataset.state = bad ? "error" : ""; };
@@ -107,7 +109,7 @@ $("#create-key-load").addEventListener("click", async () => {
   setMessage("#create-status", "פותח הטענת מפתחות…");
   try {
     await createKeyLoad({ date: draft.date, time: draft.time, squadron: draft.squadron, shelter: draft.shelter, teamUids, teamNames: teamUids.map((uid) => technicians.find((person) => person.uid === uid).name), rows, aircraftIds: rows.map((row) => row.aircraft), period: period.label, dispatcherSignature: dispatchSignature });
-    draft = defaultDraft(); saveDraft(); renderCreateFields(); $("#key-briefed").checked = false; clearDispatch(); setMessage("#create-status", "הטענת המפתחות נפתחה לצוות."); location.hash = "open";
+    draft = defaultDraft(); saveDraft(); renderCreateFields(); $("#key-briefed").checked = false; clearDispatch(); setMessage("#create-status", "הטענת המפתחות נפתחה לצוות."); location.hash = route("open");
   } catch (error) { setMessage("#create-status", `פתיחת ההטענה נכשלה: ${error.message}`, true); }
   finally { loading.hidden = true; button.disabled = false; }
 });
@@ -139,7 +141,7 @@ function renderOpen() {
     const card = make("div", undefined, "issue-item");
     card.append(make("strong", `טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`), make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`));
     const open = make("button", "פתח דף", "secondary-button"); open.type = "button";
-    open.addEventListener("click", () => { location.hash = `work/${load.id}`; showView(); }); card.append(open); container.append(card);
+    open.addEventListener("click", () => { location.hash = route(`work/${load.id}`); if (!embedded) showView(); }); card.append(open); container.append(card);
   });
 }
 function defaultWork(load) {
@@ -258,38 +260,49 @@ $("#complete-key-load").addEventListener("click", async () => {
   const error = validateWork(); if (error) return setMessage("#work-status", error, true);
   const button = $("#complete-key-load"); button.disabled = true;
   const clean = { ...work }; for (const [type, columns] of Object.entries(KEY_TABLES)) clean[type] = compactRows(work[type], columns);
-  try { await closeKeyLoad(activeLoad.id, user.uid, clean); localStorage.removeItem(`ezeizo-key-work:${activeLoad.id}`); if (manager) { location.hash = "open"; showView(); } else location.replace("./"); }
+  try { await closeKeyLoad(activeLoad.id, user.uid, clean); localStorage.removeItem(`ezeizo-key-work:${activeLoad.id}`); if (manager) { location.hash = route("open"); showView(); } else location.replace("./"); }
   catch (failure) { setMessage("#work-status", `סגירת ההטענה נכשלה: ${failure.message}`, true); }
   finally { button.disabled = false; }
 });
 function showView() {
-  const hash = decodeURIComponent(location.hash.slice(1));
+  const rawHash = decodeURIComponent(location.hash.slice(1));
+  if (embedded && !rawHash.startsWith("keys")) return;
+  if (embedded && !loadsReady) return;
+  const hash = embedded ? rawHash.replace(/^keys\/?/, "") : rawHash;
   const workId = hash.startsWith("work/") ? hash.slice(5) : null;
   activeLoad = workId ? loads.find((item) => item.id === workId) : null;
   if (activeLoad && !manager && !activeLoad.teamUids.includes(user.uid)) activeLoad = null;
   if (!manager && loadsReady && !activeLoad) { location.replace("./"); return; }
   const view = activeLoad ? "work" : manager && ["history", "create", "open"].includes(hash) ? hash : "open";
   ["history", "create", "open", "work"].forEach((name) => { $(`#${name}-view`).hidden = name !== view; });
+  if (manager && !embedded) $("#keys-manager-nav").hidden = false;
   $("#keys-nav").hidden = !manager || view === "work";
-  $("#back-link").hidden = manager && view !== "work";
-  $("#back-link").href = manager ? view === "work" ? "#open" : "../Metis/#home" : "./";
-  $("#back-link").textContent = view === "work" ? "→ חזרה להטענות" : "→ חזרה";
+  $(backSelector).hidden = manager && view !== "work";
+  $(backSelector).href = manager ? view === "work" ? `#${route("open")}` : embedded ? "#home" : "../Metis/#home" : "./";
+  $(backSelector).textContent = view === "work" ? "→ חזרה להטענות" : "→ חזרה";
   $("#keys-nav").querySelectorAll("button").forEach((button) => { if (button.dataset.view === view) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
   if (view === "history") renderHistory();
   if (view === "create" && !dispatchPadReady) { clearDispatch = attachSignaturePad($("#key-dispatch-signature"), { onChange: (value) => { dispatchSignature = value; } }); dispatchPadReady = true; }
   if (view === "open") renderOpen();
   if (view === "work") { work = readWork(activeLoad); renderWork(); }
 }
-$("#keys-nav").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => { location.hash = button.dataset.view; showView(); }));
+$("#keys-nav").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => { location.hash = route(button.dataset.view); if (!embedded) showView(); }));
 window.addEventListener("hashchange", showView);
 renderCreateFields();
 if (manager) {
   watchTechnicians((users) => { technicians = users; renderTeam([...draft.teamUids]); }, (error) => setMessage("#create-status", `טעינת טכנאים נכשלה: ${error.message}`, true));
   watchKeyHistory((records) => { history = records; renderHistory(); }, (error) => setMessage("#history-status", `טעינת ההיסטוריה נכשלה: ${error.message}`, true));
 }
-watchKeyLoads((items) => { loads = items; loadsReady = true; if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); showView(); revealApp(); }, (error) => {
+watchKeyLoads((items) => { loads = items; loadsReady = true; if (embedded) { $("#keys-loading").hidden = true; $("#keys-content").hidden = false; } if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); showView(); if (!embedded) revealApp(); }, (error) => {
   $("#open-key-loads").textContent = `טעינת ההטענות נכשלה: ${error.message}`;
   $("#open-key-loads").style.color = "#d40000";
-  revealApp();
+  if (embedded) { loadsReady = true; $("#keys-loading").hidden = true; $("#keys-content").hidden = false; showView(); }
+  if (!embedded) revealApp();
 }, manager ? null : user.uid);
 showView();
+
+}
+if (location.pathname.toLowerCase().includes("/keys/") || location.pathname.toLowerCase().includes("/mechanic/keys.html")) {
+  const user = await gate(location.pathname.toLowerCase().includes("/mechanic/") ? "technician" : "manager");
+  initKeyPages({ user });
+}

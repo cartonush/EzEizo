@@ -1,10 +1,11 @@
-import "../sheet-data.js?v=1.3.6";
-import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.3.6";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.3.6";
-import { resolveAssignees } from "./assignee-selection.js?v=1.3.6";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.6";
+import "../sheet-data.js?v=1.3.7";
+import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.3.7";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.3.7";
+import { resolveAssignees } from "./assignee-selection.js?v=1.3.7";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.7";
+import { initKeyPages } from "../keys/app.js?v=1.3.7";
 
-await gate("manager");
+const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
 let cloudIssues = [];
 let technicians = [];
@@ -326,9 +327,10 @@ function renderIssueLists() {
   if (!allClosed.length) closed.textContent = "אין תקלות סגורות.";
 }
 
+let keyPagesStarted = false;
 function showManagerView() {
   const requested = window.location.hash.slice(1);
-  const selected = ["home", "management", "reports", "aircraft-constants", "new", "open", "pending", "closed", "users"].includes(requested) ? requested : "home";
+  const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : ["home", "management", "reports", "aircraft-constants", "new", "open", "pending", "closed", "users"].includes(requested) ? requested : "home";
   document.querySelector("#manager-back").hidden = !["users", "reports", "aircraft-constants"].includes(selected);
   document.querySelector("#fault-nav").hidden = !["new", "open", "pending", "closed"].includes(selected);
   document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== (selected === "pending" ? "closed" : selected); });
@@ -341,6 +343,7 @@ function showManagerView() {
   });
   document.querySelectorAll("[data-fault-link]").forEach((link) => { if (link.dataset.faultLink === (selected === "pending" ? "closed" : selected)) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current"); });
   document.querySelectorAll("[data-review-link]").forEach((link) => { if (link.dataset.reviewLink === selected) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current"); });
+  if (selected === "keys" && !keyPagesStarted) { keyPagesStarted = true; initKeyPages({ user: managerUser, embedded: true }); }
   if (selected !== "new") renderIssueLists();
 }
 document.querySelector("#manager-back").addEventListener("click", () => { location.hash = "management"; });
