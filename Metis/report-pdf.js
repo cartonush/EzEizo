@@ -28,7 +28,7 @@ function pageCanvas() {
   return { canvas, ctx };
 }
 
-function pdfFromJpegs(jpegs) {
+export function pdfFromJpegs(jpegs) {
   const parts = []; let size = 0;
   const add = (value) => { const bytes = typeof value === "string" ? encoder.encode(value) : value; parts.push(bytes); size += bytes.length; };
   const offsets = [0];
@@ -50,6 +50,15 @@ function pdfFromJpegs(jpegs) {
   for (let i = 1; i < count; i++) add(`${String(offsets[i]).padStart(10, "0")} 00000 n \n`);
   add(`trailer\n<< /Size ${count} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
   return new Blob(parts, { type: "application/pdf" });
+}
+
+export { PAGE_WIDTH, PAGE_HEIGHT, MARGIN, CONTENT_WIDTH, wrapped, pageCanvas };
+
+export function downloadFile(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a"); link.href = url; link.download = filename;
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 export async function downloadReportPdf({ name, title, period, rows, statusLabel, byDate }) {
@@ -89,8 +98,5 @@ export async function downloadReportPdf({ name, title, period, rows, statusLabel
     y += height + 20;
   }
   finish();
-  const url = URL.createObjectURL(pdfFromJpegs(images));
-  const link = document.createElement("a"); link.href = url; link.download = `${name}.pdf`;
-  document.body.append(link); link.click(); link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  downloadFile(pdfFromJpegs(images), `${name}.pdf`);
 }

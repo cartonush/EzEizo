@@ -1,6 +1,9 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.5.4";
-import { SQUADRONS } from "./catalog.js?v=1.5.4";
-import { downloadReportPdf } from "./report-pdf.js?v=1.5.4";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.5.5";
+import { SQUADRONS } from "./catalog.js?v=1.5.5";
+import { downloadReportPdf } from "./report-pdf.js?v=1.5.5";
+import { downloadFile } from "./report-pdf.js?v=1.5.5";
+import { createFormPdf } from "./form-pdf.js?v=1.5.5";
+import { zipFiles } from "./zip.js?v=1.5.5";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -16,6 +19,22 @@ let reportIssues = [];
 let reportLoads = [];
 let reportUsers = [];
 let reportRows = [];
+let reportBusy = false;
+
+function uniqueForms(rows) {
+  return [...new Map(rows.map((row) => [`${row.type}:${row.id}`, row])).values()];
+}
+
+function formForRow(row) {
+  const form = (row.type === "key" ? reportLoads : reportIssues).find((item) => item.id === row.id);
+  if (!form) throw new Error(`הטופס ${row.serial} אינו זמין כרגע. רענן את הדף ונסה שוב.`);
+  return form;
+}
+
+function formFilename(row) {
+  const assignee = row.type === "issue" ? ` - ${row.technician}` : "";
+  return `טופס ${row.kind} - ${row.serial}${assignee}.pdf`.replace(/[\\/:*?"<>|]/g, "-");
+}
 
 function baseConstants() {
   return structuredClone(EzEizoData.defaultSheet.constants);
@@ -138,7 +157,9 @@ function makeReportRows(state) {
     && (state.type === "all" || row.type === state.type)
     && (state.status === "all" || row.status === state.status)
     && new Date(row.eventAt).getTime() >= state.from && new Date(row.eventAt).getTime() <= state.to)
-    .sort((a, b) => new Date(b.eventAt) - new Date(a.eventAt));
+    .sort((a, b) => state.kind === "aircraft"
+      ? a.squadron.localeCompare(b.squadron, "he", { numeric: true }) || a.aircraft.localeCompare(b.aircraft, "he", { numeric: true }) || new Date(b.eventAt) - new Date(a.eventAt)
+      : new Date(b.eventAt) - new Date(a.eventAt));
 }
 
 function reportFilename(state = reportState(), producedAt = new Date()) {
@@ -153,9 +174,9 @@ function renderReport() {
   const subject = state.mode === "technician" ? `טכנאי: ${reportUsers.find((user) => user.uid === state.technician)?.name || "—"} · ${state.technicianSquadrons.length ? `טייסות ${state.technicianSquadrons.join(", ")}` : "בחר טייסות"} · ${state.technicianAircraft.length ? `${state.technicianAircraft.length} מטוסים נבחרו` : "בחר מטוסים"}` : `טייסת ${state.squadron || "—"} · ${state.aircraft.length ? `מטוסים ${state.aircraft.join(", ")}` : "בחר מטוסים"}`;
   $("#report-period").textContent = `${subject} · ${byDate(state.from)} עד ${byDate(state.to)} · ${state.type === "all" ? "כל סוגי הטפסים" : state.type === "issue" ? "תקלות" : "מפתחות"} · ${state.status === "all" ? "כל המצבים" : statusLabel(state.status)}`;
   reportRows = makeReportRows(state);
-  const forms = new Set(reportRows.map((row) => `${row.type}:${row.type === "issue" ? row.serial : row.id}`));
-  $("#report-count").textContent = state.error ? "" : `${reportRows.length} רשומות · ${forms.size} טפסים`;
-  $("#report-pdf").disabled = $("#report-print").disabled = $("#report-csv").disabled = Boolean(state.error || !reportRows.length);
+  const forms = uniqueForms(reportRows);
+  $("#report-count").textContent = state.error ? "" : `${reportRows.length} רשומות · ${forms.length} טפסים`;
+  $("#report-pdf").disabled = $("#report-print").disabled = $("#report-csv").disabled = $("#report-download-all").disabled = Boolean(state.error || !reportRows.length || reportBusy);
   const summary = $("#report-summary"); summary.replaceChildren();
   if (!state.error) {
     const counts = [["תקלות", reportRows.filter((r) => r.type === "issue").length], ["מטוסים בהטענות", reportRows.filter((r) => r.type === "key").length], ["פתוח", reportRows.filter((r) => r.status === "open").length], ["ממתין לסגירה", reportRows.filter((r) => r.status === "pendingReview").length], ["סגור", reportRows.filter((r) => r.status === "closed").length]];
@@ -163,7 +184,12 @@ function renderReport() {
   }
   const results = $("#report-results"); results.replaceChildren();
   if (state.error || !reportRows.length) { results.textContent = state.error ? "" : "אין רשומות שמתאימות לסינון הזה."; return; }
+  let previousAircraft = "";
   reportRows.forEach((row) => {
+    if (state.kind === "aircraft" && previousAircraft !== `${row.squadron}|${row.aircraft}`) {
+      const group = element("h3", `טייסת ${row.squadron} · מטוס ${row.aircraft}`, "report-aircraft-group");
+      results.append(group); previousAircraft = `${row.squadron}|${row.aircraft}`;
+    }
     const card = element("article", null, "report-entry");
     const heading = element("div", null, "report-entry-heading");
     const title = element("h3", `${row.kind} · מטוס ${row.aircraft}`);
@@ -173,10 +199,20 @@ function renderReport() {
     [[row.type === "key" ? "מספר הטענה" : "מספר תקלה", row.serial], ["טכנאי / צוות", row.technician], ["מועד הפעילות", byDate(row.eventAt)], ["נפתח", byDate(row.openedAt)], ["נסגר", byDate(row.closedAt)]].forEach(([label, value]) => {
       const pair = element("div"); pair.append(element("dt", label), element("dd", value)); details.append(pair);
     });
-    const link = element("a", "פתח טופס", "secondary-button");
-    link.href = row.type === "key" ? `#keys/work/${encodeURIComponent(row.id)}` : row.status === "open" ? "#open" : `./closed.html?id=${encodeURIComponent(row.id)}`;
-    if (row.type === "issue" && row.status === "open") link.textContent = "הצג ברשימה";
-    card.append(heading, description, details, link); results.append(card);
+    const download = element("button", "הורד טופס PDF", "secondary-button"); download.type = "button";
+    download.disabled = reportBusy;
+    download.addEventListener("click", async () => {
+      const status = $("#report-download-status");
+      download.disabled = true; status.textContent = `יוצר PDF לטופס ${row.serial}…`; delete status.dataset.state;
+      try {
+        const blob = await createFormPdf(formForRow(row), row.type);
+        downloadFile(blob, formFilename(row));
+        status.textContent = `טופס ${row.serial} הורד כ־PDF.`;
+      } catch (error) { status.textContent = `הורדת הטופס נכשלה: ${error.message}`; status.dataset.state = "error"; }
+      finally { download.disabled = false; }
+    });
+    const actions = element("div", null, "report-entry-actions"); actions.append(download);
+    card.append(heading, description, details, actions); results.append(card);
   });
 }
 
@@ -265,6 +301,12 @@ export function initReports() {
   technicianOptions.addEventListener("change", () => { updateTechnicianSummary(); renderReport(); });
   $("#report-select-all-aircraft").addEventListener("click", () => { technicianOptions.querySelectorAll("input").forEach((box) => { box.checked = true; }); updateTechnicianSummary(); renderReport(); });
   $("#report-clear-aircraft").addEventListener("click", () => { technicianOptions.querySelectorAll("input").forEach((box) => { box.checked = false; }); updateTechnicianSummary(); renderReport(); });
+  $("#report-technician-all").addEventListener("click", () => {
+    squadronOptions.querySelectorAll("input").forEach((box) => { box.checked = true; });
+    updateTechnicianSquadrons();
+    technicianOptions.querySelectorAll("input").forEach((box) => { box.checked = true; });
+    updateTechnicianSummary(); renderReport();
+  });
   $("#report-kind").addEventListener("change", () => {
     const kind = $("#report-kind").value;
     if (kind === "aircraft") document.querySelector('[name="report-mode"][value="aircraft"]').checked = true;
@@ -295,6 +337,36 @@ export function initReports() {
     const lines = [["מועד", "טייסת", "סוג", "מטוס", "מספר טופס", "עבודה", "טכנאי / צוות", "מצב", "שעת פתיחה", "שעת סגירה"], ...reportRows.map((row) => [byDate(row.eventAt), row.squadron, row.kind, row.aircraft, row.serial, row.title, row.technician, statusLabel(row.status), byDate(row.openedAt), byDate(row.closedAt)])];
     const url = URL.createObjectURL(new Blob(["\uFEFF", lines.map((line) => line.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a"); link.href = url; link.download = `${reportFilename()}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  const confirm = $("#report-bulk-confirm");
+  $("#report-confirm-no").addEventListener("click", () => confirm.close("no"));
+  $("#report-confirm-yes").addEventListener("click", () => confirm.close("yes"));
+  $("#report-download-all").addEventListener("click", async () => {
+    const state = reportState();
+    if (state.error || !reportRows.length || reportBusy) return;
+    const forms = uniqueForms(reportRows);
+    if (forms.length > 5) {
+      confirm.showModal();
+      const accepted = await new Promise((resolve) => confirm.addEventListener("close", () => resolve(confirm.returnValue === "yes"), { once: true }));
+      if (!accepted) return;
+    }
+    reportBusy = true; renderReport();
+    const status = $("#report-download-status"); delete status.dataset.state;
+    try {
+      const files = [], filenames = new Set();
+      for (const [index, row] of forms.entries()) {
+        status.textContent = `מכין טפסים ל־ZIP: ${index + 1} מתוך ${forms.length}…`;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        const base = formFilename(row); let name = base, number = 2;
+        while (filenames.has(name)) name = base.replace(/\.pdf$/, ` (${number++}).pdf`);
+        filenames.add(name);
+        files.push({ name, blob: await createFormPdf(formForRow(row), row.type) });
+      }
+      status.textContent = "אורז את הטפסים בקובץ ZIP…";
+      downloadFile(await zipFiles(files), `${reportFilename(state)} - טפסים.zip`);
+      status.textContent = `${files.length} טפסים הורדו בקובץ ZIP אחד.`;
+    } catch (error) { status.textContent = `הורדת הטפסים נכשלה: ${error.message}`; status.dataset.state = "error"; }
+    finally { reportBusy = false; renderReport(); }
   });
   refreshReportSelectors(); renderReport();
 }
