@@ -1,5 +1,5 @@
-import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.5.5";
-import { KEY_TASKS, KEY_TABLES, periodFor } from "../keys/data.js?v=1.5.5";
+import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.5.6";
+import { KEY_TASKS, KEY_TABLES, periodFor } from "../keys/data.js?v=1.5.6";
 
 const left = MARGIN, right = PAGE_WIDTH - MARGIN;
 const dateTime = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";

@@ -96,6 +96,7 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .report-kind-field { margin: 16px 0 20px; max-width: 520px; font-size: 14px; }
 .report-subject-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 14px; margin: 16px 0; }
 .report-subject-fields[hidden],.report-technician-aircraft-fields[hidden] { display: none; }
+#report-view-dates[hidden],#report-form-status[hidden],#report-aircraft-fields-picker[hidden] { display: none; }
 .report-subject-fields > .input-field { min-width: 0; }
 .report-multi-aircraft { grid-column: 1 / -1; min-width: 0; }
 .report-multi-aircraft .field-label { margin: 0 0 6px; }
@@ -105,6 +106,10 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .report-multi-aircraft-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .report-aircraft-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 6px; max-height: 240px; overflow-y: auto; }
 .report-aircraft-options label { display: flex; align-items: center; gap: 7px; padding: 8px; border: 1px solid #e1e9ed; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+.report-aircraft-options label[hidden] { display: none; }
+.report-technician-picker { flex: 1 1 220px; }
+.report-technician-picker .input-field { display: block; margin-bottom: 12px; }
+.report-technician-picker input[type="search"] { width: 100%; box-sizing: border-box; font-size: 16px; }
 .report-aircraft-options input { flex: none; width: 17px; height: 17px; accent-color: #168b79; }
 .report-help { clear: both; margin: 18px 0 0; color: #536b7b; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
 .report-output #report-period,.report-output #report-count { margin: 8px 0 0; line-height: 1.6; overflow-wrap: anywhere; }
@@ -132,7 +137,7 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .report-entry .secondary-button { min-height: 32px; padding: 5px 10px; }
 .report-entry-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .report-aircraft-group { grid-column: 1 / -1; margin: 12px 0 0; padding: 10px 14px; border-radius: 10px; background: #eaf4f8; color: #173b5d; font-size: 16px; }
-.report-technician-header { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
+.report-technician-header { grid-column: 1 / -1; display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
 .report-technician-header label { flex: 1 1 220px; min-width: 0; }
 .report-technician-header button { flex: 0 1 auto; min-height: 42px; }
 .report-confirm { width: min(92vw, 480px); padding: 24px; border: 1px solid #cbdde7; border-radius: 16px; color: #173b5d; box-shadow: 0 18px 50px #102c4560; }
