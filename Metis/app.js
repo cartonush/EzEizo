@@ -1,9 +1,10 @@
-import "../sheet-data.js?v=1.4.3";
-import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.4.3";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.4.3";
-import { resolveAssignees } from "./assignee-selection.js?v=1.4.3";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.4.3";
-import { initKeyPages } from "../keys/app.js?v=1.4.3";
+import "../sheet-data.js?v=1.4.4";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.4.4";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.4.4";
+import { resolveAssignees } from "./assignee-selection.js?v=1.4.4";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.4.4";
+import { initKeyPages } from "../keys/app.js?v=1.4.4";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.4.4";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -140,7 +141,7 @@ function choosePicker(key, value) {
   if (key === "shelter" && selections.shelter !== value) { selections.workshop = ""; draft.workshop = ""; }
   selections[key] = value;
   draft[key] = value;
-  if (changedAircraft) draft.ewSystem = "גרניט";
+  if (changedAircraft) { draft.ewSystem = "גרניט"; draft.constants = constantsForAircraft(selections.squadron, value); renderConstants(); }
   if (key === "systemName") draft.systemCode = SYSTEMS.find((system) => system.name === value).code;
   draft.location = locationForDraft();
   refreshPickers();
@@ -361,7 +362,7 @@ function showManagerView() {
   if (selected === "keys" && !keyPagesStarted) { keyPagesStarted = true; initKeyPages({ user: managerUser, embedded: true }); }
   if (selected !== "new") renderIssueLists();
 }
-document.querySelector("#manager-back").addEventListener("click", () => { location.hash = "management"; });
+document.querySelector("#manager-back").addEventListener("click", () => { if (location.hash === "#aircraft-constants" && closeConstantsEditor()) return; location.hash = "management"; });
 window.addEventListener("hashchange", showManagerView);
 document.querySelector("#new-draft").addEventListener("click", () => {
   draft = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
@@ -387,6 +388,7 @@ document.querySelector("#new-draft").addEventListener("click", () => {
 
 watchIssues((issues) => {
   cloudIssues = issues;
+  updateReportData({ issues });
   document.querySelector("#home-open-count").textContent = `${issues.filter((item) => item.status === "open").length} תקלות פתוחות`;
   document.querySelector("#home-review-count").textContent = `${issues.filter((item) => item.status === "pendingReview").length} ממתינות לסגירה · ${issues.filter((item) => item.status === "closed").length} סגורות`;
   renderIssueLists(); renderUsers();
@@ -487,7 +489,7 @@ function renderUsers() {
     (person.active ? list : removedList).append(card);
   });
 }
-watchTechnicians((items) => { technicians = items.sort((a, b) => a.name.localeCompare(b.name, "he")); updateUserSelectors(); renderUsers(); renderIssueLists(); }, (error) => {
+watchTechnicians((items) => { technicians = items.sort((a, b) => a.name.localeCompare(b.name, "he")); updateReportData({ users: technicians }); updateUserSelectors(); renderUsers(); renderIssueLists(); }, (error) => {
   setStatus("#user-status", `טעינת המשתמשים נכשלה: ${error.message}`, true);
 });
 const userForm = document.querySelector("#create-user-form");
@@ -512,6 +514,16 @@ if (legacy.length) {
   }
   if (imported === legacy.length) setStatus("#legacy-status", `${imported} תקלות מקומיות הועברו למסד המשותף.`);
 }
+initReports();
+let initialProfilesApplied = false;
+initAircraftConstants({ user: managerUser, onProfilesLoaded: () => {
+  if (!initialProfilesApplied && selections.squadron && selections.aircraft) {
+    draft.constants = constantsForAircraft(selections.squadron, selections.aircraft);
+    renderConstants();
+  }
+  initialProfilesApplied = true;
+} });
+watchKeyLoads((loads) => updateReportData({ loads }), (error) => { setStatus("#report-error", `טעינת הטענות נכשלה: ${error.message}`, true); });
 renderConstants();
 renderActions();
 renderIssueLists();

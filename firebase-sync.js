@@ -135,6 +135,18 @@ export function watchIssues(onChange, onError, technicianUid = null) {
   }, onError);
 }
 
+export function watchAircraftConstants(onChange, onError) {
+  return onSnapshot(collection(db, "aircraftConstants"), (snapshot) => {
+    onChange(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })));
+  }, onError);
+}
+
+export async function saveAircraftConstants(squadron, aircraft, constants, managerUid) {
+  await setDoc(doc(db, "aircraftConstants", `${squadron}_${aircraft}`), {
+    squadron, aircraft, constants, updatedAt: new Date().toISOString(), updatedBy: managerUid
+  });
+}
+
 export async function getIssue(id) {
   const snapshot = await getDoc(doc(db, "issues", id));
   return snapshot.exists() ? { id: snapshot.id, ...snapshot.data(), sheet: restoredSheet(snapshot.data().sheet) } : null;

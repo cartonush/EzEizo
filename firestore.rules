@@ -50,6 +50,20 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /aircraftConstants/{id} {
+      allow get, list: if isManager();
+      allow create, update: if isManager()
+        && request.resource.data.keys().hasOnly(['squadron', 'aircraft', 'constants', 'updatedAt', 'updatedBy'])
+        && request.resource.data.squadron in ['101', '105', '109', 'מנ״ט']
+        && request.resource.data.aircraft is string
+        && id == request.resource.data.squadron + '_' + request.resource.data.aircraft
+        && request.resource.data.constants is map
+        && request.resource.data.constants.keys().hasOnly(['HUD', 'CTVS', 'CAMERA', 'TFL', 'INS'])
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if false;
+    }
+
     match /keyLoads/{id} {
       allow get, list: if isManager() || (hasRole('technician') && request.auth.uid in resource.data.teamUids);
       allow create: if isManager()
