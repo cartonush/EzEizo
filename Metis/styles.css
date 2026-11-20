@@ -47,7 +47,7 @@
 .demo-note { margin: 15px 0 0; border-radius: 9px; padding: 10px 12px; color: #657986; background: #f2f6f8; font-size: 11px; line-height: 1.55; }
 @media (max-width: 620px) { .manager-grid { grid-template-columns: 1fr; } }
 main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-.manager-nav { position: fixed; z-index: 40; inset-inline: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 9px max(14px, calc((100vw - 880px) / 2)) calc(9px + env(safe-area-inset-bottom)); border-top: 1px solid #d5e2e9; background: #f9fcfd; box-shadow: 0 -6px 22px #102e4420; }
+.manager-nav { position: fixed; z-index: 40; inset-inline: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 9px max(14px, calc((100vw - 880px) / 2)) calc(9px + env(safe-area-inset-bottom)); border-top: 1px solid #d5e2e9; background: #f9fcfd; box-shadow: 0 -6px 22px #102e4420; }
 .manager-controls { display: flex; align-items: center; min-height: 40px; margin: 0 0 12px; }
 .manager-controls .auth-logout { margin: 0; margin-inline-start: auto; }
 .removed-users { margin-top: 18px; padding: 12px; border: 1px solid #dbe6ec; border-radius: 10px; }

@@ -1,0 +1,30 @@
+.keys-nav { display: flex; gap: 8px; margin-bottom: 16px; }
+.keys-nav button { flex: 1; min-height: 44px; border: 1px solid #c8dce7; border-radius: 10px; background: white; color: #17668f; font: inherit; font-weight: 700; cursor: pointer; }
+.keys-nav button[aria-current="page"] { color: white; background: #176b96; }
+.squad-tabs button { flex: 1; border: 1px solid #c8dce7; border-radius: 9px; background: white; padding: 9px; color: #17668f; font-weight: 700; }
+.squad-tabs button[aria-current="page"] { color: white; background: #176b96; }
+.keys-table { width: 100%; min-width: 570px; border-collapse: collapse; text-align: right; }
+.keys-table th,.keys-table td { padding: 9px; border: 1px solid #dbe6ec; }
+.keys-table th { background: #eaf3f8; }
+.keys-table input[type="text"], .keys-table input[type="search"], .keys-table select { min-width: 100px; width: 100%; padding: 8px; border: 1px solid #cbdce5; border-radius: 8px; font-size: 16px; }
+.keys-table input[type="checkbox"] { width: 22px; height: 22px; }
+.keys-table .remove-row { min-width: 30px; }
+.instruction-table { margin-top: 0; border-top: 0; }
+.instruction-table td,.instruction-table p { background: #f3f8fb; font-size: 13px; line-height: 1.6; }
+.key-task-list { padding-inline-start: 25px; }
+.key-task-list li { margin: 8px 0; border: 1px solid #dbe6ec; border-radius: 9px; padding: 11px; background: #f6f9fa; }
+.key-task-list label { display: flex; align-items: center; gap: 10px; }
+.key-task-list input[type="checkbox"] { flex: none; width: 20px; height: 20px; }
+.key-reference summary { cursor: pointer; color: #173b5d; font-size: 18px; }
+#extra-tables .card { margin-top: 16px; }
+#work-summary { line-height: 1.8; }
+#work-rows table { width: 100%; min-width: 520px; border-collapse: collapse; }
+#work-rows th,#work-rows td { border: 1px solid #dbe6ec; padding: 9px; }
+#work-rows th { background: #eaf3f8; }
+#reference-table table { width: 100%; min-width: 480px; border-collapse: collapse; }
+#reference-table td,#reference-table th { border: 1px solid #dbe6ec; padding: 8px; }
+#reference-table th { background: #eaf3f8; }
+#work-view[hidden],#history-view[hidden],#create-view[hidden],#open-view[hidden] { display: none; }
+@media (max-width: 620px) { .keys-nav button { font-size: 12px; } }
+
+.keys-entry { display: flex; margin-bottom: 16px; }

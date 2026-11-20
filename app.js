@@ -1,7 +1,7 @@
-import "./sheet-data.js?v=1.2.1";
-import { gate, revealApp, watchIssues, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.2.1";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.2.1";
-import { validateTreatment } from "./mechanic-validation.js?v=1.2.1";
+import "./sheet-data.js?v=1.3.0";
+import { gate, revealApp, watchIssues, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.3.0";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.3.0";
+import { validateTreatment } from "./mechanic-validation.js?v=1.3.0";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -17,6 +17,7 @@ const selectedSheet = Boolean(remoteIssue && (managerClosedView ? ["closed", "pe
 document.querySelector("#sheet-form").hidden = !selectedSheet;
 document.querySelector("#mechanic-back").hidden = !selectedSheet && !managerClosedView;
 document.querySelector(".queue-card").hidden = selectedSheet;
+document.querySelector(".keys-entry").hidden = selectedSheet;
 const ACTIONS = sheet.actions;
 const STORAGE_KEY = selectedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
 const actionList = document.querySelector("#action-list");

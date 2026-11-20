@@ -183,6 +183,41 @@ export function watchTechnicians(onChange, onError) {
   }, onError);
 }
 
+export function watchKeyLoads(onChange, onError, technicianUid = null) {
+  const source = technicianUid ? query(collection(db, "keyLoads"), where("teamUids", "array-contains", technicianUid)) : collection(db, "keyLoads");
+  return onSnapshot(source, (snapshot) => onChange(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), onError);
+}
+
+export function watchKeyHistory(onChange, onError) {
+  return onSnapshot(collection(db, "keyHistory"), (snapshot) => onChange(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), onError);
+}
+
+export async function createKeyLoad(load) {
+  const ref = doc(collection(db, "keyLoads"));
+  await setDoc(ref, { ...load, status: "open", createdAt: new Date().toISOString() });
+  return ref.id;
+}
+
+export async function closeKeyLoad(id, completedBy, work) {
+  const ref = doc(db, "keyLoads", id);
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(ref);
+    if (!current.exists() || current.data().status !== "open") throw new Error("ההטענה כבר נסגרה או אינה קיימת.");
+    const load = current.data();
+    if (!load.teamUids.includes(completedBy)) throw new Error("אינך משויך לצוות ההטענה.");
+    const historyRefs = load.rows.map((row) => doc(db, "keyHistory", `${load.squadron}_${row.aircraft}`));
+    const history = await Promise.all(historyRefs.map((entry) => transaction.get(entry)));
+    const completedAt = new Date().toISOString();
+    transaction.update(ref, { status: "closed", work, completedAt, completedBy });
+    historyRefs.forEach((entry, index) => {
+      const prior = history[index].data();
+      // A later completion must not be replaced by an older dated job.
+      if (prior?.completedAt && prior.completedAt > completedAt) return;
+      transaction.set(entry, { squadron: load.squadron, aircraft: load.rows[index].aircraft, date: load.date, period: load.period, completedAt, loadId: id });
+    });
+  });
+}
+
 export async function createTechnician(name, email, password) {
   const secondary = initializeApp(firebaseConfig, `provision-${crypto.randomUUID()}`);
   const provisioningAuth = getAuth(secondary);

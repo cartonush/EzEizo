@@ -50,6 +50,48 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /keyLoads/{id} {
+      allow get, list: if isManager() || (hasRole('technician') && request.auth.uid in resource.data.teamUids);
+      allow create: if isManager()
+        && request.resource.data.keys().hasOnly(['date', 'time', 'squadron', 'shelter', 'teamUids', 'teamNames', 'rows', 'aircraftIds', 'period', 'dispatcherSignature', 'status', 'createdAt'])
+        && request.resource.data.status == 'open'
+        && request.resource.data.teamUids is list
+        && request.resource.data.teamUids.size() >= 2
+        && request.resource.data.rows is list
+        && request.resource.data.rows.size() > 0
+        && request.resource.data.aircraftIds.size() == request.resource.data.rows.size()
+        && request.resource.data.dispatcherSignature is string
+        && request.resource.data.dispatcherSignature.size() > 100;
+      allow update: if hasRole('technician')
+        && resource.data.status == 'open'
+        && request.auth.uid in resource.data.teamUids
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'work', 'completedAt', 'completedBy'])
+        && request.resource.data.status == 'closed'
+        && request.resource.data.completedBy == request.auth.uid
+        && request.resource.data.completedAt is string
+        && request.resource.data.work.actions is list
+        && request.resource.data.work.actions.size() == 12
+        && request.resource.data.work.actions.hasOnly([true]);
+      allow delete: if false;
+    }
+
+    match /keyHistory/{id} {
+      allow get, list: if isManager() || hasRole('technician');
+      allow create, update: if hasRole('technician')
+        && request.resource.data.keys().hasOnly(['squadron', 'aircraft', 'date', 'period', 'completedAt', 'loadId'])
+        && id == request.resource.data.squadron + '_' + request.resource.data.aircraft
+        && request.resource.data.loadId is string
+        && existsAfter(/databases/$(database)/documents/keyLoads/$(request.resource.data.loadId))
+        && getAfter(/databases/$(database)/documents/keyLoads/$(request.resource.data.loadId)).data.status == 'closed'
+        && getAfter(/databases/$(database)/documents/keyLoads/$(request.resource.data.loadId)).data.completedBy == request.auth.uid
+        && getAfter(/databases/$(database)/documents/keyLoads/$(request.resource.data.loadId)).data.squadron == request.resource.data.squadron
+        && request.resource.data.aircraft in getAfter(/databases/$(database)/documents/keyLoads/$(request.resource.data.loadId)).data.aircraftIds
+        && getAfter(/databases/$(database)/documents/keyLoads/$(request.resource.data.loadId)).data.date == request.resource.data.date
+        && getAfter(/databases/$(database)/documents/keyLoads/$(request.resource.data.loadId)).data.period == request.resource.data.period
+        && getAfter(/databases/$(database)/documents/keyLoads/$(request.resource.data.loadId)).data.completedAt == request.resource.data.completedAt;
+      allow delete: if false;
+    }
+
     match /issues/{id} {
       allow get, list: if isManager() || (hasRole('technician') && resource.data.assigneeUid == request.auth.uid);
       allow create: if isManager()
