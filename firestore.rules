@@ -72,7 +72,7 @@ service cloud.firestore {
       allow update: if hasRole('technician')
         && resource.data.status == 'open'
         && resource.data.assigneeUid == request.auth.uid
-        && request.resource.data.status == 'closed'
+        && request.resource.data.status == 'pendingReview'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'closed'])
         && request.resource.data.closed.keys().hasOnly(['record', 'state'])
         && request.resource.data.closed.record.id == id
@@ -81,12 +81,24 @@ service cloud.firestore {
         && request.resource.data.closed.record.closedAt == request.resource.data.closed.state.closedAt
         && request.resource.data.closed.state.actions.size() == 12
         && request.resource.data.closed.state.actions.hasOnly([true])
+        && request.resource.data.closed.state.safetyTechnicianSignature is string
+        && request.resource.data.closed.state.safetyTechnicianSignature.size() > 100
+        && request.resource.data.closed.state.technicianDeclarationSignature is string
+        && request.resource.data.closed.state.technicianDeclarationSignature.size() > 100
         && request.resource.data.closed.state.arrivalTime is string
         && request.resource.data.closed.state.arrivalTime.matches('([01][0-9]|2[0-3]):[0-5][0-9]')
         && request.resource.data.closed.state.completionTime is string
         && request.resource.data.closed.state.completionTime.matches('([01][0-9]|2[0-3]):[0-5][0-9]');
       allow update: if isManager()
-        && resource.data.status == 'closed'
+        && resource.data.status == 'pendingReview'
+        && request.resource.data.status == 'closed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'reviewerSignature'])
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedAt is string
+        && request.resource.data.reviewerSignature is string
+        && request.resource.data.reviewerSignature.size() > 100;
+      allow update: if isManager()
+        && resource.data.status in ['closed', 'pendingReview']
         && request.resource.data.status == 'open'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reopenedAt', 'reopenedBy', 'reopenEvents'])
         && request.resource.data.reopenedBy == request.auth.uid

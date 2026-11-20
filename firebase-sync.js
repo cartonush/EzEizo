@@ -48,6 +48,7 @@ export function gate(role) {
   help.hidden = true;
   panel.append(help);
   function showSetup(user, reason) {
+    document.querySelector("#app-skeleton")?.remove();
     status.textContent = reason;
     status.dataset.state = "error";
     help.replaceChildren();
@@ -82,7 +83,7 @@ export function gate(role) {
   return new Promise((resolve) => {
     let active = false;
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { if (active) location.reload(); panel.hidden = false; help.hidden = true; status.textContent = "יש להתחבר כדי לראות תקלות."; delete status.dataset.state; return; }
+      if (!user) { if (active) location.reload(); document.querySelector("#app-skeleton")?.remove(); panel.hidden = false; help.hidden = true; status.textContent = "יש להתחבר כדי לראות תקלות."; delete status.dataset.state; return; }
       status.textContent = "ההזדהות הצליחה. בודק הרשאות Firestore…";
       delete status.dataset.state;
       try {
@@ -103,7 +104,7 @@ export function gate(role) {
         }
         if (active) return;
         active = true;
-        panel.remove(); main.hidden = false;
+        panel.remove();
         const logout = document.createElement("button");
         logout.type = "button"; logout.className = "secondary-button auth-logout"; logout.textContent = "התנתק";
         logout.addEventListener("click", () => signOut(auth));
@@ -118,8 +119,13 @@ export function gate(role) {
         panel.hidden = false;
         showSetup(user, error.code === "permission-denied" ? "הסיסמה נכונה, אבל כללי Firestore עדיין חוסמים את בדיקת ההרשאה." : error.message === "timeout" ? "ההזדהות הצליחה, אך בדיקת ההרשאה מתעכבת. בדוק חיבור אינטרנט או נסה שוב." : `לא ניתן לבדוק הרשאה: ${error.message}`);
       }
-    }, (error) => { panel.hidden = false; status.textContent = `שגיאת התחברות: ${error.message}`; });
+    }, (error) => { document.querySelector("#app-skeleton")?.remove(); panel.hidden = false; status.textContent = `שגיאת התחברות: ${error.message}`; });
   });
+}
+
+export function revealApp() {
+  document.querySelector("#app-skeleton")?.remove();
+  document.querySelector("main").hidden = false;
 }
 
 export function watchIssues(onChange, onError, technicianUid = null) {
@@ -209,13 +215,23 @@ export async function assignIssue(id, uid, name) {
   await updateDoc(doc(db, "issues", id), { assigneeUid: uid, assigneeName: name });
 }
 
-export async function closeIssue(id, record, state) {
+export async function submitForReview(id, record, state) {
   const issueRef = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {
     const current = await transaction.get(issueRef);
-    if (!current.exists() || current.data().status !== "open") throw new Error("התקלה כבר נסגרה או אינה קיימת. רענן את הדף.");
+    if (!current.exists() || current.data().status !== "open") throw new Error("התקלה כבר נשלחה לבדיקה או אינה קיימת. רענן את הדף.");
     if (current.data().sheet.serial !== record.serial) throw new Error("מספר התקלה אינו תואם.");
-    transaction.update(issueRef, { status: "closed", closed: { record, state } });
+    transaction.update(issueRef, { status: "pendingReview", closed: { record, state } });
+  });
+}
+
+export async function approveIssue(id, reviewerUid, signature) {
+  const issueRef = doc(db, "issues", id);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(issueRef);
+    if (!snapshot.exists() || snapshot.data().status !== "pendingReview") throw new Error("הדף אינו ממתין עוד לבדיקת בודק.");
+    if (!signature.startsWith("data:image/png;base64,")) throw new Error("יש לחתום על בדיקת הדף.");
+    transaction.update(issueRef, { status: "closed", reviewedAt: new Date().toISOString(), reviewedBy: reviewerUid, reviewerSignature: signature });
   });
 }
 
@@ -223,7 +239,7 @@ export async function reopenIssue(id, managerUid) {
   const issueRef = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(issueRef);
-    if (!snapshot.exists() || snapshot.data().status !== "closed") throw new Error("התקלה כבר פתוחה או אינה קיימת.");
+    if (!snapshot.exists() || !["closed", "pendingReview"].includes(snapshot.data().status)) throw new Error("התקלה כבר פתוחה או אינה קיימת.");
     const issue = snapshot.data();
     if (!issue.assigneeUid) throw new Error("לא הוגדר טכנאי לתקלה.");
     const reopenedAt = new Date().toISOString();

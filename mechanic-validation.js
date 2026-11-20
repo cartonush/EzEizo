@@ -3,6 +3,7 @@ export function validateTreatment(sheet, state, tables) {
   const filled = (value) => String(value ?? "").trim().length > 0;
 
   if (!filled(sheet.fault)) return missing("לא ניתן לסגור: המנהל חייב למלא תיאור תקלה.", "#fault-description");
+  if (!filled(state.safetyTechnicianSignature)) return missing("חובה לחתום על בדיקת בטיחות המטוס לפני שליחת הדף.", 'canvas[data-signature="safetyTechnicianSignature"]');
   if (!filled(state.repair)) return missing("לא ניתן לסגור: חובה למלא תיאור תיקון.", "#repair-description");
 
   for (let index = 0; index < sheet.actions.length; index++) {
@@ -85,6 +86,10 @@ export function validateTreatment(sheet, state, tables) {
     ]);
     if (error) return error;
   }
-  if (state.rejectedEnabled) return checkRows("rejected", "קשיחים שנפסלו");
+  if (state.rejectedEnabled) {
+    const error = checkRows("rejected", "קשיחים שנפסלו");
+    if (error) return error;
+  }
+  if (!filled(state.technicianDeclarationSignature)) return missing("חובה לחתום על הצהרת הטכנאי לפני שליחת הדף לבדיקת בודק.", 'canvas[data-signature="technicianDeclarationSignature"]');
   return null;
 }

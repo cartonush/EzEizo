@@ -1,6 +1,7 @@
-import "./sheet-data.js?v=1.1.9";
-import { gate, watchIssues, getIssue, closeIssue, reopenIssue } from "./firebase-sync.js?v=1.1.9";
-import { validateTreatment } from "./mechanic-validation.js?v=1.1.9";
+import "./sheet-data.js?v=1.1.10";
+import { gate, revealApp, watchIssues, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.1.10";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.1.10";
+import { validateTreatment } from "./mechanic-validation.js?v=1.1.10";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -12,7 +13,7 @@ if (selectedId) {
   catch (error) { const list = document.querySelector("#mechanic-issues"); list.textContent = `טעינת התקלה נכשלה: ${error.message}`; list.dataset.state = "error"; }
 }
 const sheet = EzEizoData.normalizeSheet(remoteIssue?.sheet || EzEizoData.defaultSheet);
-const selectedSheet = Boolean(remoteIssue && (managerClosedView ? remoteIssue.status === "closed" : remoteIssue.assigneeUid === currentUser.uid));
+const selectedSheet = Boolean(remoteIssue && (managerClosedView ? ["closed", "pendingReview"].includes(remoteIssue.status) : remoteIssue.assigneeUid === currentUser.uid));
 document.querySelector("#sheet-form").hidden = !selectedSheet;
 document.querySelector("#mechanic-back").hidden = !selectedSheet && !managerClosedView;
 document.querySelector(".queue-card").hidden = selectedSheet;
@@ -57,11 +58,12 @@ const defaultState = {
   takenEnabled: false, taken: [], rejectedEnabled: false, rejected: [],
   entryInspectorNumber: "", interimInspectorNumber: "", interimToolsName: "", finalInspectorNumber: "", finalLeadName: "", departureTime: "",
   takenFullName: "", takenPersonalNumber: "", takenRank: "",
+  safetyTechnicianSignature: "", technicianDeclarationSignature: "",
   entryTechnicianSignature: "", entryInspectorSignature: "", interimTechnicianSignature: "", interimInspectorSignature: "", interimToolsSignature: "",
   finalTechnicianSignature: "", finalInspectorSignature: "", finalLeadSignature: "", takenSignature: ""
 };
 let state = loadState();
-if (remoteIssue?.status === "closed" && remoteIssue.closed?.state) {
+if (["closed", "pendingReview"].includes(remoteIssue?.status) && remoteIssue.closed?.state) {
   state = { ...defaultState, ...remoteIssue.closed.state };
 } else if (remoteIssue?.status === "open" && remoteIssue.reopenedAt && state.reopenMarker !== remoteIssue.reopenedAt) {
   state = { ...defaultState, ...remoteIssue.closed.state, closedAt: "", reopenMarker: remoteIssue.reopenedAt };
@@ -94,11 +96,12 @@ function saveState() {
 function renderSheetDetails() {
   const times = document.querySelector("#closed-times");
   if (times) {
-    times.hidden = remoteIssue?.status !== "closed";
+    times.hidden = !["closed", "pendingReview"].includes(remoteIssue?.status);
     if (!times.hidden) {
       const format = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
       document.querySelector("#opened-at").textContent = format(remoteIssue.createdAt);
-      document.querySelector("#closed-at").textContent = format(remoteIssue.closed?.state?.closedAt);
+      document.querySelector("#closed-at").textContent = format(remoteIssue.reviewedAt || remoteIssue.closed?.state?.closedAt);
+      document.querySelector("#closed-at").previousElementSibling.textContent = remoteIssue.status === "pendingReview" ? "שעת הגשת הטכנאי" : "שעת סגירה";
     }
   }
   document.querySelector("#workshop-detail").hidden = !sheet.workshop;
@@ -106,6 +109,8 @@ function renderSheetDetails() {
     element.textContent = sheet[element.dataset.sheetField] || "—";
   });
   document.querySelector("#fault-description").value = sheet.fault;
+  document.querySelector("#dispatch-briefing").hidden = !sheet.dispatcherSignature;
+  if (sheet.dispatcherSignature) document.querySelector("#dispatcher-signature-display").src = sheet.dispatcherSignature;
   const grid = document.querySelector("#constants-grid");
   grid.replaceChildren();
   Object.entries(sheet.constants).forEach(([groupName, entries]) => {
@@ -270,16 +275,19 @@ function showClosed() {
   if (!selectedSheet) return;
   document.querySelector("#sheet-form").classList.add("is-closed");
   document.querySelector("#sheet-form").querySelectorAll("input, textarea, select, button").forEach((element) => {
+    if (element.closest("#review-panel")) return;
     element.disabled = true;
   });
   document.querySelectorAll("canvas[data-signature]").forEach((canvas) => { canvas.style.pointerEvents = "none"; });
   document.querySelector("#close-sheet").hidden = true;
   const message = document.querySelector("#close-message");
   delete message.dataset.state;
-  message.textContent = `הדף נסגר ב־${new Date(state.closedAt).toLocaleString("he-IL")}. ${managerClosedView ? "המנהל יכול להחזיר אותו לטכנאי לעריכה." : "אי אפשר לערוך אותו."}`;
+  message.textContent = remoteIssue?.status === "closed" ? `הדף נסגר ב־${new Date(remoteIssue.reviewedAt || state.closedAt).toLocaleString("he-IL")}. ${managerClosedView ? "המנהל יכול להחזיר אותו לטכנאי לעריכה." : "אי אפשר לערוך אותו."}` : "הדף הועבר לבדיקת בודק הדף וממתין לחתימתו.";
 }
 
 if (managerClosedView && selectedSheet) {
+  document.querySelector(".brand-copy h1").textContent = remoteIssue.status === "pendingReview" ? "Metis · תקלה לסגירה" : "Metis · דף תקלה סגורה";
+  document.querySelector("#mechanic-back").href = remoteIssue.status === "pendingReview" ? "./#pending" : "./#closed";
   const panel = document.querySelector("#manager-edit-panel");
   panel.hidden = false;
   const history = document.querySelector("#manager-edit-history");
@@ -297,10 +305,32 @@ if (managerClosedView && selectedSheet) {
     try { await reopenIssue(sheet.id, currentUser.uid); location.replace("./#open"); }
     catch (error) { document.querySelector("#manager-edit-status").textContent = `ההחזרה נכשלה: ${error.message}`; button.disabled = false; }
   });
+  const reviewPanel = document.querySelector("#review-panel");
+  reviewPanel.hidden = remoteIssue.status !== "pendingReview" && !remoteIssue.reviewerSignature;
+  if (!reviewPanel.hidden) {
+    const isPending = remoteIssue.status === "pendingReview";
+    const canvas = document.querySelector("#reviewer-signature");
+    let signature = "";
+    const clear = attachSignaturePad(canvas, {
+      initial: isPending ? "" : remoteIssue.reviewerSignature || "",
+      onChange: (value) => { signature = value; }
+    });
+    canvas.style.pointerEvents = isPending ? "auto" : "none";
+    document.querySelector("#clear-reviewer-signature").hidden = !isPending;
+    document.querySelector("#approve-sheet").hidden = !isPending;
+    document.querySelector("#clear-reviewer-signature").addEventListener("click", clear);
+    document.querySelector("#approve-sheet").addEventListener("click", async (event) => {
+      if (!signature) { document.querySelector("#review-status").textContent = "יש לחתום כבודק הדף לפני הסגירה."; return; }
+      const button = event.currentTarget; button.disabled = true;
+      try { await approveIssue(sheet.id, currentUser.uid, signature); location.replace("./#closed"); }
+      catch (error) { document.querySelector("#review-status").textContent = `הסגירה נכשלה: ${error.message}`; button.disabled = false; }
+    });
+  }
 }
 
-document.querySelector("#close-sheet").addEventListener("click", async () => {
+async function submitTreatment() {
   if (managerClosedView) return;
+  if (document.querySelector("#close-sheet").disabled) return;
   const validation = validateTreatment(sheet, state, TABLES);
   if (validation) {
     const message = document.querySelector("#close-message");
@@ -317,7 +347,7 @@ document.querySelector("#close-sheet").addEventListener("click", async () => {
   const closingState = { ...state, closedAt };
   const record = { ...closureRecord(), closedAt, actionsComplete: true };
   try {
-    await closeIssue(sheet.id, record, closingState);
+    await submitForReview(sheet.id, record, closingState);
     state.closedAt = closedAt;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     showClosed();
@@ -328,7 +358,8 @@ document.querySelector("#close-sheet").addEventListener("click", async () => {
     message.dataset.state = "error";
     button.disabled = false;
   }
-});
+}
+document.querySelector("#close-sheet").addEventListener("click", submitTreatment);
 
 watchIssues((issues) => {
   cloudIssues = issues;
@@ -338,7 +369,7 @@ watchIssues((issues) => {
     location.reload();
     return;
   }
-  if (current?.status === "closed" && !state.closedAt) {
+  if (["closed", "pendingReview"].includes(current?.status) && !state.closedAt) {
     state = { ...defaultState, ...current.closed.state };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     location.reload();
@@ -493,6 +524,7 @@ function setupSignaturePads(root = document) {
       drawing = false;
       state[key] = canvas.toDataURL("image/png");
       saveState();
+      if (key === "technicianDeclarationSignature" && !managerClosedView) submitTreatment();
     };
     canvas.addEventListener("pointerup", finish);
     canvas.addEventListener("pointercancel", finish);
@@ -533,6 +565,7 @@ renderActions();
 Object.keys(TABLES).forEach((table) => renderRows(table));
 bindToggleInputs();
 bindStateFields();
+revealApp();
 setupSignaturePads();
 
 renderIssueList();

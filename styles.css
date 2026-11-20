@@ -191,5 +191,18 @@ td input:focus { border-color: #5da8c5; }
 .closed-times > div { display: grid; gap: 5px; padding: 12px; border: 1px solid #d7e5ec; border-radius: 11px; background: #fff; }
 .closed-times span { color: #617a89; font-size: 12px; }
 .closed-times strong { color: #173b5d; font-size: 14px; }
+.app-skeleton { padding: 18px; max-width: 900px; margin: auto; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.skeleton-nav { display: flex; gap: 9px; margin-bottom: 18px; }
+.skeleton-nav span { flex: 1; height: 48px; border-radius: 12px; }
+.skeleton-card { display: grid; gap: 15px; padding: 24px; margin-bottom: 16px; border-radius: 20px; background: #fff; }
+.skeleton-card span, .skeleton-nav span { display: block; background: linear-gradient(110deg, #e8f0f4 8%, #f7fafb 20%, #e8f0f4 34%); background-size: 220% 100%; animation: skeleton-shimmer 1.4s linear infinite; }
+.skeleton-title { width: 43%; height: 27px; border-radius: 8px; }
+.skeleton-line { width: 100%; height: 14px; border-radius: 8px; }
+.skeleton-line.short { width: 65%; }
+.skeleton-input { width: 100%; height: 48px; border-radius: 10px; }
+@keyframes skeleton-shimmer { to { background-position-x: -220%; } }
+@media (prefers-reduced-motion: reduce) { .skeleton-card span, .skeleton-nav span { animation: none; } }
+.safety-card .signature-field, .close-card .signature-field, .review-card .signature-field { margin: 15px 0; max-width: 560px; }
 [data-state="error"] { color: #a80018 !important; background: #fff0f1; border: 2px solid #ff243e; border-radius: 10px; padding: 10px 12px; font-weight: 700; line-height: 1.6; }
 .closed-signature { max-width: 280px; width: 100%; background: #fff; border: 1px solid #d5e3e9; border-radius: 8px; }

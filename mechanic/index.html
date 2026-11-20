@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.1.9">
+  <link rel="stylesheet" href="../styles.css?v=1.1.10">
 </head>
 <body>
   <div class="app-shell">
@@ -22,10 +22,16 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.1.9</span>
+      <span class="version-pill">v1.1.10</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
     </header>
 
+    <div id="app-skeleton" class="app-skeleton" role="status" aria-live="polite" aria-label="הדף נטען">
+      <span class="sr-only">הדף נטען…</span>
+      <div class="skeleton-nav"><span></span><span></span><span></span><span></span></div>
+      <div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-line short"></span><span class="skeleton-input"></span></div>
+      <div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-input"></span><span class="skeleton-input"></span></div>
+    </div>
     <main hidden>
       <a id="mechanic-back" class="back-to-queue" href="./" hidden>→ חזרה לרשימת התקלות</a>
       <section class="card queue-card" aria-labelledby="queue-title">
@@ -53,6 +59,17 @@
           <div class="detail-item"><span>שם מערכת</span><strong data-sheet-field="systemName">מכם</strong></div>
           <div class="detail-item wide"><span>חליפת ל״א</span><strong data-sheet-field="ewSystem">גרניט</strong></div>
         </div>
+      </section>
+
+      <section id="dispatch-briefing" class="card" hidden>
+        <div class="section-heading"><div><p class="section-kicker">לפני שליחת המשימה</p><h2>תדריך בטיחות וניהול סיכונים</h2></div></div>
+        <p>יועבר ע"י מ"ע התקלה / משלח המשימה וייחתם על ידו.</p>
+        <div class="signature-field"><span class="field-label">חתימת משלח המשימה</span><img id="dispatcher-signature-display" class="closed-signature" alt="חתימת משלח המשימה"></div>
+      </section>
+      <section class="card safety-card" aria-labelledby="safety-title">
+        <div class="section-heading"><div><p class="section-kicker">לפני תחילת העבודה</p><h2 id="safety-title">בדיקת בטיחות המטוס</h2></div></div>
+        <p>בדיקת המטוס בטוח לאחזקה טרם התהליך: אין קסטות מוץ / נורים וכפט"ים מורכבים על המטוס.</p>
+        <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="safetyTechnicianSignature" aria-label="חתימת הטכנאי על בדיקת בטיחות המטוס"></canvas><button type="button" class="clear-signature" data-clear-signature="safetyTechnicianSignature">נקה חתימה</button></div>
       </section>
 
       <section class="card descriptions-card" aria-labelledby="description-title">
@@ -220,14 +237,19 @@
       </section>
 
       <section class="card close-card" aria-labelledby="close-title">
-        <div class="section-heading"><div><p class="section-kicker">סיום עבודה</p><h2 id="close-title">שמירה וסגירה</h2></div></div>
-        <p id="close-message" class="section-note" role="status" aria-live="polite">לסגירה נדרשים תיאור תקלה ותיקון, סימון כל הפעולות ומילוי מלא של כל חלק שנבחר.</p>
-        <button id="close-sheet" type="button" class="primary-button">שמירה וסגירה</button>
+        <div class="section-heading"><div><p class="section-kicker">סיום עבודה</p><h2 id="close-title">הצהרת הטכנאי</h2></div></div>
+        <p>הנני מאשר שכל הפרטים הרשומים שלמים נכונים ומדוייקים.</p>
+        <p>הנני מאשר שעדכנתי במערכות ממוכנות / בספר המטוס את מספרי המשכירים בפורקו והורכבו.</p>
+        <p>הני מאשר שהעברתי את המכשירים התקולים בצרוף תגי בר תיקון ממולאים בצורה מושלמת.</p>
+        <p>הדף הוא בלשון זכר אך מתייחס לשני המינים.</p>
+        <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="technicianDeclarationSignature" aria-label="חתימת הטכנאי על הצהרת סיום"></canvas><button type="button" class="clear-signature" data-clear-signature="technicianDeclarationSignature">נקה חתימה</button></div>
+        <p id="close-message" class="section-note" role="status" aria-live="polite">לאחר חתימת הטכנאי ובדיקת כל שדות החובה, הדף יועבר לבדיקת בודק הדף.</p>
+        <button id="close-sheet" type="button" class="primary-button">העבר לבדיקת בודק הדף</button>
       </section>
       <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span>טיוטה נשמרת במכשיר; הסגירה נשלחת למסד המשותף</span></footer>
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.1.9"></script>
+  <script type="module" src="../app.js?v=1.1.10"></script>
 </body>
 </html>

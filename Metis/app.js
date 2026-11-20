@@ -1,7 +1,8 @@
-import "../sheet-data.js?v=1.1.9";
-import { gate, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.1.9";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.1.9";
-import { resolveAssignees } from "./assignee-selection.js?v=1.1.9";
+import "../sheet-data.js?v=1.1.10";
+import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.1.10";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.1.10";
+import { resolveAssignees } from "./assignee-selection.js?v=1.1.10";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.1.10";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -236,6 +237,7 @@ document.querySelector("#create-link").addEventListener("click", async () => {
   const button = document.querySelector("#create-link");
   const acknowledgment = document.querySelector("#creation-ack");
   if (!acknowledgment.checked) { setStatus("#created-status", "יש לאשר את בדיקת פרטי התקלה לפני פתיחתה.", true); acknowledgment.focus(); return; }
+  if (!draft.dispatcherSignature) { setStatus("#created-status", "חובה להחתים את משלח המשימה על תדריך הבטיחות וניהול הסיכונים.", true); document.querySelector("#dispatcher-signature").scrollIntoView({ block: "center" }); return; }
   const catalogError = validateCatalogSelection(selections, draft);
   if (catalogError) { setStatus("#created-status", catalogError.message, true); (pickers[catalogError.field]?.input || document.querySelector("#ew-system-select")).focus(); return; }
   const { assignees, error: assigneeError } = resolveAssignees(selectedAssigneeUids(), technicians);
@@ -252,26 +254,28 @@ document.querySelector("#create-link").addEventListener("click", async () => {
   try {
     sheet.serial = await createAssignedIssues(sheet, assignees);
     acknowledgment.checked = false;
+    draft.dispatcherSignature = "";
+    clearDispatcherSignature();
     setStatus("#created-status", `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. לכל טכנאי דף מילוי משלו.`);
     window.location.hash = "open";
   } catch (error) { setStatus("#created-status", `פתיחת התקלה נכשלה: ${error.message}`, true); }
   finally { button.disabled = false; }
 });
 
-function addIssueCard(container, item, isClosed) {
+function addIssueCard(container, item, mode) {
   const card = document.createElement("div");
   card.className = "issue-item";
   const title = document.createElement("strong");
   title.textContent = `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
   const subtitle = document.createElement("span");
   const fullIssue = cloudIssues.find((issue) => issue.id === item.id);
-  subtitle.textContent = `${item.fault || "ללא תיאור"} · ${isClosed ? "סגורה" : "פתוחה"} · ${fullIssue?.assigneeName || "לא שובצה"}`;
+  subtitle.textContent = `${item.fault || "ללא תיאור"} · ${mode === "closed" ? "סגורה" : mode === "pendingReview" ? "ממתינה לבודק הדף" : "פתוחה"} · ${fullIssue?.assigneeName || "לא שובצה"}`;
   card.append(title, subtitle);
-  if (isClosed) {
+  if (mode !== "open") {
     const view = document.createElement("a");
     view.className = "secondary-button";
     view.href = `./closed.html?id=${encodeURIComponent(item.id)}`;
-    view.textContent = "פתח דף סגור";
+    view.textContent = mode === "pendingReview" ? "בדוק וחתום" : "פתח דף סגור";
     card.append(view);
   } else {
     const assignLabel = document.createElement("label");
@@ -304,28 +308,36 @@ function addIssueCard(container, item, isClosed) {
 function renderIssueLists() {
   const opened = document.querySelector("#issued-list");
   const closed = document.querySelector("#closed-list");
+  const pending = document.querySelector("#pending-list");
   opened.replaceChildren();
   closed.replaceChildren();
+  pending.replaceChildren();
   delete opened.dataset.state;
   delete closed.dataset.state;
   const filter = document.querySelector("#closed-filter").value;
   const allClosed = cloudIssues.filter((item) => item.status === "closed" && item.closed?.record && (!filter || item.assigneeUid === filter)).map((item) => item.closed.record);
+  const awaiting = cloudIssues.filter((item) => item.status === "pendingReview" && item.closed?.record).map((item) => item.closed.record);
   const active = cloudIssues.filter((item) => item.status === "open").map((item) => item.sheet);
-  active.forEach((item) => addIssueCard(opened, item, false));
-  allClosed.forEach((item) => addIssueCard(closed, item, true));
+  active.forEach((item) => addIssueCard(opened, item, "open"));
+  awaiting.forEach((item) => addIssueCard(pending, item, "pendingReview"));
+  allClosed.forEach((item) => addIssueCard(closed, item, "closed"));
   if (!active.length) opened.textContent = "אין תקלות פתוחות.";
+  if (!awaiting.length) pending.textContent = "אין תקלות הממתינות לסגירה.";
   if (!allClosed.length) closed.textContent = "אין תקלות סגורות.";
 }
 
 function showManagerView() {
   const requested = window.location.hash.slice(1);
-  const selected = ["new", "open", "closed", "users"].includes(requested) ? requested : "new";
+  const selected = ["new", "open", "pending", "closed", "users"].includes(requested) ? requested : "new";
   document.querySelector("#manager-back").hidden = true;
-  document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== selected; });
+  document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== (selected === "pending" ? "closed" : selected); });
+  document.querySelector("#pending-section").hidden = selected !== "pending";
+  document.querySelector("#closed-section").hidden = selected === "pending";
   document.querySelectorAll("[data-view-link]").forEach((link) => {
-    if (link.dataset.viewLink === selected) link.setAttribute("aria-current", "page");
+    if (link.dataset.viewLink === (selected === "pending" ? "closed" : selected)) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
+  document.querySelectorAll("[data-review-link]").forEach((link) => { if (link.dataset.reviewLink === selected) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current"); });
   if (selected !== "new") renderIssueLists();
 }
 window.addEventListener("hashchange", showManagerView);
@@ -337,6 +349,8 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   draft.ewSystem = "";
   draft.location = "";
   draft.technicians = "";
+  draft.dispatcherSignature = "";
+  clearDispatcherSignature();
   document.querySelectorAll("[data-sheet-field]").forEach((input) => { input.value = draft[input.dataset.sheetField] || ""; });
   refreshPickers();
   renderAssigneeSelectors(["", ""]);
@@ -411,7 +425,7 @@ function renderUsers() {
     const assigned = cloudIssues.filter((issue) => issue.assigneeUid === person.uid);
     const closed = assigned.filter((issue) => issue.status === "closed");
     const history = document.createElement("p");
-    history.textContent = `תקלות פתוחות: ${assigned.length - closed.length} · תקלות סגורות: ${closed.length} · מספרים סידוריים: ${closed.map((issue) => issue.sheet.serial).join(", ") || "אין"}`;
+    history.textContent = `תקלות פתוחות: ${assigned.filter((issue) => issue.status === "open").length} · לסגירה: ${assigned.filter((issue) => issue.status === "pendingReview").length} · סגורות: ${closed.length} · מספרים סידוריים: ${closed.map((issue) => issue.sheet.serial).join(", ") || "אין"}`;
     const view = document.createElement("button"); view.type = "button"; view.className = "secondary-button"; view.textContent = "הצג דפים סגורים";
     view.addEventListener("click", () => { document.querySelector("#closed-filter").value = person.uid; location.hash = "closed"; renderIssueLists(); });
     const action = document.createElement("button"); action.type = "button"; action.className = "secondary-button";
@@ -475,6 +489,12 @@ renderConstants();
 renderActions();
 renderIssueLists();
 showManagerView();
+revealApp();
+const clearDispatcherSignature = attachSignaturePad(document.querySelector("#dispatcher-signature"), {
+  initial: draft.dispatcherSignature,
+  onChange: (value) => { draft.dispatcherSignature = value; saveDraft(); }
+});
+document.querySelector("#clear-dispatcher-signature").addEventListener("click", clearDispatcherSignature);
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
 }

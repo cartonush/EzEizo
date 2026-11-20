@@ -55,6 +55,9 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .removed-users .issue-list { margin-top: 12px; }
 .danger-button { margin-inline-start: 8px; color: #b3152b; border-color: #e8b5bd; background: #fff3f4; }
 .manager-controls .back-to-queue { margin: 0; }
+.review-tabs { display: flex; gap: 10px; margin-bottom: 14px; }
+.review-tabs a { flex: 1; padding: 12px; border: 1px solid #c8dce7; border-radius: 10px; background: #fff; color: #17668f; font-weight: 700; text-align: center; text-decoration: none; }
+.review-tabs a[aria-current="page"] { color: #fff; background: #176b96; }
 #manager-edit-history details { margin-top: 9px; padding: 10px; border: 1px solid #dbe6ec; border-radius: 9px; overflow-wrap: anywhere; }
 #manager-edit-history summary { cursor: pointer; font-weight: 700; }
 .manager-nav-link { display: grid; place-items: center; min-height: 54px; padding: 7px 5px; border: 1px solid #cbdce5; border-radius: 12px; background: #fff; color: #355b70; font-size: 12px; font-weight: 700; text-align: center; line-height: 1.25; text-decoration: none; }
