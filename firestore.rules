@@ -72,6 +72,18 @@ service cloud.firestore {
         && request.resource.data.work.actions is list
         && request.resource.data.work.actions.size() == 12
         && request.resource.data.work.actions.hasOnly([true]);
+      allow update: if isManager()
+        && resource.data.status == 'closed'
+        && request.resource.data.status == 'open'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reopenedAt', 'reopenedBy', 'reopenEvents'])
+        && request.resource.data.reopenedBy == request.auth.uid
+        && request.resource.data.reopenedAt is string
+        && request.resource.data.reopenEvents is list
+        && request.resource.data.reopenEvents.size() == resource.data.get('reopenEvents', []).size() + 1
+        && request.resource.data.reopenEvents.hasAll(resource.data.get('reopenEvents', []))
+        && request.resource.data.reopenEvents[request.resource.data.reopenEvents.size() - 1].by == request.auth.uid
+        && request.resource.data.reopenEvents[request.resource.data.reopenEvents.size() - 1].at == request.resource.data.reopenedAt
+        && request.resource.data.reopenEvents[request.resource.data.reopenEvents.size() - 1].priorCompletedAt == resource.data.completedAt;
       allow delete: if false;
     }
 

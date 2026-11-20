@@ -24,8 +24,10 @@
 #reference-table table { width: 100%; min-width: 480px; border-collapse: collapse; }
 #reference-table td,#reference-table th { border: 1px solid #dbe6ec; padding: 8px; }
 #reference-table th { background: #eaf3f8; }
-#work-view[hidden],#history-view[hidden],#create-view[hidden],#open-view[hidden] { display: none; }
-@media (max-width: 620px) { .keys-nav button { font-size: 12px; } }
+#work-view[hidden],#history-view[hidden],#create-view[hidden],#open-view[hidden],#closed-view[hidden] { display: none; }
+@media (max-width: 620px) { .keys-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .keys-nav button { font-size: 12px; } }
+.key-reopen-history { margin-top: 14px; padding: 10px; border: 1px solid #dbe6ec; border-radius: 10px; }
+.key-reopen-history summary { cursor: pointer; font-weight: 700; color: #355b70; }
 
 /* The key loading grid must fit the phone; only the two checks are narrow. */
 .key-load-table-wrap { overflow: visible; }

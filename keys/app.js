@@ -1,7 +1,7 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.9";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.9";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.9";
-import { attachTimeNow } from "../time-now.js?v=1.3.9";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad } from "../firebase-sync.js?v=1.3.10";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.10";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.10";
+import { attachTimeNow } from "../time-now.js?v=1.3.10";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -148,13 +148,28 @@ function renderOpen() {
     open.addEventListener("click", () => { location.hash = route(`work/${load.id}`); if (!embedded) showView(); }); card.append(open); container.append(card);
   });
 }
+function renderClosed() {
+  const container = $("#closed-key-loads"); container.replaceChildren();
+  const list = loads.filter((load) => load.status === "closed");
+  if (!list.length) { container.textContent = "אין הטענות סגורות כרגע."; return; }
+  list.sort((a, b) => (b.completedAt || "").localeCompare(a.completedAt || "")).forEach((load) => {
+    const card = make("div", undefined, "issue-item");
+    card.append(make("strong", `טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`),
+      make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`),
+      make("span", `נסגר: ${load.completedAt ? new Date(load.completedAt).toLocaleString("he-IL") : "—"}`));
+    const open = make("button", "צפה בטופס הסגור", "secondary-button"); open.type = "button";
+    open.addEventListener("click", () => { location.hash = route(`work/${load.id}`); if (!embedded) showView(); });
+    card.append(open); container.append(card);
+  });
+}
 function defaultWork(load) {
   return { actions: [true, ...Array(KEY_TASKS.length - 1).fill(false)], aircraft: load.rows.map((row) => ({ aircraft: row.aircraft, blueDone: false, shachDone: false })), toolsEnabled: false, takenEnabled: false, rejectedEnabled: false, entryEnabled: false, interimEnabled: false, finalEnabled: false, tools: [], taken: [], rejected: [] };
 }
 function readWork(load) {
-  if (load.status === "closed") return { ...defaultWork(load), ...load.work };
-  try { return { ...defaultWork(load), ...JSON.parse(localStorage.getItem(`ezeizo-key-work:${load.id}`) || "{}") }; }
-  catch { return defaultWork(load); }
+  const saved = { ...defaultWork(load), ...(load.work || {}) };
+  if (load.status === "closed") return saved;
+  try { return { ...saved, ...JSON.parse(localStorage.getItem(`ezeizo-key-work:${load.id}`) || "{}") }; }
+  catch { return saved; }
 }
 function renderWork() {
   if (!activeLoad) return;
@@ -192,6 +207,11 @@ function renderWork() {
   $("#reference-table").replaceChildren(reference);
   bindExtraTables(closed);
   $("#complete-key-load").hidden = closed;
+  $("#reopen-key-load").hidden = !manager || load.status !== "closed";
+  setMessage("#reopen-key-status", "");
+  const events = load.reopenEvents || [];
+  $("#key-reopen-history").hidden = !events.length;
+  $("#key-reopen-events").replaceChildren(...events.map((event) => make("li", `${new Date(event.at).toLocaleString("he-IL")} · הוחזר לעריכה לאחר סגירה ב־${new Date(event.priorCompletedAt).toLocaleString("he-IL")}`)));
   setMessage("#work-status", load.status === "closed" ? "ההטענה נסגרה וההיסטוריה עודכנה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול לסגור את ההטענה." : "ההתקדמות נשמרת במכשיר עד לסגירת הטופס.");
 }
 const signatures = new Map();
@@ -203,8 +223,8 @@ function initializeSignatures(root) {
     const clear = attachSignaturePad(canvas, { initial: work[key] || "", onChange: (value) => { work[key] = value; saveWork(); } });
     signatures.set(canvas, clear);
     const button = root.querySelector(`[data-clear-signature="${key}"]`);
-    if (button) { button.onclick = clear; button.disabled = activeLoad.status === "closed"; }
-    if (activeLoad.status === "closed") canvas.style.pointerEvents = "none";
+    if (button) { button.onclick = clear; button.disabled = manager || activeLoad.status === "closed"; }
+    canvas.style.pointerEvents = manager || activeLoad.status === "closed" ? "none" : "auto";
   });
 }
 function renderExtraRows(type, closed) {
@@ -269,6 +289,18 @@ $("#complete-key-load").addEventListener("click", async () => {
   catch (failure) { setMessage("#work-status", `סגירת ההטענה נכשלה: ${failure.message}`, true); }
   finally { button.disabled = false; }
 });
+$("#reopen-key-load").addEventListener("click", async () => {
+  if (!manager || activeLoad?.status !== "closed") return;
+  const button = $("#reopen-key-load"); button.disabled = true;
+  setMessage("#reopen-key-status", "מחזיר את ההטענה לצוות…");
+  try {
+    await reopenKeyLoad(activeLoad.id, user.uid);
+    location.hash = route("open");
+  } catch (error) {
+    const reason = error.code === "permission-denied" ? "יש לפרסם את כללי Firestore המעודכנים כדי לאפשר למנהל להחזיר הטענה לעריכה." : error.message;
+    setMessage("#reopen-key-status", `החזרת ההטענה נכשלה: ${reason}`, true);
+  } finally { button.disabled = false; }
+});
 function showView() {
   const rawHash = decodeURIComponent(location.hash.slice(1));
   if (embedded && !rawHash.startsWith("keys")) return;
@@ -278,17 +310,18 @@ function showView() {
   activeLoad = workId ? loads.find((item) => item.id === workId) : null;
   if (activeLoad && !manager && !activeLoad.teamUids.includes(user.uid)) activeLoad = null;
   if (!manager && loadsReady && !activeLoad) { location.replace("./"); return; }
-  const view = activeLoad ? "work" : manager && ["history", "create", "open"].includes(hash) ? hash : "open";
-  ["history", "create", "open", "work"].forEach((name) => { $(`#${name}-view`).hidden = name !== view; });
+  const view = activeLoad ? "work" : manager && ["history", "create", "open", "closed"].includes(hash) ? hash : "open";
+  ["history", "create", "open", "closed", "work"].forEach((name) => { $(`#${name}-view`).hidden = name !== view; });
   if (manager && !embedded) $("#keys-manager-nav").hidden = false;
   $("#keys-nav").hidden = !manager || view === "work";
   $(backSelector).hidden = manager && view !== "work";
-  $(backSelector).href = manager ? view === "work" ? `#${route("open")}` : embedded ? "#home" : "../Metis/#home" : "./";
-  $(backSelector).textContent = view === "work" ? "→ חזרה להטענות" : "→ חזרה";
+  $(backSelector).href = manager ? view === "work" ? `#${route(activeLoad?.status === "closed" ? "closed" : "open")}` : embedded ? "#home" : "../Metis/#home" : "./";
+  $(backSelector).textContent = view === "work" ? `→ חזרה להטענות ${activeLoad?.status === "closed" ? "סגורות" : "פתוחות"}` : "→ חזרה";
   $("#keys-nav").querySelectorAll("button").forEach((button) => { if (button.dataset.view === view) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
   if (view === "history") renderHistory();
   if (view === "create" && !dispatchPadReady) { clearDispatch = attachSignaturePad($("#key-dispatch-signature"), { onChange: (value) => { dispatchSignature = value; } }); dispatchPadReady = true; }
   if (view === "open") renderOpen();
+  if (view === "closed") renderClosed();
   if (view === "work") { work = readWork(activeLoad); renderWork(); }
 }
 $("#keys-nav").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => { location.hash = route(button.dataset.view); if (!embedded) showView(); }));

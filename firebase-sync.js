@@ -218,6 +218,20 @@ export async function closeKeyLoad(id, completedBy, work) {
   });
 }
 
+export async function reopenKeyLoad(id, managerUid) {
+  const ref = doc(db, "keyLoads", id);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists() || snapshot.data().status !== "closed") throw new Error("ההטענה כבר פתוחה או אינה קיימת.");
+    const load = snapshot.data();
+    const reopenedAt = new Date().toISOString();
+    transaction.update(ref, {
+      status: "open", reopenedAt, reopenedBy: managerUid,
+      reopenEvents: [...(load.reopenEvents || []), { at: reopenedAt, by: managerUid, priorCompletedAt: load.completedAt }]
+    });
+  });
+}
+
 export async function createTechnician(name, email, password) {
   const secondary = initializeApp(firebaseConfig, `provision-${crypto.randomUUID()}`);
   const provisioningAuth = getAuth(secondary);
