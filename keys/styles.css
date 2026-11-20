@@ -52,6 +52,8 @@
 .key-tasks-details { margin-top: 16px; border: 1px solid #dbe6ec; border-radius: 10px; padding: 12px; }
 .key-tasks-details summary { cursor: pointer; color: #17668f; font-weight: 700; }
 #work-rows table,#reference-table table,#history-table table { width: 100%; min-width: 0; table-layout: fixed; }
+#history-table th { width: 33.333%; }
+#history-table th,#history-table td { text-align: center; white-space: nowrap; overflow-wrap: normal; }
 #work-rows td,#work-rows th,#reference-table td,#reference-table th { overflow-wrap: anywhere; font-size: 11px; padding: 7px 4px; }
 #work-rows td:nth-child(2),#work-rows td:nth-child(3) { text-align: center; }
 #work-rows input[type="checkbox"] { width: 18px; height: 18px; }

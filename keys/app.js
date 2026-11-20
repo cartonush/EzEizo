@@ -1,6 +1,7 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.8";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.8";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.8";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.9";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.9";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.9";
+import { attachTimeNow } from "../time-now.js?v=1.3.9";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -233,6 +234,7 @@ function bindExtraTables(closed) {
   });
   root.querySelectorAll("[data-state-field]").forEach((input) => {
     const key = input.dataset.stateField; input.value = work[key] || ""; input.disabled = closed;
+    input.closest(".time-field")?.querySelector(".time-now-button")?.toggleAttribute("disabled", closed);
     input.oninput = () => { if (key.endsWith("InspectorNumber") || key === "takenPersonalNumber") input.value = input.value.replace(/[^0-9]/g, "").slice(0, 7); work[key] = input.value; saveWork(); };
   });
   ["tools", "taken", "rejected"].forEach((key) => renderExtraRows(key, closed));
@@ -292,6 +294,7 @@ function showView() {
 $("#keys-nav").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => { location.hash = route(button.dataset.view); if (!embedded) showView(); }));
 window.addEventListener("hashchange", showView);
 renderCreateFields();
+attachTimeNow(embedded ? $("#view-keys") : document);
 if (manager) {
   watchTechnicians((users) => { technicians = users; renderTeam([...draft.teamUids]); }, (error) => setMessage("#create-status", `טעינת טכנאים נכשלה: ${error.message}`, true));
   watchKeyHistory((records) => { history = records; renderHistory(); }, (error) => setMessage("#history-status", `טעינת ההיסטוריה נכשלה: ${error.message}`, true));

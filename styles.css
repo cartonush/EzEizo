@@ -61,6 +61,14 @@ main { width: min(880px, calc(100% - 32px)); margin: 22px auto 0; }
 .action-check { width: 23px; height: 23px; accent-color: #168b79; cursor: pointer; justify-self: end; }
 .time-picker { width: 102px; height: 34px; padding: 3px 7px; border: 1px solid #d9e3e9; border-radius: 9px; background: #f9fbfc; color: var(--ink); font-size: 13px; font-weight: 700; justify-self: end; cursor: pointer; }
 .time-picker:focus { outline: 2px solid #5da8c55c; border-color: #5da8c5; }
+.action-row.has-time { grid-template-columns: 28px minmax(0, 1fr) auto; }
+.time-field { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.time-field input[type="time"] { flex: 1 1 auto; min-width: 0; width: 100%; }
+.action-time-field input.time-picker { flex: 0 1 102px; width: 102px; }
+.time-now-button { flex: none; min-height: 34px; padding: 4px 9px; border: 1px solid #bcd6e3; border-radius: 8px; background: #eef7fa; color: #17668f; font-size: 11px; font-weight: 700; cursor: pointer; }
+.time-now-button:hover,.time-now-button:focus-visible { background: #dceef5; outline: 2px solid #6fb1cf; }
+.time-now-button:disabled { opacity: .5; cursor: default; }
+@media (max-width: 620px) { .action-row.has-time { grid-template-columns: 22px minmax(0, 1fr); } .action-row.has-time .action-time-field { grid-column: 2; justify-self: start; } }
 .action-row.done .action-text { color: #8a989f; text-decoration: line-through; text-decoration-color: #a9c3bc; }
 .action-row.has-choice { grid-template-columns: 28px minmax(0, 1fr) auto; }
 .action-choices { display: flex; gap: 5px; direction: ltr; }
