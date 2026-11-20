@@ -241,12 +241,8 @@ export async function closeKeyLoad(id, completedBy, work) {
     if (!current.exists() || current.data().status !== "open") throw new Error("ההטענה כבר נסגרה או אינה קיימת.");
     const load = current.data();
     if (!load.teamUids.includes(completedBy)) throw new Error("אינך משויך לצוות ההטענה.");
-    const historyRefs = load.rows.map((row) => doc(db, "keyHistory", `${load.squadron}_${row.aircraft}`));
     const completedAt = new Date().toISOString();
     transaction.update(ref, { status: "closed", work, completedAt, completedBy });
-    historyRefs.forEach((entry, index) => {
-      transaction.set(entry, { squadron: load.squadron, aircraft: load.rows[index].aircraft, date: load.date, period: load.period, completedAt, loadId: id });
-    });
   });
 }
 

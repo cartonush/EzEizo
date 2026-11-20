@@ -58,8 +58,11 @@
 .key-tasks-details { margin-top: 16px; border: 1px solid #dbe6ec; border-radius: 10px; padding: 12px; }
 .key-tasks-details summary { cursor: pointer; color: #17668f; font-weight: 700; }
 #work-rows table,#reference-table table,#history-table table { width: 100%; min-width: 0; table-layout: fixed; }
-#history-table th { width: 33.333%; }
-#history-table th,#history-table td { text-align: center; white-space: nowrap; overflow-wrap: normal; }
+#history-table th { width: 20%; }
+#history-table th,#history-table td { text-align: center; white-space: normal; overflow-wrap: anywhere; font-size: 12px; line-height: 1.45; padding: 8px 3px; }
+#history-table .key-history-missing { color: #a45419; background: #fff8ed; }
+#history-table .key-history-pending { display: block; color: #a45419; font-weight: 700; }
+@media (max-width: 620px) { #history-table th,#history-table td { font-size: 10px; padding: 7px 2px; } }
 #work-rows td,#work-rows th,#reference-table td,#reference-table th { overflow-wrap: anywhere; font-size: 11px; padding: 7px 4px; }
 #work-rows td:nth-child(2),#work-rows td:nth-child(3) { text-align: center; }
 #work-rows input[type="checkbox"] { width: 18px; height: 18px; }

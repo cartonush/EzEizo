@@ -1,4 +1,4 @@
-import { SQUADRONS } from "../Metis/catalog.js?v=1.5.8";
+import { SQUADRONS } from "../Metis/catalog.js?v=1.5.9";
 
 export const KEY_SQUADRONS = ["101", "105", "109"];
 export const KEY_TASKS = [
@@ -30,6 +30,29 @@ export function periodFor(date) {
 }
 export function compactRows(rows, columns) {
   return (Array.isArray(rows) ? rows : []).filter((row) => columns.some(({ key }) => String(row?.[key] ?? "").trim())).map((row) => Object.fromEntries(columns.map(({ key }) => [key, row[key] ?? ""])));
+}
+
+// Derive each key's last completed loading independently from closed forms.
+// A form that contains only one key must never advance the other key's history.
+export function keyHistoryByAircraft(loads) {
+  const history = new Map();
+  for (const load of loads || []) {
+    if (load.status !== "closed" || !load.completedAt || !Array.isArray(load.rows)) continue;
+    load.rows.forEach((row, index) => {
+      const id = `${load.squadron}_${row.aircraft}`;
+      const entry = history.get(id) || { blue: null, shach: null };
+      for (const [type, selected, done] of [
+        ["blue", row.blue, load.work?.aircraft?.[index]?.blueDone],
+        ["shach", row.shach, load.work?.aircraft?.[index]?.shachDone]
+      ]) {
+        if (selected && done && (!entry[type] || load.completedAt > entry[type].completedAt)) {
+          entry[type] = { date: load.date, period: load.period, completedAt: load.completedAt, loadId: load.id };
+        }
+      }
+      history.set(id, entry);
+    });
+  }
+  return history;
 }
 export function validateRows(rows, columns, label) {
   for (const [index, row] of rows.entries()) for (const column of columns) {

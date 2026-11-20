@@ -1,8 +1,8 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.5.8";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.5.8";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.5.8";
-import { attachTimeNow } from "../time-now.js?v=1.5.8";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.5.8";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.5.9";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.5.9";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.5.9";
+import { attachTimeNow } from "../time-now.js?v=1.5.9";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.5.9";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -18,7 +18,7 @@ const draftKey = "ezeizo-key-draft-v1";
 const defaultDraft = () => ({ date: currentDate(), time: currentTime(), squadron: "", shelter: "", teamUids: ["", ""], rows: [] });
 let draft;
 try { draft = { ...defaultDraft(), ...JSON.parse(localStorage.getItem(draftKey) || "{}") }; } catch { draft = defaultDraft(); }
-let loads = [], history = [], technicians = [], activeLoad = null, selectedSquadron = "101", work = null;
+let loads = [], history = new Map(), technicians = [], activeLoad = null, selectedSquadron = "101", work = null;
 let loadsReady = false;
 let numberingLegacyLoads = false;
 const matchesKeyNumber = (load, search) => {
@@ -144,13 +144,23 @@ function renderHistory() {
   });
   const table = document.createElement("table"); table.className = "keys-table";
   const head = document.createElement("thead"), header = document.createElement("tr");
-  ["מספר מטוס", "תאריך הטענה", "חודשים"].forEach((value) => header.append(make("th", value)));
+  ["מספר מטוס", "תאריך הטענת מפתחות ארז כחול", "חודשים ארז כחול", "תאריך הטענת שחק", "חודשים שחק"].forEach((value) => header.append(make("th", value)));
   head.append(header); table.append(head);
   const body = document.createElement("tbody");
   aircraftFor(selectedSquadron).forEach((aircraft) => {
-    const record = history.find((item) => item.squadron === selectedSquadron && item.aircraft === aircraft);
+    const record = history.get(`${selectedSquadron}_${aircraft}`);
     const row = document.createElement("tr");
-    [aircraft, record?.date ? record.date.split("-").reverse().join("/") : "—", record?.period || "—"].forEach((value) => row.append(make("td", value)));
+    const dateOf = (entry) => entry?.date ? entry.date.split("-").reverse().join("/") : "טרם הוטען";
+    const latest = !record?.shach || (record?.blue && record.blue.completedAt > record.shach.completedAt) ? record?.blue : record?.shach;
+    [aircraft, dateOf(record?.blue), record?.blue?.period || "—", dateOf(record?.shach), record?.shach?.period || "—"].forEach((value, index) => {
+      const cell = make("td", value);
+      if (index && !record?.[index < 3 ? "blue" : "shach"]) cell.classList.add("key-history-missing");
+      const entry = record?.[index === 2 ? "blue" : "shach"];
+      if ((index === 2 || index === 4) && entry && latest?.period !== entry.period) {
+        cell.append(make("small", "נדרש להשלים", "key-history-pending"));
+      }
+      row.append(cell);
+    });
     body.append(row);
   });
   table.append(body); $("#history-table").replaceChildren(table);
@@ -387,7 +397,6 @@ renderCreateFields();
 attachTimeNow(embedded ? $("#view-keys") : document);
 if (manager) {
   watchTechnicians((users) => { technicians = users; renderTeam([...draft.teamUids]); }, (error) => setMessage("#create-status", `טעינת טכנאים נכשלה: ${error.message}`, true));
-  watchKeyHistory((records) => { history = records; renderHistory(); }, (error) => setMessage("#history-status", `טעינת ההיסטוריה נכשלה: ${error.message}`, true));
 }
 async function numberLegacyLoads(items) {
   if (!manager || numberingLegacyLoads) return;
@@ -403,7 +412,7 @@ async function numberLegacyLoads(items) {
     status(error.code === "permission-denied" ? "כדי למספר הטענות קיימות יש לפרסם את כללי Firestore המעודכנים." : `מספור הטענות נכשל: ${error.message}`, true);
   } finally { numberingLegacyLoads = false; }
 }
-watchKeyLoads((items) => { loads = items; loadsReady = true; if (embedded) { $("#keys-loading").hidden = true; $("#keys-content").hidden = false; } if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); showView(); if (manager) void numberLegacyLoads(items); if (!embedded) revealApp(); }, (error) => {
+watchKeyLoads((items) => { loads = items; if (manager) history = keyHistoryByAircraft(loads); loadsReady = true; if (embedded) { $("#keys-loading").hidden = true; $("#keys-content").hidden = false; } if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); showView(); if (manager) void numberLegacyLoads(items); if (!embedded) revealApp(); }, (error) => {
   $("#open-key-loads").textContent = `טעינת ההטענות נכשלה: ${error.message}`;
   $("#open-key-loads").style.color = "#d40000";
   if (embedded) { loadsReady = true; $("#keys-loading").hidden = true; $("#keys-content").hidden = false; showView(); }

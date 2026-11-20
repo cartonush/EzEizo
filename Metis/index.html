@@ -11,9 +11,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.5.8">
-  <link rel="stylesheet" href="styles.css?v=1.5.8">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.5.8">
+  <link rel="stylesheet" href="../styles.css?v=1.5.9">
+  <link rel="stylesheet" href="styles.css?v=1.5.9">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.5.9">
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.5.8</span>
+      <span class="version-pill">v1.5.9</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -65,7 +65,7 @@
 <div id="keys-loading" class="app-skeleton" role="status" aria-label="דף המפתחות נטען"><div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-input"></span></div></div>
 <div id="keys-content" hidden>
 <nav id="keys-nav" class="keys-nav" aria-label="דפי מפתחות"><button type="button" data-view="history">היסטוריית מפתחות</button><button type="button" data-view="create">הטענת מפתחות</button><button type="button" data-view="open">הטענות פתוחות</button><button type="button" data-view="closed">הטענות סגורות</button></nav>
-<section id="history-view" class="card"><div class="section-heading"><div><p class="section-kicker">שלוש טייסות</p><h2>היסטוריית מפתחות</h2></div></div><p class="section-note">התאריך והחודשים מתעדכנים לאחר השלמת הטענה; מטוס שלא נטען עדיין מסומן בקו.</p><div class="review-tabs squad-tabs" id="history-tabs"></div><div id="history-table" class="table-wrap"></div><p id="history-status" class="copy-status" role="status"></p></section>
+<section id="history-view" class="card"><div class="section-heading"><div><p class="section-kicker">שלוש טייסות</p><h2>היסטוריית מפתחות</h2></div></div><p class="section-note">ארז כחול ושחק מתעדכנים בנפרד לאחר הטענה שהושלמה. סוג מפתח שלא נטען עדיין מסומן ״טרם הוטען״.</p><div class="review-tabs squad-tabs" id="history-tabs"></div><div id="history-table" class="table-wrap"></div><p id="history-status" class="copy-status" role="status"></p></section>
 <section id="create-view" hidden>
 <section class="card"><div class="section-heading"><div><p class="section-kicker">דף חדש</p><h2>הטענת מפתחות</h2></div></div><div class="manager-grid">
 <label class="input-field">תאריך<input id="key-date" type="date" required></label><label class="input-field">שעה<input id="key-time" type="time" required></label>
@@ -293,6 +293,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.5.8"></script>
+  <script type="module" src="app.js?v=1.5.9"></script>
 </body>
 </html>
