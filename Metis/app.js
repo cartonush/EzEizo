@@ -1,9 +1,9 @@
-import "../sheet-data.js?v=1.3.10";
-import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.3.10";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.3.10";
-import { resolveAssignees } from "./assignee-selection.js?v=1.3.10";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.10";
-import { initKeyPages } from "../keys/app.js?v=1.3.10";
+import "../sheet-data.js?v=1.4.0";
+import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.4.0";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.4.0";
+import { resolveAssignees } from "./assignee-selection.js?v=1.4.0";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.4.0";
+import { initKeyPages } from "../keys/app.js?v=1.4.0";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
