@@ -1,8 +1,8 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.4.9";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.4.9";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.4.9";
-import { attachTimeNow } from "../time-now.js?v=1.4.9";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.4.9";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.5.0";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.5.0";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.5.0";
+import { attachTimeNow } from "../time-now.js?v=1.5.0";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.5.0";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -150,11 +150,12 @@ function renderHistory() {
 }
 function renderOpen() {
   const container = $("#open-key-loads"); container.replaceChildren();
-  const list = loads.filter((load) => load.status === "open");
-  if (!list.length) { container.textContent = "אין הטענות פתוחות כרגע."; return; }
+  const search = $("#open-key-search")?.value.trim().toLowerCase() || "";
+  const list = loads.filter((load) => load.status === "open" && load.id.toLowerCase().includes(search));
+  if (!list.length) { container.textContent = search ? "לא נמצאו הטענות פתוחות התואמות למזהה." : "אין הטענות פתוחות כרגע."; return; }
   list.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).forEach((load) => {
     const card = make("div", undefined, "issue-item");
-    card.append(make("strong", `טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`), make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`));
+    card.append(make("strong", `טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`), make("span", `מזהה הטענה: ${load.id}`), make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`));
     const open = make("button", "פתח דף", "secondary-button"); open.type = "button";
     open.addEventListener("click", () => { location.hash = route(`work/${load.id}`); if (!embedded) showView(); }); card.append(open); container.append(card);
     if (manager) {
@@ -176,11 +177,13 @@ function renderOpen() {
 }
 function renderClosed() {
   const container = $("#closed-key-loads"); container.replaceChildren();
-  const list = loads.filter((load) => load.status === "closed");
-  if (!list.length) { container.textContent = "אין הטענות סגורות כרגע."; return; }
+  const search = $("#closed-key-search")?.value.trim().toLowerCase() || "";
+  const list = loads.filter((load) => load.status === "closed" && load.id.toLowerCase().includes(search));
+  if (!list.length) { container.textContent = search ? "לא נמצאו הטענות סגורות התואמות למזהה." : "אין הטענות סגורות כרגע."; return; }
   list.sort((a, b) => (b.completedAt || "").localeCompare(a.completedAt || "")).forEach((load) => {
     const card = make("div", undefined, "issue-item");
     card.append(make("strong", `טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`),
+      make("span", `מזהה הטענה: ${load.id}`),
       make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`),
       make("span", `נסגר: ${load.completedAt ? new Date(load.completedAt).toLocaleString("he-IL") : "—"}`));
     const open = make("button", "צפה בטופס הסגור", "secondary-button"); open.type = "button";
@@ -372,6 +375,7 @@ function showView() {
   if (view === "work") { work = readWork(activeLoad); renderWork(); }
 }
 $("#keys-nav").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => { location.hash = route(button.dataset.view); if (!embedded) showView(); }));
+if (manager) for (const [id, render] of [["open-key-search", renderOpen], ["closed-key-search", renderClosed]]) $("#" + id)?.addEventListener("input", render);
 window.addEventListener("hashchange", showView);
 renderCreateFields();
 attachTimeNow(embedded ? $("#view-keys") : document);

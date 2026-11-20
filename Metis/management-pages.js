@@ -1,5 +1,5 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.4.9";
-import { SQUADRONS } from "./catalog.js?v=1.4.9";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.5.0";
+import { SQUADRONS } from "./catalog.js?v=1.5.0";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -109,7 +109,7 @@ function reportRecords() {
     id: issue.id, type: "issue", kind: "תקלה", serial: issue.sheet?.serial || "—", squadron: issue.sheet?.squadron || "", aircraft: issue.sheet?.aircraft || "", technician: issue.assigneeName || "—", technicianUids: [issue.assigneeUid], status: issue.status, title: issue.sheet?.fault || "—", openedAt: issue.createdAt, closedAt: issue.closed?.state?.closedAt || "", eventAt: issue.status === "closed" ? (issue.reviewedAt || issue.closed?.state?.closedAt || issue.createdAt) : issue.status === "pendingReview" ? (issue.closed?.state?.closedAt || issue.createdAt) : (issue.reopenedAt || issue.createdAt)
   }));
   const keys = reportLoads.flatMap((load) => (load.aircraftIds || []).map((aircraft) => ({
-    id: load.id, type: "key", kind: "מפתחות", serial: "—", squadron: load.squadron, aircraft, technician: (load.teamNames || []).join(" · ") || "—", technicianUids: load.teamUids || [], status: load.status, title: `הטענת מפתחות ${load.period || ""}`.trim(), openedAt: load.createdAt, closedAt: load.completedAt || "", eventAt: load.status === "closed" ? (load.completedAt || load.createdAt) : (load.reopenedAt || load.createdAt)
+    id: load.id, type: "key", kind: "מפתחות", serial: load.id, squadron: load.squadron, aircraft, technician: (load.teamNames || []).join(" · ") || "—", technicianUids: load.teamUids || [], status: load.status, title: `הטענת מפתחות ${load.period || ""}`.trim(), openedAt: load.createdAt, closedAt: load.completedAt || "", eventAt: load.status === "closed" ? (load.completedAt || load.createdAt) : (load.reopenedAt || load.createdAt)
   })));
   return [...faults, ...keys];
 }
@@ -140,6 +140,13 @@ function makeReportRows(state) {
     .sort((a, b) => new Date(b.eventAt) - new Date(a.eventAt));
 }
 
+function reportFilename(state = reportState()) {
+  const from = $("#report-from").value.slice(0, 10);
+  const to = $("#report-to").value.slice(0, 10);
+  const subject = state.mode === "aircraft" && !state.allAircraft ? `-מטוס-${state.aircraft}` : state.mode === "technician" ? `-טכנאי-${reportUsers.find((user) => user.uid === state.technician)?.name || ""}` : "";
+  return `EzEizo-${reportTitles[state.kind]}-טייסת-${state.squadron}${subject}-${from}_עד_${to}`.replace(/[\\/:*?"<>|]/g, "-");
+}
+
 function renderReport() {
   const state = reportState();
   const error = $("#report-error"); error.textContent = state.error; error.dataset.state = state.error ? "error" : "";
@@ -164,7 +171,7 @@ function renderReport() {
     heading.append(title, element("span", statusLabel(row.status), "report-entry-status"));
     const description = element("p", row.title, "report-entry-description");
     const details = element("dl", null, "report-entry-details");
-    [["מספר תקלה", row.serial], ["טכנאי / צוות", row.technician], ["מועד הפעילות", byDate(row.eventAt)], ["נפתח", byDate(row.openedAt)], ["נסגר", byDate(row.closedAt)]].forEach(([label, value]) => {
+    [[row.type === "key" ? "מזהה הטענה" : "מספר תקלה", row.serial], ["טכנאי / צוות", row.technician], ["מועד הפעילות", byDate(row.eventAt)], ["נפתח", byDate(row.openedAt)], ["נסגר", byDate(row.closedAt)]].forEach(([label, value]) => {
       const pair = element("div"); pair.append(element("dt", label), element("dd", value)); details.append(pair);
     });
     const link = element("a", "פתח טופס", "secondary-button");
@@ -206,12 +213,23 @@ export function initReports() {
     if (kind === "pending") { $("#report-form").value = "issue"; $("#report-status").value = "pendingReview"; }
     refreshReportSelectors(); renderReport();
   });
-  $("#report-print").addEventListener("click", () => window.print());
+  $("#report-print").addEventListener("click", () => {
+    const state = reportState();
+    if (state.error || !reportRows.length) return;
+    const filename = reportFilename(state);
+    const previous = document.title;
+    document.title = filename;
+    const restore = () => { document.title = previous; window.removeEventListener("afterprint", restore); };
+    window.addEventListener("afterprint", restore, { once: true });
+    window.print();
+    // Some browsers omit afterprint when the dialog is dismissed.
+    setTimeout(() => { if (document.title === filename) restore(); }, 60000);
+  });
   $("#report-csv").addEventListener("click", () => {
     const cell = (value) => `"${String(value ?? "").replace(/^[=+@\-\t\r]/, "'$&").replaceAll('"', '""')}"`;
     const lines = [["מועד", "טייסת", "סוג", "מטוס", "מספר תקלה", "עבודה", "טכנאי / צוות", "מצב", "שעת פתיחה", "שעת סגירה"], ...reportRows.map((row) => [byDate(row.eventAt), row.squadron, row.kind, row.aircraft, row.serial, row.title, row.technician, statusLabel(row.status), byDate(row.openedAt), byDate(row.closedAt)])];
     const url = URL.createObjectURL(new Blob(["\uFEFF", lines.map((line) => line.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a"); link.href = url; link.download = `EzEizo-report-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const link = document.createElement("a"); link.href = url; link.download = `${reportFilename()}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   refreshReportSelectors(); renderReport();
 }

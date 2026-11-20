@@ -1,10 +1,10 @@
-import "../sheet-data.js?v=1.4.9";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.4.9";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.4.9";
-import { resolveAssignees } from "./assignee-selection.js?v=1.4.9";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.4.9";
-import { initKeyPages } from "../keys/app.js?v=1.4.9";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.4.9";
+import "../sheet-data.js?v=1.5.0";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.5.0";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.5.0";
+import { resolveAssignees } from "./assignee-selection.js?v=1.5.0";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.5.0";
+import { initKeyPages } from "../keys/app.js?v=1.5.0";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.5.0";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -331,15 +331,16 @@ function renderIssueLists() {
   delete opened.dataset.state;
   delete closed.dataset.state;
   const filter = document.querySelector("#closed-filter").value;
-  const allClosed = cloudIssues.filter((item) => item.status === "closed" && item.closed?.record && (!filter || item.assigneeUid === filter)).map((item) => item.closed.record);
-  const awaiting = cloudIssues.filter((item) => item.status === "pendingReview" && item.closed?.record).map((item) => item.closed.record);
-  const active = cloudIssues.filter((item) => item.status === "open").map((item) => item.sheet);
+  const matches = (selector, serial) => String(serial || "").includes(document.querySelector(selector).value.trim());
+  const allClosed = cloudIssues.filter((item) => item.status === "closed" && item.closed?.record && (!filter || item.assigneeUid === filter) && matches("#closed-issue-search", item.closed.record.serial)).map((item) => item.closed.record);
+  const awaiting = cloudIssues.filter((item) => item.status === "pendingReview" && item.closed?.record && matches("#pending-issue-search", item.closed.record.serial)).map((item) => item.closed.record);
+  const active = cloudIssues.filter((item) => item.status === "open" && matches("#open-issue-search", item.sheet?.serial)).map((item) => item.sheet);
   active.forEach((item) => addIssueCard(opened, item, "open"));
   awaiting.forEach((item) => addIssueCard(pending, item, "pendingReview"));
   allClosed.forEach((item) => addIssueCard(closed, item, "closed"));
-  if (!active.length) opened.textContent = "אין תקלות פתוחות.";
-  if (!awaiting.length) pending.textContent = "אין תקלות הממתינות לסגירה.";
-  if (!allClosed.length) closed.textContent = "אין תקלות סגורות.";
+  if (!active.length) opened.textContent = "לא נמצאו תקלות פתוחות התואמות לחיפוש.";
+  if (!awaiting.length) pending.textContent = "לא נמצאו תקלות לסגירה התואמות לחיפוש.";
+  if (!allClosed.length) closed.textContent = "לא נמצאו תקלות סגורות התואמות לחיפוש.";
 }
 
 let keyPagesStarted = false;
@@ -445,6 +446,7 @@ function updateUserSelectors() {
   filter.value = previous;
 }
 document.querySelector("#closed-filter").addEventListener("change", renderIssueLists);
+for (const id of ["open-issue-search", "pending-issue-search", "closed-issue-search"]) document.getElementById(id).addEventListener("input", renderIssueLists);
 function renderUsers() {
   const list = document.querySelector("#users-list");
   const removedList = document.querySelector("#removed-users-list");
