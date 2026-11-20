@@ -1,9 +1,9 @@
-import "../sheet-data.js?v=1.4.1";
-import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.4.1";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.4.1";
-import { resolveAssignees } from "./assignee-selection.js?v=1.4.1";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.4.1";
-import { initKeyPages } from "../keys/app.js?v=1.4.1";
+import "../sheet-data.js?v=1.4.2";
+import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.4.2";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.4.2";
+import { resolveAssignees } from "./assignee-selection.js?v=1.4.2";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.4.2";
+import { initKeyPages } from "../keys/app.js?v=1.4.2";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -302,6 +302,20 @@ function addIssueCard(container, item, mode) {
     });
     assignLabel.append(select);
     card.append(assignLabel, assignFeedback);
+    const editor = document.createElement("details"); editor.className = "manager-note-editor";
+    const summary = document.createElement("summary"); summary.textContent = "הערות מנהל";
+    const existing = document.createElement("p"); existing.className = "manager-note-text"; existing.textContent = fullIssue?.sheet?.managerNotes || "עדיין אין הערות.";
+    const note = document.createElement("textarea"); note.rows = 2; note.maxLength = 500; note.placeholder = "הוסף הערה לטכנאי…"; note.setAttribute("aria-label", `הוסף הערה לתקלה ${item.serial}`);
+    const send = document.createElement("button"); send.type = "button"; send.className = "secondary-button"; send.textContent = "הוסף הערה";
+    const feedback = document.createElement("p"); feedback.className = "copy-status"; feedback.setAttribute("role", "status");
+    send.addEventListener("click", async () => {
+      if (!note.value.trim()) { feedback.textContent = "יש לכתוב הערה לפני השליחה."; feedback.dataset.state = "error"; return; }
+      send.disabled = true;
+      try { await appendIssueManagerNote(item.id, note.value); note.value = ""; feedback.textContent = "ההערה נוספה ונשלחה לטכנאי."; delete feedback.dataset.state; }
+      catch (error) { feedback.textContent = `הוספת ההערה נכשלה: ${error.message}`; feedback.dataset.state = "error"; }
+      finally { send.disabled = false; }
+    });
+    editor.append(summary, existing, note, send, feedback); card.append(editor);
   }
   container.append(card);
 }

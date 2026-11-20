@@ -1,9 +1,9 @@
-import "./sheet-data.js?v=1.4.1";
-import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.4.1";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.4.1";
-import { validateTreatment } from "./mechanic-validation.js?v=1.4.1";
-import { attachTimeNow } from "./time-now.js?v=1.4.1";
-import { issueTimeline } from "./lifecycle.js?v=1.4.1";
+import "./sheet-data.js?v=1.4.2";
+import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.4.2";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.4.2";
+import { validateTreatment } from "./mechanic-validation.js?v=1.4.2";
+import { attachTimeNow } from "./time-now.js?v=1.4.2";
+import { issueTimeline } from "./lifecycle.js?v=1.4.2";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -98,13 +98,15 @@ function saveState() {
 }
 
 function renderSheetDetails() {
-  const timeline = document.querySelector("#lifecycle-events");
-  timeline.replaceChildren(...issueTimeline(remoteIssue).map(({ label, at }) => {
-    const item = document.createElement("li");
-    const name = document.createElement("strong"); name.textContent = label;
-    const time = document.createElement("time"); time.dateTime = at; time.textContent = new Date(at).toLocaleString("he-IL");
-    item.append(name, time); return item;
-  }));
+  if (managerClosedView) {
+    const timeline = document.querySelector("#lifecycle-events");
+    timeline.replaceChildren(...issueTimeline(remoteIssue).map(({ label, at }) => {
+      const item = document.createElement("li");
+      const name = document.createElement("strong"); name.textContent = label;
+      const time = document.createElement("time"); time.dateTime = at; time.textContent = new Date(at).toLocaleString("he-IL");
+      item.append(name, time); return item;
+    }));
+  }
   const times = document.querySelector("#closed-times");
   if (times) {
     times.hidden = !["closed", "pendingReview"].includes(remoteIssue?.status);
@@ -146,8 +148,13 @@ function renderSheetDetails() {
 
 function renderTechnicianNotes() {
   const box = document.querySelector("#combined-notes");
-  const prefix = sheet.managerNotes ? `${sheet.managerNotes}\n\n` : "";
+  let prefix = sheet.managerNotes ? `${sheet.managerNotes}\n\n` : "";
   box.value = prefix + state.technicianNotes.join("\n");
+  box.updateManagerNotes = (notes) => {
+    sheet.managerNotes = notes;
+    prefix = notes ? `${notes}\n\n` : "";
+    box.value = prefix + state.technicianNotes.join("\n");
+  };
   box.readOnly = managerClosedView || Boolean(state.closedAt);
   box.addEventListener("beforeinput", (event) => {
     if (box.selectionStart < prefix.length) event.preventDefault();
@@ -377,6 +384,9 @@ watchIssues((issues) => {
   cloudIssues = issues;
   renderIssueList();
   const current = issues.find((item) => item.id === selectedId);
+  if (current?.status === "open" && current.sheet.managerNotes !== sheet.managerNotes) {
+    document.querySelector("#combined-notes").updateManagerNotes?.(current.sheet.managerNotes || "");
+  }
   if (current?.status === "open" && current.reopenedAt && state.closedAt) {
     location.reload();
     return;

@@ -206,15 +206,25 @@ export async function closeKeyLoad(id, completedBy, work) {
     const load = current.data();
     if (!load.teamUids.includes(completedBy)) throw new Error("אינך משויך לצוות ההטענה.");
     const historyRefs = load.rows.map((row) => doc(db, "keyHistory", `${load.squadron}_${row.aircraft}`));
-    const history = await Promise.all(historyRefs.map((entry) => transaction.get(entry)));
     const completedAt = new Date().toISOString();
     transaction.update(ref, { status: "closed", work, completedAt, completedBy });
     historyRefs.forEach((entry, index) => {
-      const prior = history[index].data();
-      // A later completion must not be replaced by an older dated job.
-      if (prior?.completedAt && prior.completedAt > completedAt) return;
       transaction.set(entry, { squadron: load.squadron, aircraft: load.rows[index].aircraft, date: load.date, period: load.period, completedAt, loadId: id });
     });
+  });
+}
+
+export async function appendKeyLoadManagerNote(id, note) {
+  const text = note.trim();
+  if (!text || text.length > 500) throw new Error("יש להזין הערה של עד 500 תווים.");
+  const ref = doc(db, "keyLoads", id);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists() || snapshot.data().status !== "open") throw new Error("אפשר להוסיף הערות רק להטענה פתוחה.");
+    const previous = snapshot.data().managerNotes || "";
+    const next = [previous, text].filter(Boolean).join("\n");
+    if (next.length > 2000) throw new Error("הגעת למגבלת ההערות בהטענה זו.");
+    transaction.update(ref, { managerNotes: next });
   });
 }
 
@@ -296,5 +306,19 @@ export async function reopenIssue(id, managerUid) {
       status: "open", reopenedAt, reopenedBy: managerUid,
       reopenEvents: [...(issue.reopenEvents || []), { at: reopenedAt, by: managerUid, priorClosedAt: issue.closed.state.closedAt, priorReviewedAt: issue.reviewedAt || null }]
     });
+  });
+}
+
+export async function appendIssueManagerNote(id, note) {
+  const text = note.trim();
+  if (!text || text.length > 500) throw new Error("יש להזין הערה של עד 500 תווים.");
+  const ref = doc(db, "issues", id);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists() || snapshot.data().status !== "open") throw new Error("אפשר להוסיף הערות רק לתקלה פתוחה.");
+    const previous = snapshot.data().sheet.managerNotes || "";
+    const next = [previous, text].filter(Boolean).join("\n");
+    if (next.length > 2000) throw new Error("הגעת למגבלת ההערות בתקלה זו.");
+    transaction.update(ref, { "sheet.managerNotes": next });
   });
 }

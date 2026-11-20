@@ -1,8 +1,8 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad } from "../firebase-sync.js?v=1.4.1";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.4.1";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.4.1";
-import { attachTimeNow } from "../time-now.js?v=1.4.1";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.4.1";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.4.2";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.4.2";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.4.2";
+import { attachTimeNow } from "../time-now.js?v=1.4.2";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.4.2";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -11,6 +11,7 @@ const backSelector = embedded ? "#key-back-link" : "#back-link";
 const $ = (selector) => document.querySelector(selector);
 const make = (tag, text, className) => { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; };
 const setMessage = (selector, message, bad = false) => { const node = $(selector); node.textContent = message; node.dataset.state = bad ? "error" : ""; };
+const setMessageOnNode = (node, message, bad = false) => { node.textContent = message; node.dataset.state = bad ? "error" : ""; };
 const currentDate = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const currentTime = () => new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
 const draftKey = "ezeizo-key-draft-v1";
@@ -147,6 +148,21 @@ function renderOpen() {
     card.append(make("strong", `טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`), make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`));
     const open = make("button", "פתח דף", "secondary-button"); open.type = "button";
     open.addEventListener("click", () => { location.hash = route(`work/${load.id}`); if (!embedded) showView(); }); card.append(open); container.append(card);
+    if (manager) {
+      const editor = make("details", undefined, "manager-note-editor");
+      const note = document.createElement("textarea"); note.rows = 2; note.maxLength = 500; note.placeholder = "הוסף הערה לצוות…"; note.setAttribute("aria-label", `הוסף הערה להטענה בטייסת ${load.squadron}`);
+      const send = make("button", "הוסף הערה", "secondary-button"); send.type = "button";
+      const feedback = make("p", "", "copy-status"); feedback.setAttribute("role", "status");
+      send.addEventListener("click", async () => {
+        if (!note.value.trim()) return setMessageOnNode(feedback, "יש לכתוב הערה לפני השליחה.", true);
+        send.disabled = true;
+        try { await appendKeyLoadManagerNote(load.id, note.value); note.value = ""; setMessageOnNode(feedback, "ההערה נוספה ונשלחה לצוות."); }
+        catch (error) { setMessageOnNode(feedback, `הוספת ההערה נכשלה: ${error.message}`, true); }
+        finally { send.disabled = false; }
+      });
+      editor.append(make("summary", "הערות מנהל"), make("p", load.managerNotes || "עדיין אין הערות.", "manager-note-text"), note, send, feedback);
+      card.append(editor);
+    }
   });
 }
 function renderClosed() {
@@ -175,7 +191,9 @@ function readWork(load) {
 function renderWork() {
   if (!activeLoad) return;
   const load = activeLoad, closed = load.status === "closed" || manager;
-  $("#work-summary").textContent = `${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${closed ? " · נסגר" : ""}`;
+  $("#work-summary").textContent = `${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${load.status === "closed" ? " · נסגר" : ""}`;
+  $("#work-manager-notes").textContent = load.managerNotes || "";
+  $("#work-manager-notes").hidden = !load.managerNotes;
   const table = document.createElement("table"); table.className = "work-aircraft-table";
   const head = document.createElement("thead"), header = document.createElement("tr");
   ["מס׳ מטוס", "ארז כחול", "שחק", "הערות"].forEach((name) => header.append(make("th", name))); head.append(header); table.append(head);
@@ -226,9 +244,11 @@ function renderWork() {
   $("#complete-key-load").hidden = closed;
   $("#reopen-key-load").hidden = !manager || load.status !== "closed";
   setMessage("#reopen-key-status", "");
-  $("#key-reopen-history").hidden = false;
-  $("#key-reopen-history").open = true;
-  $("#key-reopen-events").replaceChildren(...keyLoadTimeline(load).map(({ label, at }) => make("li", `${label} · ${new Date(at).toLocaleString("he-IL")}`)));
+  $("#key-reopen-history").hidden = !manager;
+  if (manager) {
+    $("#key-reopen-history").open = true;
+    $("#key-reopen-events").replaceChildren(...keyLoadTimeline(load).map(({ label, at }) => make("li", `${label} · ${new Date(at).toLocaleString("he-IL")}`)));
+  }
   setMessage("#work-status", load.status === "closed" ? "ההטענה נסגרה וההיסטוריה עודכנה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול לסגור את ההטענה." : "ההתקדמות נשמרת במכשיר עד לסגירת הטופס.");
 }
 const signatures = new Map();

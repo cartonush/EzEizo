@@ -76,6 +76,10 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .manager-home-tile strong { font-size: 18px; }
 .manager-home-tile span { color: #607686; font-size: 13px; }
 .manager-home-tile:hover,.manager-home-tile:focus-visible { border-color: #176b96; outline: none; background: #f3f9fc; }
+.manager-note-editor { width: 100%; margin-top: 10px; padding: 10px; border: 1px solid #dbe6ec; border-radius: 9px; }
+.manager-note-editor summary { cursor: pointer; font-weight: 700; color: #17668f; }
+.manager-note-editor textarea { display: block; box-sizing: border-box; width: 100%; min-height: 70px; margin: 9px 0; padding: 9px; border: 1px solid #cbdce5; border-radius: 8px; font: inherit; }
+.manager-note-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 9px 0; }
 .management-link { margin-top: 16px; min-height: auto; }
 .fault-nav { margin: 4px 0 16px; }
 .fault-nav[hidden] { display: none; }
