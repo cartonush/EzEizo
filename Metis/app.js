@@ -1,8 +1,8 @@
-import "../sheet-data.js?v=1.3.4";
-import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.3.4";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.3.4";
-import { resolveAssignees } from "./assignee-selection.js?v=1.3.4";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.4";
+import "../sheet-data.js?v=1.3.5";
+import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.3.5";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.3.5";
+import { resolveAssignees } from "./assignee-selection.js?v=1.3.5";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.5";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -328,14 +328,14 @@ function renderIssueLists() {
 
 function showManagerView() {
   const requested = window.location.hash.slice(1);
-  const selected = ["home", "management", "new", "open", "pending", "closed", "users"].includes(requested) ? requested : "home";
-  document.querySelector("#manager-back").hidden = selected !== "users";
+  const selected = ["home", "management", "reports", "aircraft-constants", "new", "open", "pending", "closed", "users"].includes(requested) ? requested : "home";
+  document.querySelector("#manager-back").hidden = !["users", "reports", "aircraft-constants"].includes(selected);
   document.querySelector("#fault-nav").hidden = !["new", "open", "pending", "closed"].includes(selected);
   document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== (selected === "pending" ? "closed" : selected); });
   document.querySelector("#pending-section").hidden = selected !== "pending";
   document.querySelector("#closed-section").hidden = selected === "pending";
   document.querySelectorAll("[data-view-link]").forEach((link) => {
-    const nav = ["new", "open", "pending", "closed"].includes(selected) ? "faults" : selected === "users" ? "management" : selected;
+    const nav = ["new", "open", "pending", "closed"].includes(selected) ? "faults" : ["users", "reports", "aircraft-constants"].includes(selected) ? "management" : selected;
     if (link.dataset.viewLink === nav) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });

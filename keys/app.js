@@ -1,6 +1,6 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.4";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.4";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.4";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.5";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.5";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.5";
 
 const manager = !location.pathname.toLowerCase().includes("/mechanic/");
 const user = await gate(manager ? "manager" : "technician");
@@ -271,6 +271,7 @@ function showView() {
   const view = activeLoad ? "work" : manager && ["history", "create", "open"].includes(hash) ? hash : "open";
   ["history", "create", "open", "work"].forEach((name) => { $(`#${name}-view`).hidden = name !== view; });
   $("#keys-nav").hidden = !manager || view === "work";
+  $("#back-link").hidden = manager && view !== "work";
   $("#back-link").href = manager ? view === "work" ? "#open" : "../Metis/#home" : "./";
   $("#back-link").textContent = view === "work" ? "→ חזרה להטענות" : "→ חזרה";
   $("#keys-nav").querySelectorAll("button").forEach((button) => { if (button.dataset.view === view) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
