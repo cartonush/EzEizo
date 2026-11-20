@@ -1,5 +1,5 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.4.4";
-import { SQUADRONS } from "./catalog.js?v=1.4.4";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.4.5";
+import { SQUADRONS } from "./catalog.js?v=1.4.5";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -152,7 +152,7 @@ function renderReport() {
   $("#report-print").disabled = $("#report-csv").disabled = Boolean(state.error || !reportRows.length);
   const summary = $("#report-summary"); summary.replaceChildren();
   if (!state.error) {
-    const counts = [["תקלות", reportRows.filter((r) => r.type === "issue").length], ["מטוסים בהטענות", reportRows.filter((r) => r.type === "key").length], ["פתוחים", reportRows.filter((r) => r.status === "open").length], ["ממתינים", reportRows.filter((r) => r.status === "pendingReview").length], ["סגורים", reportRows.filter((r) => r.status === "closed").length]];
+    const counts = [["תקלות", reportRows.filter((r) => r.type === "issue").length], ["מטוסים בהטענות", reportRows.filter((r) => r.type === "key").length], ["פתוח", reportRows.filter((r) => r.status === "open").length], ["ממתין לסגירה", reportRows.filter((r) => r.status === "pendingReview").length], ["סגור", reportRows.filter((r) => r.status === "closed").length]];
     counts.forEach(([label, amount]) => { const item = element("div", null, "report-stat"); item.append(element("strong", String(amount)), element("span", label)); summary.append(item); });
   }
   const results = $("#report-results"); results.replaceChildren();
