@@ -1,9 +1,9 @@
-import "./sheet-data.js?v=1.5.2";
-import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.5.2";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.5.2";
-import { validateTreatment } from "./mechanic-validation.js?v=1.5.2";
-import { attachTimeNow } from "./time-now.js?v=1.5.2";
-import { issueTimeline } from "./lifecycle.js?v=1.5.2";
+import "./sheet-data.js?v=1.5.3";
+import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.5.3";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.5.3";
+import { validateTreatment } from "./mechanic-validation.js?v=1.5.3";
+import { attachTimeNow } from "./time-now.js?v=1.5.3";
+import { issueTimeline } from "./lifecycle.js?v=1.5.3";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -266,7 +266,7 @@ function renderIssueList() {
     card.className = "issue-item";
     card.href = type === "keys" ? `./keys.html#work/${encodeURIComponent(item.id)}` : `?id=${encodeURIComponent(item.id)}`;
     const title = document.createElement("strong");
-    title.textContent = type === "keys" ? `הטענת מפתחות · טייסת ${item.squadron} · דת״ק ${item.shelter}` : `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
+    title.textContent = type === "keys" ? `הטענת מפתחות ${item.serial || ""} · טייסת ${item.squadron} · דת״ק ${item.shelter}` : `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
     const info = document.createElement("span");
     info.textContent = type === "keys" ? `מטוסים: ${item.aircraftIds.join(", ")} · ${item.date.split("-").reverse().join("/")} · פתוחה` : `${item.fault || "ללא תיאור"} · פתוחה`;
     card.append(title, info);

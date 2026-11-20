@@ -1,8 +1,8 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.5.2";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.5.2";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.5.2";
-import { attachTimeNow } from "../time-now.js?v=1.5.2";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.5.2";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.5.3";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.5.3";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.5.3";
+import { attachTimeNow } from "../time-now.js?v=1.5.3";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.5.3";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -20,6 +20,13 @@ let draft;
 try { draft = { ...defaultDraft(), ...JSON.parse(localStorage.getItem(draftKey) || "{}") }; } catch { draft = defaultDraft(); }
 let loads = [], history = [], technicians = [], activeLoad = null, selectedSquadron = "101", work = null;
 let loadsReady = false;
+let numberingLegacyLoads = false;
+const matchesKeyNumber = (load, search) => {
+  const value = search.trim().toUpperCase();
+  if (!value) return true;
+  const digits = value.replace(/^K-?/, "");
+  return /^\d{1,9}$/.test(digits) && load.serial === `K-${digits.padStart(9, "0")}`;
+};
 let dispatchSignature = "";
 const saveDraft = () => localStorage.setItem(draftKey, JSON.stringify(draft));
 const saveWork = () => { if (activeLoad && activeLoad.status === "open") localStorage.setItem(`ezeizo-key-work:${activeLoad.id}`, JSON.stringify(work)); };
@@ -123,9 +130,9 @@ $("#create-key-load").addEventListener("click", async () => {
   loading.hidden = false;
   setMessage("#create-status", "פותח הטענת מפתחות…");
   try {
-    await createKeyLoad({ date: draft.date, time: draft.time, squadron: draft.squadron, shelter: draft.shelter, teamUids, teamNames: teamUids.map((uid) => technicians.find((person) => person.uid === uid).name), rows, aircraftIds: rows.map((row) => row.aircraft), period: period.label, dispatcherSignature: dispatchSignature });
-    draft = defaultDraft(); saveDraft(); renderCreateFields(); $("#key-briefed").checked = false; clearDispatch(); setMessage("#create-status", "הטענת המפתחות נפתחה לצוות."); location.hash = route("open");
-  } catch (error) { setMessage("#create-status", `פתיחת ההטענה נכשלה: ${error.message}`, true); }
+    const created = await createKeyLoad({ date: draft.date, time: draft.time, squadron: draft.squadron, shelter: draft.shelter, teamUids, teamNames: teamUids.map((uid) => technicians.find((person) => person.uid === uid).name), rows, aircraftIds: rows.map((row) => row.aircraft), period: period.label, dispatcherSignature: dispatchSignature });
+    draft = defaultDraft(); saveDraft(); renderCreateFields(); $("#key-briefed").checked = false; clearDispatch(); setMessage("#create-status", `הטענת המפתחות ${created.serial} נפתחה לצוות.`); location.hash = route("open");
+  } catch (error) { setMessage("#create-status", error.code === "permission-denied" ? "פתיחת ההטענה נכשלה: יש לפרסם את כללי Firestore המעודכנים למספור הטענות." : `פתיחת ההטענה נכשלה: ${error.message}`, true); }
   finally { loading.hidden = true; button.disabled = false; }
 });
 function renderHistory() {
@@ -150,12 +157,12 @@ function renderHistory() {
 }
 function renderOpen() {
   const container = $("#open-key-loads"); container.replaceChildren();
-  const search = $("#open-key-search")?.value.trim().toLowerCase() || "";
-  const list = loads.filter((load) => load.status === "open" && load.id.toLowerCase().includes(search));
+  const search = $("#open-key-search")?.value || "";
+  const list = loads.filter((load) => load.status === "open" && matchesKeyNumber(load, search));
   if (!list.length) { container.textContent = search ? "לא נמצאו הטענות פתוחות התואמות למזהה." : "אין הטענות פתוחות כרגע."; return; }
   list.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).forEach((load) => {
     const card = make("div", undefined, "issue-item");
-    card.append(make("strong", `טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`), make("span", `מזהה הטענה: ${load.id}`), make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`));
+    card.append(make("strong", `${load.serial || "מספר ההטענה נטען…"} · טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`), make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`));
     const open = make("button", "פתח דף", "secondary-button"); open.type = "button";
     open.addEventListener("click", () => { location.hash = route(`work/${load.id}`); if (!embedded) showView(); }); card.append(open); container.append(card);
     if (manager) {
@@ -177,13 +184,12 @@ function renderOpen() {
 }
 function renderClosed() {
   const container = $("#closed-key-loads"); container.replaceChildren();
-  const search = $("#closed-key-search")?.value.trim().toLowerCase() || "";
-  const list = loads.filter((load) => load.status === "closed" && load.id.toLowerCase().includes(search));
+  const search = $("#closed-key-search")?.value || "";
+  const list = loads.filter((load) => load.status === "closed" && matchesKeyNumber(load, search));
   if (!list.length) { container.textContent = search ? "לא נמצאו הטענות סגורות התואמות למזהה." : "אין הטענות סגורות כרגע."; return; }
   list.sort((a, b) => (b.completedAt || "").localeCompare(a.completedAt || "")).forEach((load) => {
     const card = make("div", undefined, "issue-item");
-    card.append(make("strong", `טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`),
-      make("span", `מזהה הטענה: ${load.id}`),
+    card.append(make("strong", `${load.serial || "מספר ההטענה נטען…"} · טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`),
       make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`),
       make("span", `נסגר: ${load.completedAt ? new Date(load.completedAt).toLocaleString("he-IL") : "—"}`));
     const open = make("button", "צפה בטופס הסגור", "secondary-button"); open.type = "button";
@@ -203,7 +209,7 @@ function readWork(load) {
 function renderWork() {
   if (!activeLoad) return;
   const load = activeLoad, closed = load.status === "closed" || manager;
-  $("#work-summary").textContent = `${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${load.status === "closed" ? " · נסגר" : ""}`;
+  $("#work-summary").textContent = `${load.serial ? `${load.serial} · ` : ""}${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${load.status === "closed" ? " · נסגר" : ""}`;
   $("#work-manager-notes").textContent = load.managerNotes || "";
   $("#work-manager-notes").hidden = !load.managerNotes;
   const table = document.createElement("table"); table.className = "work-aircraft-table";
@@ -383,7 +389,21 @@ if (manager) {
   watchTechnicians((users) => { technicians = users; renderTeam([...draft.teamUids]); }, (error) => setMessage("#create-status", `טעינת טכנאים נכשלה: ${error.message}`, true));
   watchKeyHistory((records) => { history = records; renderHistory(); }, (error) => setMessage("#history-status", `טעינת ההיסטוריה נכשלה: ${error.message}`, true));
 }
-watchKeyLoads((items) => { loads = items; loadsReady = true; if (embedded) { $("#keys-loading").hidden = true; $("#keys-content").hidden = false; } if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); showView(); if (!embedded) revealApp(); }, (error) => {
+async function numberLegacyLoads(items) {
+  if (!manager || numberingLegacyLoads) return;
+  const pending = items.filter((item) => !item.serial).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  if (!pending.length) return;
+  numberingLegacyLoads = true;
+  const status = (message, bad = false) => document.querySelectorAll(".key-numbering-status").forEach((node) => setMessageOnNode(node, message, bad));
+  status(`ממספר ${pending.length} הטענות קיימות…`);
+  try {
+    for (const item of pending) await assignLegacyKeyLoadSerial(item.id);
+    status("");
+  } catch (error) {
+    status(error.code === "permission-denied" ? "כדי למספר הטענות קיימות יש לפרסם את כללי Firestore המעודכנים." : `מספור הטענות נכשל: ${error.message}`, true);
+  } finally { numberingLegacyLoads = false; }
+}
+watchKeyLoads((items) => { loads = items; loadsReady = true; if (embedded) { $("#keys-loading").hidden = true; $("#keys-content").hidden = false; } if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); showView(); if (manager) void numberLegacyLoads(items); if (!embedded) revealApp(); }, (error) => {
   $("#open-key-loads").textContent = `טעינת ההטענות נכשלה: ${error.message}`;
   $("#open-key-loads").style.color = "#d40000";
   if (embedded) { loadsReady = true; $("#keys-loading").hidden = true; $("#keys-content").hidden = false; showView(); }

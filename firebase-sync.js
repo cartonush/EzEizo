@@ -15,6 +15,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const counterRef = doc(db, "metadata", "serial");
+const keyCounterRef = doc(db, "metadata", "keySerial");
 
 // Firestore cannot store an array inside another array. Keep the UI's [label, value]
 // pairs and store each group as a map of scalar values instead.
@@ -159,9 +160,9 @@ export async function createIssue(sheet, assignee, preserveSerial = false) {
     if (existing.exists()) return existing.data().sheet.serial;
     const last = Number(counter.data()?.last) || 0;
     const candidate = preserveSerial ? Number(sheet.serial) : 0;
-    const next = candidate > last && candidate <= 999999 ? candidate : last + 1;
-    if (next > 999999) throw new Error("מספרי התקלות אזלו.");
-    const serial = String(next).padStart(6, "0");
+    const next = candidate > last && candidate <= 9999999999 ? candidate : last + 1;
+    if (next > 9999999999) throw new Error("מספרי התקלות אזלו.");
+    const serial = String(next).padStart(10, "0");
     transaction.set(counterRef, { last: next });
     transaction.set(issueRef, { sheet: storedSheet({ ...sheet, serial }), status: "open", assigneeUid: assignee.uid, assigneeName: assignee.name, createdAt: new Date().toISOString() });
     return serial;
@@ -175,8 +176,8 @@ export async function createAssignedIssues(sheet, assignees) {
   return runTransaction(db, async (transaction) => {
     const counter = await transaction.get(counterRef);
     const next = (Number(counter.data()?.last) || 0) + 1;
-    if (next > 999999) throw new Error("מספרי התקלות אזלו.");
-    const serial = String(next).padStart(6, "0");
+    if (next > 9999999999) throw new Error("מספרי התקלות אזלו.");
+    const serial = String(next).padStart(10, "0");
     transaction.set(counterRef, { last: next });
     refs.forEach((ref, index) => {
       const assignee = assignees[index];
@@ -206,8 +207,31 @@ export function watchKeyHistory(onChange, onError) {
 
 export async function createKeyLoad(load) {
   const ref = doc(collection(db, "keyLoads"));
-  await setDoc(ref, { ...load, status: "open", createdAt: new Date().toISOString() });
-  return ref.id;
+  return runTransaction(db, async (transaction) => {
+    const counter = await transaction.get(keyCounterRef);
+    const next = (Number(counter.data()?.last) || 0) + 1;
+    if (next > 999999999) throw new Error("מספרי ההטענות אזלו.");
+    const serial = `K-${String(next).padStart(9, "0")}`;
+    transaction.set(keyCounterRef, { last: next });
+    transaction.set(ref, { ...load, serial, status: "open", createdAt: new Date().toISOString() });
+    return { id: ref.id, serial };
+  });
+}
+
+// Assign a stable number to older key loads while keeping their document IDs and links.
+export async function assignLegacyKeyLoadSerial(id) {
+  const ref = doc(db, "keyLoads", id);
+  return runTransaction(db, async (transaction) => {
+    const [existing, counter] = await Promise.all([transaction.get(ref), transaction.get(keyCounterRef)]);
+    if (!existing.exists()) return null;
+    if (existing.data().serial) return existing.data().serial;
+    const next = (Number(counter.data()?.last) || 0) + 1;
+    if (next > 999999999) throw new Error("מספרי ההטענות אזלו.");
+    const serial = `K-${String(next).padStart(9, "0")}`;
+    transaction.set(keyCounterRef, { last: next });
+    transaction.update(ref, { serial });
+    return serial;
+  });
 }
 
 export async function closeKeyLoad(id, completedBy, work) {

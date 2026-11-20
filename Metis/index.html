@@ -11,9 +11,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.5.2">
-  <link rel="stylesheet" href="styles.css?v=1.5.2">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.5.2">
+  <link rel="stylesheet" href="../styles.css?v=1.5.3">
+  <link rel="stylesheet" href="styles.css?v=1.5.3">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.5.3">
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.5.2</span>
+      <span class="version-pill">v1.5.3</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -75,8 +75,8 @@
 <table class="keys-table instruction-table"><tbody><tr><td id="key-required"></td></tr><tr><td>יש לוודא כי לא מופיעות תקלות: EREZ 78 לאחר טעינה ולאחר שידור PTT בארז, SAK 7 / 34 בשחק.</td></tr><tr><td>כלי עבודה / צב״ד צת״ת / חלפים נדרשים: מ.כ 2020 + חרב אש</td></tr></tbody></table></div></section>
 <section class="card"><div class="section-heading"><div><p class="section-kicker">תדריך</p><h2>משימות לביצוע</h2></div></div><p>המשימה הראשונה תאושר ותיחתם בידי משלח המשימה בעת פתיחת הדף.</p><label class="replaced-toggle"><input id="key-briefed" type="checkbox"><span class="custom-check" aria-hidden="true"></span><span>תדריך בטיחות וניהול סיכונים ע״י מ״ע המחלקה / משלח המשימה</span></label><div class="signature-field"><span class="field-label">חתימת משלח המשימה</span><canvas id="key-dispatch-signature" class="signature-pad" aria-label="חתימת משלח המשימה"></canvas><button id="key-clear-signature" class="clear-signature" type="button">נקה חתימה</button></div><details class="key-tasks-details"><summary>הצג את 12 המשימות לביצוע</summary><ol id="manager-key-tasks" class="key-task-list"></ol></details></section>
 <button id="create-key-load" class="primary-button" type="button">פתח הטענת מפתחות</button><div id="key-create-loading" class="key-create-loading" role="status" aria-live="polite" hidden><p>הטענת המפתחות נפתחת…</p><div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-line short"></span></div><div class="skeleton-card"><span class="skeleton-line"></span><span class="skeleton-input"></span></div></div><p id="create-status" class="copy-status" role="status" aria-live="polite"></p></section>
-<section id="open-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">מעקב צוות</p><h2>הטענות פתוחות</h2></div></div><label class="input-field list-search">חיפוש לפי מספר טופס<input id="open-key-search" type="search" placeholder="חפש מזהה הטענה" autocomplete="off"></label><div id="open-key-loads" class="issue-list"></div></section>
-<section id="closed-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">ארכיון הטענות</p><h2>הטענות סגורות</h2></div></div><label class="input-field list-search">חיפוש לפי מספר טופס<input id="closed-key-search" type="search" placeholder="חפש מזהה הטענה" autocomplete="off"></label><div id="closed-key-loads" class="issue-list"></div></section>
+<section id="open-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">מעקב צוות</p><h2>הטענות פתוחות</h2></div></div><label class="input-field list-search">חיפוש לפי מספר הטענה<input id="open-key-search" type="search" inputmode="numeric" placeholder="לדוגמה: 1" autocomplete="off"></label><p class="key-numbering-status copy-status" role="status"></p><div id="open-key-loads" class="issue-list"></div></section>
+<section id="closed-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">ארכיון הטענות</p><h2>הטענות סגורות</h2></div></div><label class="input-field list-search">חיפוש לפי מספר הטענה<input id="closed-key-search" type="search" inputmode="numeric" placeholder="לדוגמה: 1" autocomplete="off"></label><p class="key-numbering-status copy-status" role="status"></p><div id="closed-key-loads" class="issue-list"></div></section>
 <section id="work-view" hidden>
 <section class="card"><div class="section-heading"><div><p class="section-kicker">דף צוות</p><h2>ביצוע הטענת מפתחות</h2></div></div><div id="work-summary"></div><div id="work-manager-notes" class="key-manager-notes" hidden></div><div id="work-rows" class="table-wrap"></div><div id="work-instructions" class="instruction-table"></div></section>
 <section class="card"><div class="section-heading"><div><p class="section-kicker">12 משימות</p><h2>פעולות לביצוע</h2></div></div><details class="key-tasks-details"><summary>הצג משימות לביצוע</summary><ol id="work-tasks" class="key-task-list"></ol></details></section>
@@ -185,7 +185,7 @@
           <label class="input-field report-kind-field">סוג דוח<select id="report-kind"><option value="" selected>בחר סוג דוח</option><option value="journal">יומן פעילות</option><option value="aircraft">היסטוריית מטוס</option><option value="technician">היסטוריית טכנאי</option><option value="issue-open">תקלות פתוחות</option><option value="issue-closed">תקלות סגורות</option><option value="squadron">סיכום טייסת</option><option value="pending">דפים הממתינים לסגירה</option></select></label>
           <div id="report-after-kind" hidden>
           <fieldset class="report-choice report-primary-choice"><legend>סינון הדוח לפי</legend><label><input type="radio" name="report-mode" value="aircraft" checked> טייסת / מטוס</label><label><input type="radio" name="report-mode" value="technician"> טכנאי</label></fieldset>
-          <div id="report-aircraft-fields" class="report-subject-fields"><label class="input-field">טייסת<select id="report-squadron"></select></label><label class="input-field">מספר מטוס<select id="report-aircraft"></select></label></div>
+          <div id="report-aircraft-fields" class="report-subject-fields"><label class="input-field">טייסת<select id="report-squadron"></select></label><div id="report-aircraft-fields-picker" class="report-multi-aircraft" hidden><span class="field-label">מטוסים</span><details id="report-aircraft-picker"><summary id="report-aircraft-summary">בחר מטוסים</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-squadron-aircraft" class="secondary-button">בחר את כל המטוסים</button><button type="button" id="report-clear-squadron-aircraft" class="secondary-button">נקה בחירה</button></div><div id="report-aircraft-options" class="report-aircraft-options"></div></div></details></div></div>
           <div id="report-technician-field" class="report-subject-fields" hidden><label class="input-field">טכנאי<select id="report-technician"></select></label><label class="input-field">טייסת<select id="report-technician-squadron"></select></label><div id="report-technician-aircraft-fields" class="report-multi-aircraft" hidden><span class="field-label">מטוסים</span><details id="report-technician-aircraft-picker"><summary id="report-technician-aircraft-summary">בחר מטוסים</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-aircraft" class="secondary-button">בחר את כל המטוסים</button><button type="button" id="report-clear-aircraft" class="secondary-button">נקה בחירה</button></div><div id="report-technician-aircraft-options" class="report-aircraft-options"></div></div></details></div></div>
           <div class="manager-grid report-dates"><label class="input-field">מתאריך ושעה<input id="report-from" type="datetime-local"></label><label class="input-field">עד תאריך ושעה<input id="report-to" type="datetime-local"></label></div>
           <div class="manager-grid"><label class="input-field">סוג טופס<select id="report-form"><option value="all">תקלות והטענות מפתחות</option><option value="issue">תקלות</option><option value="key">הטענות מפתחות</option></select></label><label class="input-field">סטטוס<select id="report-status"><option value="all" selected>כל המצבים</option><option value="closed">סגור</option><option value="open">פתוח</option><option value="pendingReview">ממתין לסגירה</option></select></label></div>
@@ -293,6 +293,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.5.2"></script>
+  <script type="module" src="app.js?v=1.5.3"></script>
 </body>
 </html>
