@@ -1,5 +1,5 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.4.6";
-import { SQUADRONS } from "./catalog.js?v=1.4.6";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.4.7";
+import { SQUADRONS } from "./catalog.js?v=1.4.7";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";

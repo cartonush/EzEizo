@@ -1,9 +1,9 @@
-import "./sheet-data.js?v=1.4.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.4.6";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.4.6";
-import { validateTreatment } from "./mechanic-validation.js?v=1.4.6";
-import { attachTimeNow } from "./time-now.js?v=1.4.6";
-import { issueTimeline } from "./lifecycle.js?v=1.4.6";
+import "./sheet-data.js?v=1.4.7";
+import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.4.7";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.4.7";
+import { validateTreatment } from "./mechanic-validation.js?v=1.4.7";
+import { attachTimeNow } from "./time-now.js?v=1.4.7";
+import { issueTimeline } from "./lifecycle.js?v=1.4.7";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");

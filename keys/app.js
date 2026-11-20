@@ -1,8 +1,8 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.4.6";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.4.6";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.4.6";
-import { attachTimeNow } from "../time-now.js?v=1.4.6";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.4.6";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.4.7";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.4.7";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.4.7";
+import { attachTimeNow } from "../time-now.js?v=1.4.7";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.4.7";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -23,6 +23,15 @@ let loadsReady = false;
 let dispatchSignature = "";
 const saveDraft = () => localStorage.setItem(draftKey, JSON.stringify(draft));
 const saveWork = () => { if (activeLoad && activeLoad.status === "open") localStorage.setItem(`ezeizo-key-work:${activeLoad.id}`, JSON.stringify(work)); };
+if (manager && embedded) document.addEventListener("ezeizo:reset-key-draft", () => {
+  draft = defaultDraft();
+  saveDraft();
+  renderCreateFields();
+  $("#key-briefed").checked = false;
+  clearDispatch();
+  dispatchSignature = "";
+  setMessage("#create-status", "טיוטת הטענת המפתחות אופסה.");
+});
 
 function selectOptions(select, values, placeholder, selected = "") {
   select.replaceChildren(new Option(placeholder, ""));

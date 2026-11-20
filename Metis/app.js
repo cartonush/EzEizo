@@ -1,10 +1,10 @@
-import "../sheet-data.js?v=1.4.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.4.6";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.4.6";
-import { resolveAssignees } from "./assignee-selection.js?v=1.4.6";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.4.6";
-import { initKeyPages } from "../keys/app.js?v=1.4.6";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.4.6";
+import "../sheet-data.js?v=1.4.7";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.4.7";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.4.7";
+import { resolveAssignees } from "./assignee-selection.js?v=1.4.7";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.4.7";
+import { initKeyPages } from "../keys/app.js?v=1.4.7";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.4.7";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -347,6 +347,7 @@ function showManagerView() {
   const requested = window.location.hash.slice(1);
   const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : ["home", "management", "reports", "aircraft-constants", "new", "open", "pending", "closed", "users"].includes(requested) ? requested : "home";
   document.querySelector("#manager-back").hidden = !["users", "reports", "aircraft-constants"].includes(selected);
+  document.querySelector("#reset-draft").hidden = requested !== "new" && requested !== "keys/create";
   if (selected !== "keys") document.querySelector("#key-back-link").hidden = true;
   document.querySelector("#fault-nav").hidden = !["new", "open", "pending", "closed"].includes(selected);
   document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== (selected === "pending" ? "closed" : selected); });
@@ -364,7 +365,7 @@ function showManagerView() {
 }
 document.querySelector("#manager-back").addEventListener("click", () => { if (location.hash === "#aircraft-constants" && closeConstantsEditor()) return; location.hash = "management"; });
 window.addEventListener("hashchange", showManagerView);
-document.querySelector("#new-draft").addEventListener("click", () => {
+function resetFaultDraft() {
   draft = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
   selections = {};
   for (const key of Object.keys(pickers)) draft[key] = "";
@@ -372,18 +373,23 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   draft.ewSystem = "";
   draft.location = "";
   draft.technicians = "";
+  draft.fault = "";
+  draft.managerNotes = "";
   draft.dispatcherSignature = "";
   clearDispatcherSignature();
   document.querySelectorAll("[data-sheet-field]").forEach((input) => { input.value = draft[input.dataset.sheetField] || ""; });
   refreshPickers();
   renderAssigneeSelectors(["", ""]);
   document.querySelector("#creation-ack").checked = false;
+  setStatus("#assignee-feedback", "");
   renderConstants();
   renderActions();
   saveDraft();
-  setStatus("#created-status", "");
-  window.location.hash = "new";
-  document.querySelector("#manager-details-title").scrollIntoView({ behavior: "smooth", block: "start" });
+  setStatus("#created-status", "טיוטת התקלה אופסה.");
+}
+document.querySelector("#reset-draft").addEventListener("click", () => {
+  if (window.location.hash === "#new") resetFaultDraft();
+  else if (window.location.hash === "#keys/create") document.dispatchEvent(new Event("ezeizo:reset-key-draft"));
 });
 
 watchIssues((issues) => {
