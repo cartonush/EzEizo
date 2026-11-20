@@ -1,6 +1,6 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.5";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.5";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.5";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.6";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.6";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.6";
 
 const manager = !location.pathname.toLowerCase().includes("/mechanic/");
 const user = await gate(manager ? "manager" : "technician");
