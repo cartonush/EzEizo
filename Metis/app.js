@@ -1,10 +1,10 @@
-import "../sheet-data.js?v=1.5.0";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.5.0";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.5.0";
-import { resolveAssignees } from "./assignee-selection.js?v=1.5.0";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.5.0";
-import { initKeyPages } from "../keys/app.js?v=1.5.0";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.5.0";
+import "../sheet-data.js?v=1.5.1";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.5.1";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.5.1";
+import { resolveAssignees } from "./assignee-selection.js?v=1.5.1";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.5.1";
+import { initKeyPages } from "../keys/app.js?v=1.5.1";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.5.1";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -419,8 +419,9 @@ function renderAssigneeSelectors(values = selectedAssigneeUids()) {
   container.replaceChildren();
   (values.length >= 2 ? values : ["", ""]).forEach((uid, index) => {
     const row = document.createElement('div'); row.className = 'assignee-row';
-    const label = document.createElement('label'); label.className = 'input-field'; label.textContent = `טכנאי ${index + 1}`;
-    const select = document.createElement('select'); select.setAttribute('aria-label', `טכנאי ${index + 1}`);
+    const roleLabel = index === 0 ? 'מוביל התקלה' : `טכנאי ${index + 1}`;
+    const label = document.createElement('label'); label.className = 'input-field'; label.textContent = roleLabel;
+    const select = document.createElement('select'); select.setAttribute('aria-label', roleLabel);
     select.append(new Option('בחר טכנאי', ''));
     technicians.filter((person) => person.active).forEach((person) => select.append(new Option(person.name, person.uid)));
     select.value = uid;
@@ -428,7 +429,7 @@ function renderAssigneeSelectors(values = selectedAssigneeUids()) {
     label.append(select); row.append(label);
     if (index >= 2) {
       const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'secondary-button'; remove.textContent = 'הסר';
-      remove.setAttribute('aria-label', `הסר טכנאי ${index + 1}`);
+      remove.setAttribute('aria-label', `הסר ${roleLabel}`);
       remove.addEventListener('click', () => renderAssigneeSelectors(selectedAssigneeUids().filter((_, position) => position !== index)));
       row.append(remove);
     }

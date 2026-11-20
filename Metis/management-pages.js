@@ -1,5 +1,5 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.5.0";
-import { SQUADRONS } from "./catalog.js?v=1.5.0";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.5.1";
+import { SQUADRONS } from "./catalog.js?v=1.5.1";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -114,28 +114,30 @@ function reportRecords() {
   return [...faults, ...keys];
 }
 
-const reportTitles = { journal: "יומן פעילות", aircraft: "היסטוריית מטוס", technician: "פעילות טכנאי", squadron: "סיכום טייסת", pending: "דפים הממתינים לסגירה" };
+const reportTitles = { journal: "יומן פעילות", aircraft: "היסטוריית מטוס", technician: "היסטוריית טכנאי", "issue-open": "תקלות פתוחות", "issue-closed": "תקלות סגורות", squadron: "סיכום טייסת", pending: "דפים הממתינים לסגירה" };
 function reportState() {
   const squadron = $("#report-squadron").value;
   const mode = document.querySelector('[name="report-mode"]:checked').value;
-  const allAircraft = $("#report-all-aircraft").checked;
   const aircraft = $("#report-aircraft").value;
   const technician = $("#report-technician").value;
+  const technicianSquadrons = [...document.querySelectorAll('[name="report-technician-squadron-check"]:checked')].map((box) => box.value);
+  const specificAircraft = $("#report-specific-aircraft").checked;
+  const technicianSquadron = $("#report-technician-squadron").value;
+  const technicianAircraft = $("#report-technician-aircraft").value;
   const from = new Date($("#report-from").value).getTime();
   const to = new Date($("#report-to").value).getTime();
   const kind = $("#report-kind").value;
-  const status = kind === "pending" ? "pendingReview" : $("#report-status").value;
-  const type = kind === "pending" ? "issue" : $("#report-form").value;
-  const error = !squadron ? "בחר טייסת כדי להציג דוח." : !Number.isFinite(from) || !Number.isFinite(to) || from > to ? "בחר טווח תאריכים תקין." : mode === "aircraft" && !allAircraft && !aircraft ? "בחר מטוס מהרשימה או סמן את כל מטוסי הטייסת." : mode === "technician" && !technician ? "בחר טכנאי מהרשימה." : "";
-  return { squadron, mode, allAircraft, aircraft, technician, from, to, kind, status, type, error };
+  const status = kind === "pending" ? "pendingReview" : kind === "issue-open" ? "open" : kind === "issue-closed" ? "closed" : $("#report-status").value;
+  const type = ["pending", "issue-open", "issue-closed"].includes(kind) ? "issue" : $("#report-form").value;
+  const error = !kind ? "בחר תחילה סוג דוח." : !Number.isFinite(from) || !Number.isFinite(to) || from > to ? "בחר טווח תאריכים תקין." : mode === "aircraft" && !squadron ? "בחר טייסת כדי להציג דוח." : mode === "technician" && !technician ? "בחר טכנאי מהרשימה." : mode === "technician" && specificAircraft && (!technicianSquadron || !technicianAircraft) ? "בחר טייסת ומטוס מהרשימות." : mode === "technician" && !specificAircraft && !technicianSquadrons.length ? "בחר לפחות טייסת אחת או מטוס מסוים." : "";
+  return { squadron, mode, aircraft, technician, technicianSquadrons, specificAircraft, technicianSquadron, technicianAircraft, from, to, kind, status, type, error };
 }
 
 function makeReportRows(state) {
   if (state.error) return [];
-  return reportRecords().filter((row) => row.squadron === state.squadron
+  return reportRecords().filter((row) => (state.mode === "aircraft" ? row.squadron === state.squadron && (!state.aircraft || row.aircraft === state.aircraft) : row.technicianUids.includes(state.technician) && (state.specificAircraft ? row.squadron === state.technicianSquadron && row.aircraft === state.technicianAircraft : state.technicianSquadrons.includes(row.squadron)))
     && (state.type === "all" || row.type === state.type)
     && (state.status === "all" || row.status === state.status)
-    && (state.mode === "technician" ? row.technicianUids.includes(state.technician) : state.allAircraft || row.aircraft === state.aircraft)
     && new Date(row.eventAt).getTime() >= state.from && new Date(row.eventAt).getTime() <= state.to)
     .sort((a, b) => new Date(b.eventAt) - new Date(a.eventAt));
 }
@@ -143,16 +145,16 @@ function makeReportRows(state) {
 function reportFilename(state = reportState()) {
   const from = $("#report-from").value.slice(0, 10);
   const to = $("#report-to").value.slice(0, 10);
-  const subject = state.mode === "aircraft" && !state.allAircraft ? `-מטוס-${state.aircraft}` : state.mode === "technician" ? `-טכנאי-${reportUsers.find((user) => user.uid === state.technician)?.name || ""}` : "";
-  return `EzEizo-${reportTitles[state.kind]}-טייסת-${state.squadron}${subject}-${from}_עד_${to}`.replace(/[\\/:*?"<>|]/g, "-");
+  const subject = state.mode === "technician" ? `טכנאי-${reportUsers.find((user) => user.uid === state.technician)?.name || ""}${state.specificAircraft ? `-מטוס-${state.technicianAircraft}` : ""}` : `טייסת-${state.squadron}${state.aircraft ? `-מטוס-${state.aircraft}` : ""}`;
+  return `EzEizo-${reportTitles[state.kind]}-${subject}-${from}_עד_${to}`.replace(/[\\/:*?"<>|]/g, "-");
 }
 
 function renderReport() {
   const state = reportState();
   const error = $("#report-error"); error.textContent = state.error; error.dataset.state = state.error ? "error" : "";
-  $("#report-title").textContent = reportTitles[state.kind];
-  const subject = state.mode === "technician" ? `טכנאי: ${reportUsers.find((user) => user.uid === state.technician)?.name || "—"}` : state.allAircraft ? "כל מטוסי הטייסת" : `מטוס ${state.aircraft || "—"}`;
-  $("#report-period").textContent = `טייסת ${state.squadron || "—"} · ${subject} · ${byDate(state.from)} עד ${byDate(state.to)} · ${state.type === "all" ? "כל סוגי הטפסים" : state.type === "issue" ? "תקלות" : "מפתחות"} · ${state.status === "all" ? "כל המצבים" : statusLabel(state.status)}`;
+  $("#report-title").textContent = reportTitles[state.kind] || "בחר סוג דוח";
+  const subject = state.mode === "technician" ? `טכנאי: ${reportUsers.find((user) => user.uid === state.technician)?.name || "—"} · ${state.specificAircraft ? `מטוס ${state.technicianAircraft || "—"}` : state.technicianSquadrons.length ? `טייסות ${state.technicianSquadrons.join(", ")}` : "בחר טייסות"}` : `טייסת ${state.squadron || "—"} · ${state.aircraft ? `מטוס ${state.aircraft}` : "כל המטוסים"}`;
+  $("#report-period").textContent = `${subject} · ${byDate(state.from)} עד ${byDate(state.to)} · ${state.type === "all" ? "כל סוגי הטפסים" : state.type === "issue" ? "תקלות" : "מפתחות"} · ${state.status === "all" ? "כל המצבים" : statusLabel(state.status)}`;
   reportRows = makeReportRows(state);
   const forms = new Set(reportRows.map((row) => `${row.type}:${row.type === "issue" ? row.serial : row.id}`));
   $("#report-count").textContent = state.error ? "" : `${reportRows.length} רשומות · ${forms.size} טפסים`;
@@ -183,14 +185,19 @@ function renderReport() {
 
 function refreshReportSelectors() {
   const squadron = $("#report-squadron").value;
-  selectOptions($("#report-aircraft"), SQUADRONS[squadron]?.aircraft || [], "בחר מטוס");
+  selectOptions($("#report-aircraft"), SQUADRONS[squadron]?.aircraft || [], "כל מטוסי הטייסת");
+  selectOptions($("#report-technician-aircraft"), SQUADRONS[$("#report-technician-squadron").value]?.aircraft || [], "בחר מטוס");
   const current = $("#report-technician").value;
   const select = $("#report-technician"); select.replaceChildren(option("בחר טכנאי", ""), ...reportUsers.map((user) => option(`${user.name}${user.active ? "" : " (הוסר)"}`, user.uid)));
   select.value = reportUsers.some((user) => user.uid === current) ? current : "";
   const isAircraft = document.querySelector('[name="report-mode"]:checked').value === "aircraft";
+  $("#report-after-kind").hidden = !$("#report-kind").value;
   $("#report-aircraft-fields").hidden = !isAircraft;
   $("#report-technician-field").hidden = isAircraft;
-  $("#report-aircraft-field").hidden = $("#report-all-aircraft").checked;
+  $("#report-technician-aircraft-fields").hidden = !$("#report-specific-aircraft").checked;
+  const issueKind = ["pending", "issue-open", "issue-closed"].includes($("#report-kind").value);
+  $("#report-form").closest("label").hidden = issueKind;
+  $("#report-status").closest("label").hidden = issueKind;
 }
 
 export function updateReportData({ issues, loads, users } = {}) {
@@ -202,15 +209,32 @@ export function updateReportData({ issues, loads, users } = {}) {
 
 export function initReports() {
   selectOptions($("#report-squadron"), Object.keys(SQUADRONS), "בחר טייסת");
+  selectOptions($("#report-technician-squadron"), Object.keys(SQUADRONS), "בחר טייסת");
+  const options = $("#report-technician-squadrons");
+  Object.keys(SQUADRONS).forEach((name) => {
+    const label = element("label");
+    const input = document.createElement("input"); input.type = "checkbox"; input.name = "report-technician-squadron-check"; input.value = name;
+    label.append(input, document.createTextNode(` טייסת ${name}`)); options.append(label);
+  });
   const now = new Date();
   $("#report-to").value = localDateTime(now);
   $("#report-from").value = localDateTime(new Date(now.getTime() - 24 * 60 * 60 * 1000));
   $("#view-reports").querySelectorAll("input, select").forEach((control) => control.addEventListener("change", () => { refreshReportSelectors(); renderReport(); }));
+  $("#report-specific-aircraft").addEventListener("change", (event) => {
+    if (event.target.checked) options.querySelectorAll('input[type="checkbox"]').forEach((box) => { box.checked = false; });
+  });
+  options.addEventListener("change", () => {
+    if (options.querySelector('input[type="checkbox"]:checked')) {
+      $("#report-specific-aircraft").checked = false;
+      $("#report-technician-squadron").value = "";
+      $("#report-technician-aircraft").value = "";
+      refreshReportSelectors(); renderReport();
+    }
+  });
   $("#report-kind").addEventListener("change", () => {
     const kind = $("#report-kind").value;
-    if (kind === "aircraft") { document.querySelector('[name="report-mode"][value="aircraft"]').checked = true; $("#report-all-aircraft").checked = false; }
+    if (kind === "aircraft") document.querySelector('[name="report-mode"][value="aircraft"]').checked = true;
     if (kind === "technician") document.querySelector('[name="report-mode"][value="technician"]').checked = true;
-    if (kind === "pending") { $("#report-form").value = "issue"; $("#report-status").value = "pendingReview"; }
     refreshReportSelectors(); renderReport();
   });
   $("#report-print").addEventListener("click", () => {

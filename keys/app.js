@@ -1,8 +1,8 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.5.0";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.5.0";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.5.0";
-import { attachTimeNow } from "../time-now.js?v=1.5.0";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.5.0";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.5.1";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.5.1";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.5.1";
+import { attachTimeNow } from "../time-now.js?v=1.5.1";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.5.1";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -43,7 +43,7 @@ function renderTeam(values = draft.teamUids) {
   draft.teamUids = values.length >= 2 ? values : ["", ""];
   draft.teamUids.forEach((uid, index) => {
     const row = make("div", undefined, "assignee-row");
-    const label = make("label", `טכנאי ${index + 1}`, "input-field");
+    const label = make("label", index === 0 ? "מוביל התקלה" : `טכנאי ${index + 1}`, "input-field");
     const select = document.createElement("select");
     select.append(new Option("בחר טכנאי", ""));
     technicians.filter((item) => item.active && !item.deleted).forEach((item) => select.append(new Option(item.name, item.uid)));
