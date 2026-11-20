@@ -1,4 +1,4 @@
-import { SQUADRONS } from "../Metis/catalog.js?v=1.4.8";
+import { SQUADRONS } from "../Metis/catalog.js?v=1.4.9";
 
 export const KEY_SQUADRONS = ["101", "105", "109"];
 export const KEY_TASKS = [

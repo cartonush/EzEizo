@@ -1,5 +1,5 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.4.8";
-import { SQUADRONS } from "./catalog.js?v=1.4.8";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.4.9";
+import { SQUADRONS } from "./catalog.js?v=1.4.9";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -157,20 +157,21 @@ function renderReport() {
   }
   const results = $("#report-results"); results.replaceChildren();
   if (state.error || !reportRows.length) { results.textContent = state.error ? "" : "אין רשומות שמתאימות לסינון הזה."; return; }
-  const table = element("table", null, "report-table");
-  const head = element("thead"), headRow = element("tr");
-  ["מועד", "סוג", "מטוס", "מספר תקלה", "עבודה", "טכנאי / צוות", "מצב", "שעת פתיחה", "שעת סגירה", "טופס"].forEach((label) => headRow.append(element("th", label)));
-  head.append(headRow); table.append(head);
-  const body = element("tbody");
   reportRows.forEach((row) => {
-    const tr = element("tr");
-    [byDate(row.eventAt), row.kind, row.aircraft, row.serial, row.title, row.technician, statusLabel(row.status), byDate(row.openedAt), byDate(row.closedAt)].forEach((value, index) => { const cell = element("td", value); cell.dataset.label = ["מועד", "סוג", "מטוס", "מספר תקלה", "עבודה", "טכנאי / צוות", "מצב", "שעת פתיחה", "שעת סגירה"][index]; tr.append(cell); });
-    const cell = element("td"); const link = element("a", "פתח טופס", "secondary-button");
+    const card = element("article", null, "report-entry");
+    const heading = element("div", null, "report-entry-heading");
+    const title = element("h3", `${row.kind} · מטוס ${row.aircraft}`);
+    heading.append(title, element("span", statusLabel(row.status), "report-entry-status"));
+    const description = element("p", row.title, "report-entry-description");
+    const details = element("dl", null, "report-entry-details");
+    [["מספר תקלה", row.serial], ["טכנאי / צוות", row.technician], ["מועד הפעילות", byDate(row.eventAt)], ["נפתח", byDate(row.openedAt)], ["נסגר", byDate(row.closedAt)]].forEach(([label, value]) => {
+      const pair = element("div"); pair.append(element("dt", label), element("dd", value)); details.append(pair);
+    });
+    const link = element("a", "פתח טופס", "secondary-button");
     link.href = row.type === "key" ? `#keys/work/${encodeURIComponent(row.id)}` : row.status === "open" ? "#open" : `./closed.html?id=${encodeURIComponent(row.id)}`;
     if (row.type === "issue" && row.status === "open") link.textContent = "הצג ברשימה";
-    cell.dataset.label = "טופס"; cell.append(link); tr.append(cell); body.append(tr);
+    card.append(heading, description, details, link); results.append(card);
   });
-  table.append(body); results.append(table);
 }
 
 function refreshReportSelectors() {
