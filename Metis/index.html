@@ -11,9 +11,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.5.6">
-  <link rel="stylesheet" href="styles.css?v=1.5.6">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.5.6">
+  <link rel="stylesheet" href="../styles.css?v=1.5.7">
+  <link rel="stylesheet" href="styles.css?v=1.5.7">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.5.7">
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.5.6</span>
+      <span class="version-pill">v1.5.7</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -182,10 +182,10 @@
       </div></div>
       <div id="view-reports" data-manager-view="reports" hidden>
         <section class="card report-filters"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>הפקת דוחות</h2></div></div>
-          <label class="input-field report-kind-field">סוג דוח<select id="report-kind"><option value="" selected>בחר סוג דוח</option><option value="journal">יומן פעילות</option><option value="aircraft">היסטוריית מטוס</option><option value="technician">היסטוריית טכנאי</option><option value="issue-open">תקלות פתוחות</option><option value="issue-closed">תקלות סגורות</option><option value="squadron">סיכום טייסת</option><option value="pending">דפים הממתינים לסגירה</option></select></label>
+          <label class="input-field report-kind-field">סוג דוח<select id="report-kind"><option value="" selected>בחר סוג דוח</option><option value="journal">יומן פעילות</option><option value="squadron-journal">יומן טייסת</option><option value="aircraft">היסטוריית מטוס</option><option value="technician">היסטוריית טכנאי</option><option value="issue-open">תקלות פתוחות</option><option value="issue-closed">תקלות סגורות</option><option value="squadron">סיכום טייסת</option><option value="pending">דפים הממתינים לסגירה</option></select></label>
           <div id="report-after-kind" hidden>
           <div id="report-aircraft-fields" class="report-subject-fields"><label class="input-field">טייסת<select id="report-squadron"></select></label><div id="report-aircraft-fields-picker" class="report-multi-aircraft" hidden><span class="field-label">מטוסים</span><details id="report-aircraft-picker"><summary id="report-aircraft-summary">בחר מטוסים</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-squadron-aircraft" class="secondary-button">בחר את כל המטוסים</button><button type="button" id="report-clear-squadron-aircraft" class="secondary-button">נקה בחירה</button></div><div id="report-aircraft-options" class="report-aircraft-options"></div></div></details></div></div>
-          <div id="report-technician-field" class="report-subject-fields" hidden><div class="report-technician-header"><div class="report-multi-aircraft report-technician-picker"><span class="field-label">טכנאים</span><details id="report-technician-picker"><summary id="report-technician-summary">בחר טכנאים</summary><div class="report-multi-aircraft-panel"><label class="input-field">חיפוש טכנאי<input id="report-technician-search" type="search" placeholder="חפש לפי שם טכנאי" autocomplete="off"></label><div id="report-technician-options" class="report-aircraft-options"></div></div></details></div><button type="button" id="report-technician-all" class="secondary-button">בחר את כל המטוסים</button></div><div class="report-multi-aircraft report-technician-squadrons"><span class="field-label">טייסות</span><details id="report-technician-squadron-picker"><summary id="report-technician-squadron-summary">בחר טייסות</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-squadrons" class="secondary-button">בחר את כל הטייסות</button><button type="button" id="report-clear-squadrons" class="secondary-button">נקה בחירה</button></div><div id="report-technician-squadron-options" class="report-aircraft-options"></div></div></details></div><div id="report-technician-aircraft-fields" class="report-multi-aircraft" hidden><span class="field-label">מטוסים</span><details id="report-technician-aircraft-picker"><summary id="report-technician-aircraft-summary">בחר מטוסים</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-aircraft" class="secondary-button">בחר את כל המטוסים</button><button type="button" id="report-clear-aircraft" class="secondary-button">נקה בחירה</button></div><div id="report-technician-aircraft-options" class="report-aircraft-options"></div></div></details></div></div>
+          <div id="report-technician-field" class="report-subject-fields" hidden><div id="report-technician-header" class="report-technician-header"><div class="report-multi-aircraft report-technician-picker"><span class="field-label">טכנאים</span><details id="report-technician-picker"><summary id="report-technician-summary">בחר טכנאים</summary><div class="report-multi-aircraft-panel"><label class="input-field">חיפוש טכנאי<input id="report-technician-search" type="search" placeholder="חפש לפי שם טכנאי" autocomplete="off"></label><div id="report-technician-options" class="report-aircraft-options"></div></div></details></div><button type="button" id="report-technician-all" class="secondary-button">בחר את כל המטוסים</button></div><div class="report-multi-aircraft report-technician-squadrons"><span class="field-label">טייסות</span><details id="report-technician-squadron-picker"><summary id="report-technician-squadron-summary">בחר טייסות</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-squadrons" class="secondary-button">בחר את כל הטייסות</button><button type="button" id="report-clear-squadrons" class="secondary-button">נקה בחירה</button></div><div id="report-technician-squadron-options" class="report-aircraft-options"></div></div></details></div><div id="report-technician-aircraft-fields" class="report-multi-aircraft" hidden><span class="field-label">מטוסים</span><details id="report-technician-aircraft-picker"><summary id="report-technician-aircraft-summary">בחר מטוסים</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-aircraft" class="secondary-button">בחר את כל המטוסים</button><button type="button" id="report-clear-aircraft" class="secondary-button">נקה בחירה</button></div><div id="report-technician-aircraft-options" class="report-aircraft-options"></div></div></details></div></div>
           <div id="report-view-dates" class="manager-grid report-dates"><label class="input-field">מתאריך ושעה<input id="report-from" type="datetime-local"></label><label class="input-field">עד תאריך ושעה<input id="report-to" type="datetime-local"></label></div>
           <div id="report-form-status" class="manager-grid"><label class="input-field">סוג טופס<select id="report-form"><option value="all">תקלות והטענות מפתחות</option><option value="issue">תקלות</option><option value="key">הטענות מפתחות</option></select></label><label class="input-field">סטטוס<select id="report-status"><option value="all" selected>כל המצבים</option><option value="closed">סגור</option><option value="open">פתוח</option><option value="pendingReview">ממתין לסגירה</option></select></label></div>
           <p id="report-help" class="report-help">טווח ברירת המחדל הוא 24 השעות האחרונות. הסינון מתייחס למועד העדכון האחרון של הטופס.</p></div><p id="report-error" class="copy-status" role="status"></p>
@@ -293,6 +293,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.5.6"></script>
+  <script type="module" src="app.js?v=1.5.7"></script>
 </body>
 </html>

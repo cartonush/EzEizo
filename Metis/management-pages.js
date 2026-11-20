@@ -1,9 +1,9 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.5.6";
-import { SQUADRONS } from "./catalog.js?v=1.5.6";
-import { downloadReportPdf } from "./report-pdf.js?v=1.5.6";
-import { downloadFile } from "./report-pdf.js?v=1.5.6";
-import { createFormPdf } from "./form-pdf.js?v=1.5.6";
-import { zipFiles } from "./zip.js?v=1.5.6";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.5.7";
+import { SQUADRONS } from "./catalog.js?v=1.5.7";
+import { downloadReportPdf } from "./report-pdf.js?v=1.5.7";
+import { downloadFile } from "./report-pdf.js?v=1.5.7";
+import { createFormPdf } from "./form-pdf.js?v=1.5.7";
+import { zipFiles } from "./zip.js?v=1.5.7";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -32,8 +32,9 @@ function formForRow(row) {
 }
 
 function formFilename(row) {
-  const assignee = row.type === "issue" ? ` - ${row.technician}` : "";
-  return `טופס ${row.kind} - ${row.serial}${assignee}.pdf`.replace(/[\\/:*?"<>|]/g, "-");
+  const opened = new Date(row.openedAt);
+  const date = Number.isNaN(opened.getTime()) ? "תאריך לא ידוע" : `${String(opened.getDate()).padStart(2, "0")}-${String(opened.getMonth() + 1).padStart(2, "0")}-${opened.getFullYear()}`;
+  return `${row.type === "key" ? "הטענת מפתחות" : "תקלה"} - ${row.serial} - ${date}.pdf`.replace(/[\\/:*?"<>|]/g, "-");
 }
 
 function baseConstants() {
@@ -134,11 +135,11 @@ function reportRecords() {
   return [...faults, ...keys];
 }
 
-const reportTitles = { journal: "יומן פעילות", aircraft: "היסטוריית מטוס", technician: "היסטוריית טכנאי", "issue-open": "תקלות פתוחות", "issue-closed": "תקלות סגורות", squadron: "סיכום טייסת", pending: "דפים הממתינים לסגירה" };
+const reportTitles = { journal: "יומן פעילות", "squadron-journal": "יומן טייסת", aircraft: "היסטוריית מטוס", technician: "היסטוריית טכנאי", "issue-open": "תקלות פתוחות", "issue-closed": "תקלות סגורות", squadron: "סיכום טייסת", pending: "דפים הממתינים לסגירה" };
 function reportState() {
   const kind = $("#report-kind").value;
   const squadron = $("#report-squadron").value;
-  const mode = kind === "technician" ? "technician" : "aircraft";
+  const mode = kind === "technician" ? "technician" : kind === "journal" ? "multi" : "aircraft";
   const aircraft = [...$("#report-aircraft-options").querySelectorAll('input:checked')].map((box) => box.value);
   const technicians = [...$("#report-technician-options").querySelectorAll('input:checked')].map((box) => box.value);
   const technicianSquadrons = [...$("#report-technician-squadron-options").querySelectorAll('input:checked')].map((box) => box.value);
@@ -147,13 +148,13 @@ function reportState() {
   const to = new Date($("#report-to").value).getTime();
   const status = kind === "squadron" ? "all" : kind === "pending" ? "pendingReview" : kind === "issue-open" ? "open" : kind === "issue-closed" ? "closed" : $("#report-status").value;
   const type = ["pending", "issue-open", "issue-closed", "squadron"].includes(kind) ? "issue" : $("#report-form").value;
-  const error = !kind ? "בחר תחילה סוג דוח." : kind !== "squadron" && (!Number.isFinite(from) || !Number.isFinite(to) || from > to) ? "בחר טווח תאריכים תקין." : mode === "aircraft" && !squadron ? "בחר טייסת כדי להציג דוח." : mode === "aircraft" && !["squadron"].includes(kind) && !aircraft.length ? "בחר לפחות מטוס אחד, או השתמש בכפתור בחירת כל המטוסים." : kind === "aircraft" && aircraft.length !== 1 ? "להיסטוריית מטוס יש לבחור מטוס אחד בלבד." : mode === "technician" && !technicians.length ? "בחר לפחות טכנאי אחד מהרשימה." : mode === "technician" && !technicianSquadrons.length ? "בחר לפחות טייסת אחת." : mode === "technician" && !technicianAircraft.length ? "בחר לפחות מטוס אחד, או השתמש בכפתור בחירת כל המטוסים." : "";
+  const error = !kind ? "בחר תחילה סוג דוח." : kind !== "squadron" && (!Number.isFinite(from) || !Number.isFinite(to) || from > to) ? "בחר טווח תאריכים תקין." : mode === "aircraft" && !squadron ? "בחר טייסת כדי להציג דוח." : mode === "aircraft" && kind !== "squadron" && !aircraft.length ? "בחר לפחות מטוס אחד, או השתמש בכפתור בחירת כל המטוסים." : kind === "aircraft" && aircraft.length !== 1 ? "להיסטוריית מטוס יש לבחור מטוס אחד בלבד." : mode === "technician" && !technicians.length ? "בחר לפחות טכנאי אחד מהרשימה." : ["technician", "multi"].includes(mode) && !technicianSquadrons.length ? "בחר לפחות טייסת אחת." : ["technician", "multi"].includes(mode) && !technicianAircraft.length ? "בחר לפחות מטוס אחד, או השתמש בכפתור בחירת כל המטוסים." : "";
   return { squadron, mode, aircraft, technicians, technicianSquadrons, technicianAircraft, from, to, kind, status, type, error };
 }
 
 function makeReportRows(state) {
   if (state.error) return [];
-  return reportRecords().filter((row) => (state.mode === "aircraft" ? row.squadron === state.squadron && (state.kind === "squadron" || state.aircraft.includes(row.aircraft)) : row.technicianUids.some((uid) => state.technicians.includes(uid)) && state.technicianAircraft.includes(`${row.squadron}|${row.aircraft}`))
+  return reportRecords().filter((row) => (state.mode === "aircraft" ? row.squadron === state.squadron && (state.kind === "squadron" || state.aircraft.includes(row.aircraft)) : (state.mode === "multi" || row.technicianUids.some((uid) => state.technicians.includes(uid))) && state.technicianAircraft.includes(`${row.squadron}|${row.aircraft}`))
     && (state.type === "all" || row.type === state.type)
     && (state.status === "all" || row.status === state.status)
     && (state.kind === "squadron" || (new Date(row.eventAt).getTime() >= state.from && new Date(row.eventAt).getTime() <= state.to)))
@@ -172,7 +173,8 @@ function renderReport() {
   const error = $("#report-error"); error.textContent = state.error; error.dataset.state = state.error ? "error" : "";
   $("#report-title").textContent = reportTitles[state.kind] || "בחר סוג דוח";
   const names = state.technicians.map((uid) => reportUsers.find((user) => user.uid === uid)?.name).filter(Boolean);
-  const subject = state.mode === "technician" ? `טכנאים: ${names.join(", ") || "—"} · ${state.technicianSquadrons.length ? `טייסות ${state.technicianSquadrons.join(", ")}` : "בחר טייסות"} · ${state.technicianAircraft.length ? `${state.technicianAircraft.length} מטוסים נבחרו` : "בחר מטוסים"}` : state.kind === "squadron" ? `טייסת ${state.squadron || "—"} · כל המטוסים` : `טייסת ${state.squadron || "—"} · ${state.aircraft.length ? `מטוסים ${state.aircraft.join(", ")}` : "בחר מטוסים"}`;
+  const multiSubject = `${state.technicianSquadrons.length ? `טייסות ${state.technicianSquadrons.join(", ")}` : "בחר טייסות"} · ${state.technicianAircraft.length ? `${state.technicianAircraft.length} מטוסים נבחרו` : "בחר מטוסים"}`;
+  const subject = state.mode === "technician" ? `טכנאים: ${names.join(", ") || "—"} · ${multiSubject}` : state.mode === "multi" ? multiSubject : state.kind === "squadron" ? `טייסת ${state.squadron || "—"} · כל המטוסים` : `טייסת ${state.squadron || "—"} · ${state.aircraft.length ? `מטוסים ${state.aircraft.join(", ")}` : "בחר מטוסים"}`;
   $("#report-period").textContent = state.kind === "squadron" ? `${subject} · כל התקופות · כל התקלות` : `${subject} · ${byDate(state.from)} עד ${byDate(state.to)} · ${state.type === "all" ? "כל סוגי הטפסים" : state.type === "issue" ? "תקלות" : "מפתחות"} · ${state.status === "all" ? "כל המצבים" : statusLabel(state.status)}`;
   reportRows = makeReportRows(state);
   const forms = uniqueForms(reportRows);
@@ -222,11 +224,13 @@ function refreshReportSelectors() {
   $("#report-aircraft-fields-picker").hidden = !squadron;
   const kind = $("#report-kind").value;
   const isTechnician = kind === "technician";
+  const isMultiSquadron = isTechnician || kind === "journal";
   $("#report-after-kind").hidden = !kind;
-  $("#report-aircraft-fields").hidden = isTechnician;
+  $("#report-aircraft-fields").hidden = isMultiSquadron;
   $("#report-aircraft-fields-picker").hidden = !squadron || kind === "squadron";
   $("#report-select-all-squadron-aircraft").hidden = kind === "aircraft";
-  $("#report-technician-field").hidden = !isTechnician;
+  $("#report-technician-field").hidden = !isMultiSquadron;
+  $("#report-technician-header").hidden = !isTechnician;
   $("#report-technician-aircraft-fields").hidden = !$("#report-technician-squadron-options").querySelector('input:checked');
   $("#report-view-dates").hidden = kind === "squadron";
   const issueKind = ["pending", "issue-open", "issue-closed", "squadron"].includes(kind);
