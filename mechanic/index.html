@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.4.2">
+  <link rel="stylesheet" href="../styles.css?v=1.4.3">
 </head>
 <body>
   <div class="app-shell">
@@ -22,8 +22,9 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.4.2</span>
+      <span class="version-pill">v1.4.3</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
+      <div class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./" aria-label="חזרה לרשימת המשימות" hidden>→ חזרה</a></div>
     </header>
 
     <div id="app-skeleton" class="app-skeleton" role="status" aria-live="polite" aria-label="הדף נטען">
@@ -33,7 +34,6 @@
       <div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-input"></span><span class="skeleton-input"></span></div>
     </div>
     <main hidden>
-      <a id="mechanic-back" class="back-to-queue" href="./" hidden>→ חזרה לרשימת התקלות</a>
       <section class="card queue-card" aria-labelledby="queue-title">
         <div class="section-heading"><div><p class="section-kicker">משימות שהתקבלו</p><h2 id="queue-title">רשימת משימות</h2></div><span class="step-badge">01</span></div>
         <p class="section-note">בחר תקלה או הטענת מפתחות פתוחה מהרשימה כדי למלא את הדף שלה.</p>
@@ -251,6 +251,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.4.2"></script>
+  <script type="module" src="../app.js?v=1.4.3"></script>
 </body>
 </html>

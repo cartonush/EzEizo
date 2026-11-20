@@ -108,9 +108,9 @@ export function gate(role) {
         const logout = document.createElement("button");
         logout.type = "button"; logout.className = "secondary-button auth-logout"; logout.textContent = "התנתק";
         logout.addEventListener("click", () => signOut(auth));
-        const managerControls = role === "manager" ? document.querySelector("#manager-controls") : null;
-        if (managerControls) managerControls.append(logout);
-        else document.querySelector(".topbar").after(logout);
+        const headerActions = document.querySelector(".header-actions");
+        if (headerActions) headerActions.append(logout);
+        else document.querySelector(".topbar").append(logout);
         onSnapshot(doc(db, "roles", user.uid), (snapshot) => {
           if (!snapshot.exists() || snapshot.data().active === false || snapshot.data().role !== role) location.reload();
         }, () => { main.hidden = true; location.reload(); });

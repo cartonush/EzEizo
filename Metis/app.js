@@ -1,9 +1,9 @@
-import "../sheet-data.js?v=1.4.2";
-import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.4.2";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.4.2";
-import { resolveAssignees } from "./assignee-selection.js?v=1.4.2";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.4.2";
-import { initKeyPages } from "../keys/app.js?v=1.4.2";
+import "../sheet-data.js?v=1.4.3";
+import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.4.3";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.4.3";
+import { resolveAssignees } from "./assignee-selection.js?v=1.4.3";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.4.3";
+import { initKeyPages } from "../keys/app.js?v=1.4.3";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -346,6 +346,7 @@ function showManagerView() {
   const requested = window.location.hash.slice(1);
   const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : ["home", "management", "reports", "aircraft-constants", "new", "open", "pending", "closed", "users"].includes(requested) ? requested : "home";
   document.querySelector("#manager-back").hidden = !["users", "reports", "aircraft-constants"].includes(selected);
+  if (selected !== "keys") document.querySelector("#key-back-link").hidden = true;
   document.querySelector("#fault-nav").hidden = !["new", "open", "pending", "closed"].includes(selected);
   document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== (selected === "pending" ? "closed" : selected); });
   document.querySelector("#pending-section").hidden = selected !== "pending";

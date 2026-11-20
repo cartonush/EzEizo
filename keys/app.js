@@ -1,8 +1,8 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.4.2";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.4.2";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.4.2";
-import { attachTimeNow } from "../time-now.js?v=1.4.2";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.4.2";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.4.3";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.4.3";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.4.3";
+import { attachTimeNow } from "../time-now.js?v=1.4.3";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.4.3";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -353,7 +353,8 @@ function showView() {
   $("#keys-nav").hidden = !manager || view === "work";
   $(backSelector).hidden = manager && view !== "work";
   $(backSelector).href = manager ? view === "work" ? `#${route(activeLoad?.status === "closed" ? "closed" : "open")}` : embedded ? "#home" : "../Metis/#home" : "./";
-  $(backSelector).textContent = view === "work" ? `→ חזרה להטענות ${activeLoad?.status === "closed" ? "סגורות" : "פתוחות"}` : "→ חזרה";
+  $(backSelector).textContent = "→ חזרה";
+  $(backSelector).setAttribute("aria-label", view === "work" ? `חזרה להטענות ${activeLoad?.status === "closed" ? "סגורות" : "פתוחות"}` : "חזרה");
   $("#keys-nav").querySelectorAll("button").forEach((button) => { if (button.dataset.view === view) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
   if (view === "history") renderHistory();
   if (view === "create" && !dispatchPadReady) { clearDispatch = attachSignaturePad($("#key-dispatch-signature"), { onChange: (value) => { dispatchSignature = value; } }); dispatchPadReady = true; }
