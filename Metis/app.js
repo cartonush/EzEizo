@@ -1,10 +1,10 @@
-import "../sheet-data.js?v=1.5.3";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.5.3";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.5.3";
-import { resolveAssignees } from "./assignee-selection.js?v=1.5.3";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.5.3";
-import { initKeyPages } from "../keys/app.js?v=1.5.3";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.5.3";
+import "../sheet-data.js?v=1.5.4";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.5.4";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.5.4";
+import { resolveAssignees } from "./assignee-selection.js?v=1.5.4";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.5.4";
+import { initKeyPages } from "../keys/app.js?v=1.5.4";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.5.4";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";

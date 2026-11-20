@@ -153,7 +153,7 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 }
 @media print {
   body { background: #fff; }
-  .topbar,.manager-nav,#manager-controls,.report-filters,.report-export,#report-results a,#app-skeleton { display: none !important; }
+  .topbar,.manager-nav,#manager-controls,.report-filters,.report-export,#report-download-status,#report-results a,#app-skeleton { display: none !important; }
   main { width: 100%; margin: 0; padding: 0; }
   main > [data-manager-view]:not(#view-reports) { display: none !important; }
   #view-reports,.report-output { display: block !important; }
