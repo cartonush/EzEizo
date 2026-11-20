@@ -100,6 +100,9 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 #report-squadron-summary { justify-self: start; }
 #report-technician-all { grid-column: 1 / -1; justify-self: start; }
 #report-view-dates[hidden],#report-form-status[hidden],#report-aircraft-fields-picker[hidden] { display: none; }
+#report-all-dates-field[hidden] { display: none; }
+.report-all-dates { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; font-weight: 700; color: #274457; cursor: pointer; }
+.report-all-dates input { width: 19px; height: 19px; accent-color: #168b79; }
 .report-subject-fields > .input-field { min-width: 0; }
 .report-multi-aircraft { grid-column: 1 / -1; min-width: 0; }
 .report-multi-aircraft .field-label { margin: 0 0 6px; }
