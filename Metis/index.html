@@ -11,9 +11,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.5.1">
-  <link rel="stylesheet" href="styles.css?v=1.5.1">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.5.1">
+  <link rel="stylesheet" href="../styles.css?v=1.5.2">
+  <link rel="stylesheet" href="styles.css?v=1.5.2">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.5.2">
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.5.1</span>
+      <span class="version-pill">v1.5.2</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -186,7 +186,7 @@
           <div id="report-after-kind" hidden>
           <fieldset class="report-choice report-primary-choice"><legend>סינון הדוח לפי</legend><label><input type="radio" name="report-mode" value="aircraft" checked> טייסת / מטוס</label><label><input type="radio" name="report-mode" value="technician"> טכנאי</label></fieldset>
           <div id="report-aircraft-fields" class="report-subject-fields"><label class="input-field">טייסת<select id="report-squadron"></select></label><label class="input-field">מספר מטוס<select id="report-aircraft"></select></label></div>
-          <div id="report-technician-field" class="report-subject-fields" hidden><label class="input-field">טכנאי<select id="report-technician"></select></label><fieldset class="report-technician-scope"><legend>טייסות לדוח</legend><div id="report-technician-squadrons" class="report-squadron-options"></div><label><input id="report-specific-aircraft" type="checkbox"> מטוס מסוים בלבד</label></fieldset><div id="report-technician-aircraft-fields" class="manager-grid" hidden><label class="input-field">טייסת המטוס<select id="report-technician-squadron"></select></label><label class="input-field">מספר מטוס<select id="report-technician-aircraft"></select></label></div></div>
+          <div id="report-technician-field" class="report-subject-fields" hidden><label class="input-field">טכנאי<select id="report-technician"></select></label><label class="input-field">טייסת<select id="report-technician-squadron"></select></label><div id="report-technician-aircraft-fields" class="report-multi-aircraft" hidden><span class="field-label">מטוסים</span><details id="report-technician-aircraft-picker"><summary id="report-technician-aircraft-summary">בחר מטוסים</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-aircraft" class="secondary-button">בחר את כל המטוסים</button><button type="button" id="report-clear-aircraft" class="secondary-button">נקה בחירה</button></div><div id="report-technician-aircraft-options" class="report-aircraft-options"></div></div></details></div></div>
           <div class="manager-grid report-dates"><label class="input-field">מתאריך ושעה<input id="report-from" type="datetime-local"></label><label class="input-field">עד תאריך ושעה<input id="report-to" type="datetime-local"></label></div>
           <div class="manager-grid"><label class="input-field">סוג טופס<select id="report-form"><option value="all">תקלות והטענות מפתחות</option><option value="issue">תקלות</option><option value="key">הטענות מפתחות</option></select></label><label class="input-field">סטטוס<select id="report-status"><option value="all" selected>כל המצבים</option><option value="closed">סגור</option><option value="open">פתוח</option><option value="pendingReview">ממתין לסגירה</option></select></label></div>
           <p class="report-help">טווח ברירת המחדל הוא 24 השעות האחרונות. הסינון מתייחס למועד העדכון האחרון של הטופס.</p></div><p id="report-error" class="copy-status" role="status"></p>
@@ -293,6 +293,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.5.1"></script>
+  <script type="module" src="app.js?v=1.5.2"></script>
 </body>
 </html>

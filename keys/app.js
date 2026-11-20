@@ -1,8 +1,8 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.5.1";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.5.1";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.5.1";
-import { attachTimeNow } from "../time-now.js?v=1.5.1";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.5.1";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.5.2";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.5.2";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.5.2";
+import { attachTimeNow } from "../time-now.js?v=1.5.2";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.5.2";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
