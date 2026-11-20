@@ -34,6 +34,11 @@
 .key-load-table .check-col { width: 13%; }
 .key-load-table .notes-col { width: 35%; }
 .key-load-table .remove-col { width: 9%; }
+/* Override the shared fault-table header widths (48% / 42% / 10%). */
+.key-load-table th:nth-child(1) { width: 30%; }
+.key-load-table th:nth-child(2),.key-load-table th:nth-child(3) { width: 13%; }
+.key-load-table th:nth-child(4) { width: 35%; }
+.key-load-table th:nth-child(5) { width: 9%; }
 .key-load-table th,.key-load-table td { padding: 7px 4px; overflow-wrap: anywhere; }
 .key-load-table th { font-size: 11px; line-height: 1.25; }
 .key-load-table td:nth-child(2),.key-load-table td:nth-child(3),.key-load-table th:nth-child(2),.key-load-table th:nth-child(3) { text-align: center; }
