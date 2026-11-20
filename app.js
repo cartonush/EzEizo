@@ -1,8 +1,9 @@
-import "./sheet-data.js?v=1.4.0";
-import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.4.0";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.4.0";
-import { validateTreatment } from "./mechanic-validation.js?v=1.4.0";
-import { attachTimeNow } from "./time-now.js?v=1.4.0";
+import "./sheet-data.js?v=1.4.1";
+import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.4.1";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.4.1";
+import { validateTreatment } from "./mechanic-validation.js?v=1.4.1";
+import { attachTimeNow } from "./time-now.js?v=1.4.1";
+import { issueTimeline } from "./lifecycle.js?v=1.4.1";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -97,6 +98,13 @@ function saveState() {
 }
 
 function renderSheetDetails() {
+  const timeline = document.querySelector("#lifecycle-events");
+  timeline.replaceChildren(...issueTimeline(remoteIssue).map(({ label, at }) => {
+    const item = document.createElement("li");
+    const name = document.createElement("strong"); name.textContent = label;
+    const time = document.createElement("time"); time.dateTime = at; time.textContent = new Date(at).toLocaleString("he-IL");
+    item.append(name, time); return item;
+  }));
   const times = document.querySelector("#closed-times");
   if (times) {
     times.hidden = !["closed", "pendingReview"].includes(remoteIssue?.status);
@@ -302,15 +310,6 @@ if (managerClosedView && selectedSheet) {
   document.querySelector("#mechanic-back").href = remoteIssue.status === "pendingReview" ? "./#pending" : "./#closed";
   const panel = document.querySelector("#manager-edit-panel");
   panel.hidden = false;
-  const history = document.querySelector("#manager-edit-history");
-  const events = Array.isArray(remoteIssue.reopenEvents) ? remoteIssue.reopenEvents : [];
-  const heading = document.createElement("h3"); heading.textContent = "תיעוד החזרה לטכנאי"; history.append(heading);
-  if (!events.length) { const empty = document.createElement("p"); empty.textContent = "הטופס טרם הוחזר לעריכה."; history.append(empty); }
-  events.forEach((entry) => {
-    const item = document.createElement("p");
-    item.textContent = `נימר החזיר את הטופס לטכנאי ב־${new Date(entry.at).toLocaleString("he-IL")}; נסגר קודם ב־${new Date(entry.priorClosedAt).toLocaleString("he-IL")}.`;
-    history.append(item);
-  });
   document.querySelector("#manager-edit-open").addEventListener("click", async (event) => {
     if (!window.confirm("להחזיר את התקלה לטכנאי לעריכה? כל הפרטים שמולאו יישמרו והוא יוכל לסגור שוב.")) return;
     const button = event.currentTarget; button.disabled = true;

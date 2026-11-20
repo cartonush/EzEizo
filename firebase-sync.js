@@ -294,7 +294,7 @@ export async function reopenIssue(id, managerUid) {
     const reopenedAt = new Date().toISOString();
     transaction.update(issueRef, {
       status: "open", reopenedAt, reopenedBy: managerUid,
-      reopenEvents: [...(issue.reopenEvents || []), { at: reopenedAt, by: managerUid, priorClosedAt: issue.closed.state.closedAt }]
+      reopenEvents: [...(issue.reopenEvents || []), { at: reopenedAt, by: managerUid, priorClosedAt: issue.closed.state.closedAt, priorReviewedAt: issue.reviewedAt || null }]
     });
   });
 }

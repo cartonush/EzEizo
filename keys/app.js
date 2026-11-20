@@ -1,7 +1,8 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad } from "../firebase-sync.js?v=1.4.0";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.4.0";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.4.0";
-import { attachTimeNow } from "../time-now.js?v=1.4.0";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad, reopenKeyLoad } from "../firebase-sync.js?v=1.4.1";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.4.1";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.4.1";
+import { attachTimeNow } from "../time-now.js?v=1.4.1";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.4.1";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -163,7 +164,7 @@ function renderClosed() {
   });
 }
 function defaultWork(load) {
-  return { actions: [true, ...Array(KEY_TASKS.length - 1).fill(false)], aircraft: load.rows.map((row) => ({ aircraft: row.aircraft, blueDone: false, shachDone: false })), toolsEnabled: false, takenEnabled: false, rejectedEnabled: false, entryEnabled: false, interimEnabled: false, finalEnabled: false, tools: [], taken: [], rejected: [] };
+  return { actions: [true, ...Array(KEY_TASKS.length - 1).fill(false)], aircraft: load.rows.map((row) => ({ aircraft: row.aircraft, blueDone: false, shachDone: false, technicianNote: "" })), toolsEnabled: false, takenEnabled: false, rejectedEnabled: false, entryEnabled: false, interimEnabled: false, finalEnabled: false, tools: [], taken: [], rejected: [] };
 }
 function readWork(load) {
   const saved = { ...defaultWork(load), ...(load.work || {}) };
@@ -186,7 +187,23 @@ function renderWork() {
       if (row[key]) { const label = make("label", undefined, "work-check"); const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.setAttribute("aria-label", `${key === "blue" ? "ארז כחול" : "שחק"} בוצע במטוס ${row.aircraft}`); checkbox.checked = Boolean(work.aircraft[index]?.[`${key}Done`]); checkbox.disabled = closed; checkbox.addEventListener("change", () => { work.aircraft[index][`${key}Done`] = checkbox.checked; saveWork(); }); label.append(checkbox, make("span", "בוצע")); td.append(label); }
       else td.textContent = "—";
       tr.append(td);
-    }); tr.append(make("td", row.notes || "—")); body.append(tr);
+    });
+    const notes = make("td", undefined, "key-work-notes");
+    if (row.notes) notes.append(make("p", `מנהל: ${row.notes}`));
+    const technicianNote = document.createElement("textarea");
+    technicianNote.className = "key-technician-note"; technicianNote.rows = 2; technicianNote.maxLength = 500;
+    technicianNote.placeholder = "הערת טכנאי (לא חובה)";
+    technicianNote.value = work.aircraft[index]?.technicianNote || "";
+    technicianNote.disabled = closed;
+    technicianNote.setAttribute("aria-label", `הערת טכנאי למטוס ${row.aircraft}`);
+    technicianNote.addEventListener("input", () => {
+      work.aircraft[index] ||= { aircraft: row.aircraft, blueDone: false, shachDone: false };
+      work.aircraft[index].technicianNote = technicianNote.value;
+      saveWork();
+    });
+    if (!closed || technicianNote.value) notes.append(technicianNote);
+    else if (!row.notes) notes.append(make("span", "—"));
+    tr.append(notes); body.append(tr);
   }); table.append(body); $("#work-rows").replaceChildren(table);
   $("#work-instructions").replaceChildren(...[
     `אחזקה נדרשת לביצוע: הטענת מטוסים במסגרת ביצוע שינוי מפתחות לחודשים ${load.period}`,
@@ -209,9 +226,9 @@ function renderWork() {
   $("#complete-key-load").hidden = closed;
   $("#reopen-key-load").hidden = !manager || load.status !== "closed";
   setMessage("#reopen-key-status", "");
-  const events = load.reopenEvents || [];
-  $("#key-reopen-history").hidden = !events.length;
-  $("#key-reopen-events").replaceChildren(...events.map((event) => make("li", `${new Date(event.at).toLocaleString("he-IL")} · הוחזר לעריכה לאחר סגירה ב־${new Date(event.priorCompletedAt).toLocaleString("he-IL")}`)));
+  $("#key-reopen-history").hidden = false;
+  $("#key-reopen-history").open = true;
+  $("#key-reopen-events").replaceChildren(...keyLoadTimeline(load).map(({ label, at }) => make("li", `${label} · ${new Date(at).toLocaleString("he-IL")}`)));
   setMessage("#work-status", load.status === "closed" ? "ההטענה נסגרה וההיסטוריה עודכנה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול לסגור את ההטענה." : "ההתקדמות נשמרת במכשיר עד לסגירת הטופס.");
 }
 const signatures = new Map();

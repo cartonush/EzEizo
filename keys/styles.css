@@ -28,6 +28,8 @@
 @media (max-width: 620px) { .keys-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .keys-nav button { font-size: 12px; } }
 .key-reopen-history { margin-top: 14px; padding: 10px; border: 1px solid #dbe6ec; border-radius: 10px; }
 .key-reopen-history summary { cursor: pointer; font-weight: 700; color: #355b70; }
+.key-work-notes p { margin: 0 0 5px; }
+.key-technician-note { width: 100%; min-width: 0; box-sizing: border-box; padding: 6px; border: 1px solid #cbdce5; border-radius: 7px; resize: vertical; font: inherit; }
 
 /* The key loading grid must fit the phone; only the two checks are narrow. */
 .key-load-table-wrap { overflow: visible; }
