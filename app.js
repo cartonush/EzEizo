@@ -1,11 +1,13 @@
-import "./sheet-data.js?v=1.3.0";
-import { gate, revealApp, watchIssues, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.3.0";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.3.0";
-import { validateTreatment } from "./mechanic-validation.js?v=1.3.0";
+import "./sheet-data.js?v=1.3.1";
+import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.3.1";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.3.1";
+import { validateTreatment } from "./mechanic-validation.js?v=1.3.1";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
 let cloudIssues = [];
+let keyLoads = [];
+let keyLoadError = "";
 const selectedId = new URLSearchParams(window.location.search).get("id");
 let remoteIssue = null;
 if (selectedId) {
@@ -17,7 +19,6 @@ const selectedSheet = Boolean(remoteIssue && (managerClosedView ? ["closed", "pe
 document.querySelector("#sheet-form").hidden = !selectedSheet;
 document.querySelector("#mechanic-back").hidden = !selectedSheet && !managerClosedView;
 document.querySelector(".queue-card").hidden = selectedSheet;
-document.querySelector(".keys-entry").hidden = selectedSheet;
 const ACTIONS = sheet.actions;
 const STORAGE_KEY = selectedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
 const actionList = document.querySelector("#action-list");
@@ -240,19 +241,28 @@ function renderIssueList() {
     if (!selectedSheet) list.textContent = "התקלה הסגורה לא נמצאה. חזור לרשימת התקלות הסגורות.";
     return;
   }
-  const issues = cloudIssues.filter((item) => item.status === "open").map((item) => item.sheet);
-  if (!issues.length) { list.textContent = "אין תקלות פתוחות כרגע."; return; }
-  issues.forEach((item) => {
+  const issues = cloudIssues.filter((item) => item.status === "open").map((item) => ({ type: "issue", createdAt: item.createdAt, data: item.sheet }));
+  const loads = keyLoads.filter((item) => item.status === "open").map((item) => ({ type: "keys", createdAt: item.createdAt, data: item }));
+  const tasks = [...issues, ...loads].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  if (!tasks.length) list.textContent = "אין משימות פתוחות כרגע.";
+  tasks.forEach(({ type, data: item }) => {
     const card = document.createElement("a");
     card.className = "issue-item";
-    card.href = `?id=${encodeURIComponent(item.id)}`;
+    card.href = type === "keys" ? `./keys.html#work/${encodeURIComponent(item.id)}` : `?id=${encodeURIComponent(item.id)}`;
     const title = document.createElement("strong");
-    title.textContent = `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
+    title.textContent = type === "keys" ? `הטענת מפתחות · טייסת ${item.squadron} · דת״ק ${item.shelter}` : `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
     const info = document.createElement("span");
-    info.textContent = `${item.fault || "ללא תיאור"} · פתוחה`;
+    info.textContent = type === "keys" ? `מטוסים: ${item.aircraftIds.join(", ")} · ${item.date.split("-").reverse().join("/")} · פתוחה` : `${item.fault || "ללא תיאור"} · פתוחה`;
     card.append(title, info);
     list.append(card);
   });
+  if (keyLoadError) {
+    const warning = document.createElement("p");
+    warning.className = "copy-status";
+    warning.dataset.state = "error";
+    warning.textContent = `לא ניתן לטעון הטענות מפתחות: ${keyLoadError}`;
+    list.append(warning);
+  }
 }
 
 function closureRecord() {
@@ -377,6 +387,8 @@ watchIssues((issues) => {
     location.reload();
   }
 }, (error) => { const list = document.querySelector("#mechanic-issues"); list.textContent = `לא ניתן לטעון תקלות: ${error.message}`; list.dataset.state = "error"; }, managerClosedView ? null : currentUser.uid);
+
+if (!managerClosedView) watchKeyLoads((loads) => { keyLoads = loads; keyLoadError = ""; renderIssueList(); }, (error) => { keyLoadError = error.message; renderIssueList(); }, currentUser.uid);
 
 function rowHasValue(item, fields) {
   return fields.some(({ key }) => String(item?.[key] ?? "").trim() !== "");

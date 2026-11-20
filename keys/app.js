@@ -1,6 +1,6 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.0";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.0";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.0";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.1";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.1";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.1";
 
 const manager = !location.pathname.toLowerCase().includes("/mechanic/");
 const user = await gate(manager ? "manager" : "technician");
@@ -14,6 +14,7 @@ const defaultDraft = () => ({ date: currentDate(), time: currentTime(), squadron
 let draft;
 try { draft = { ...defaultDraft(), ...JSON.parse(localStorage.getItem(draftKey) || "{}") }; } catch { draft = defaultDraft(); }
 let loads = [], history = [], technicians = [], activeLoad = null, selectedSquadron = "101", work = null;
+let loadsReady = false;
 let dispatchSignature = "";
 const saveDraft = () => localStorage.setItem(draftKey, JSON.stringify(draft));
 const saveWork = () => { if (activeLoad && activeLoad.status === "open") localStorage.setItem(`ezeizo-key-work:${activeLoad.id}`, JSON.stringify(work)); };
@@ -251,7 +252,7 @@ $("#complete-key-load").addEventListener("click", async () => {
   const error = validateWork(); if (error) return setMessage("#work-status", error, true);
   const button = $("#complete-key-load"); button.disabled = true;
   const clean = { ...work }; for (const [type, columns] of Object.entries(KEY_TABLES)) clean[type] = compactRows(work[type], columns);
-  try { await closeKeyLoad(activeLoad.id, user.uid, clean); localStorage.removeItem(`ezeizo-key-work:${activeLoad.id}`); location.hash = "open"; showView(); }
+  try { await closeKeyLoad(activeLoad.id, user.uid, clean); localStorage.removeItem(`ezeizo-key-work:${activeLoad.id}`); if (manager) { location.hash = "open"; showView(); } else location.replace("./"); }
   catch (failure) { setMessage("#work-status", `סגירת ההטענה נכשלה: ${failure.message}`, true); }
   finally { button.disabled = false; }
 });
@@ -260,10 +261,11 @@ function showView() {
   const workId = hash.startsWith("work/") ? hash.slice(5) : null;
   activeLoad = workId ? loads.find((item) => item.id === workId) : null;
   if (activeLoad && !manager && !activeLoad.teamUids.includes(user.uid)) activeLoad = null;
+  if (!manager && loadsReady && !activeLoad) { location.replace("./"); return; }
   const view = activeLoad ? "work" : manager && ["history", "create", "open"].includes(hash) ? hash : "open";
   ["history", "create", "open", "work"].forEach((name) => { $(`#${name}-view`).hidden = name !== view; });
   $("#keys-nav").hidden = !manager || view === "work";
-  $("#back-link").href = manager ? view === "work" ? "#open" : "../Metis/" : view === "work" ? "#open" : "./";
+  $("#back-link").href = manager ? view === "work" ? "#open" : "../Metis/" : "./";
   $("#back-link").textContent = view === "work" ? "→ חזרה להטענות" : "→ חזרה";
   $("#keys-nav").querySelectorAll("button").forEach((button) => { if (button.dataset.view === view) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
   if (view === "history") renderHistory();
@@ -278,7 +280,7 @@ if (manager) {
   watchTechnicians((users) => { technicians = users; renderTeam([...draft.teamUids]); }, (error) => setMessage("#create-status", `טעינת טכנאים נכשלה: ${error.message}`, true));
   watchKeyHistory((records) => { history = records; renderHistory(); }, (error) => setMessage("#history-status", `טעינת ההיסטוריה נכשלה: ${error.message}`, true));
 }
-watchKeyLoads((items) => { loads = items; if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); showView(); }, (error) => {
+watchKeyLoads((items) => { loads = items; loadsReady = true; if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); showView(); }, (error) => {
   $("#open-key-loads").textContent = `טעינת ההטענות נכשלה: ${error.message}`;
   $("#open-key-loads").style.color = "#d40000";
 }, manager ? null : user.uid);

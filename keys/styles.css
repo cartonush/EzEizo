@@ -26,5 +26,3 @@
 #reference-table th { background: #eaf3f8; }
 #work-view[hidden],#history-view[hidden],#create-view[hidden],#open-view[hidden] { display: none; }
 @media (max-width: 620px) { .keys-nav button { font-size: 12px; } }
-
-.keys-entry { display: flex; margin-bottom: 16px; }
