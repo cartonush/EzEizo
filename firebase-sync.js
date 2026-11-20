@@ -1,6 +1,6 @@
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, inMemoryPersistence, deleteUser, signOut } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, runTransaction } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, runTransaction, Timestamp, deleteField } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-functions.js";
 
 const firebaseConfig = {
@@ -16,6 +16,39 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const counterRef = doc(db, "metadata", "serial");
 const keyCounterRef = doc(db, "metadata", "keySerial");
+const leaseMillis = 90000;
+const editLockRef = (kind, serialOrId) => doc(db, "editLocks", `${kind}_${serialOrId}`);
+
+// A short renewable lease survives a crashed tab without blocking the form forever.
+export function watchEditLock(kind, serialOrId, onChange, onError) {
+  return onSnapshot(editLockRef(kind, serialOrId), (snapshot) => onChange(snapshot.exists() ? snapshot.data() : null), onError);
+}
+
+export async function acquireEditLock(kind, serialOrId, formId, user, session) {
+  const ref = editLockRef(kind, serialOrId);
+  return runTransaction(db, async (transaction) => {
+    const [current, form] = await Promise.all([transaction.get(ref), transaction.get(doc(db, kind === "key" ? "keyLoads" : "issues", formId))]);
+    if (!form.exists() || form.data().status !== "open") throw new Error("הטופס אינו פתוח לעריכה.");
+    if (kind === "key" ? !form.data().teamUids.includes(user.uid) : form.data().assigneeUid !== user.uid || form.data().sheet.serial !== serialOrId) throw new Error("אינך משויך לטופס הזה.");
+    const lock = current.data(), now = Date.now();
+    if (lock && lock.expiresAt.toMillis() > now && lock.session !== session) return { held: false, ownerName: lock.ownerName, expiresAt: lock.expiresAt.toMillis() };
+    transaction.set(ref, { kind, formId, serial: serialOrId, ownerUid: user.uid, ownerName: user.name || user.email || "טכנאי", session, expiresAt: Timestamp.fromMillis(now + leaseMillis) });
+    return { held: true };
+  });
+}
+
+export async function releaseEditLock(kind, serialOrId, session) {
+  const ref = editLockRef(kind, serialOrId);
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(ref);
+    if (current.exists() && current.data().session === session) transaction.delete(ref);
+  });
+}
+
+async function requireEditLock(transaction, kind, serialOrId, session, uid) {
+  const current = await transaction.get(editLockRef(kind, serialOrId));
+  if (!current.exists() || current.data().session !== session || current.data().ownerUid !== uid || current.data().expiresAt.toMillis() <= Date.now()) throw new Error("נעילת העריכה אבדה. פתח את הטופס מחדש ונסה שוב.");
+}
 
 // Firestore cannot store an array inside another array. Keep the UI's [label, value]
 // pairs and store each group as a map of scalar values instead.
@@ -36,6 +69,18 @@ function restoredSheet(sheet) {
 
 export function gate(role) {
   const main = document.querySelector("main");
+  if (!document.querySelector("#server-connection-warning")) {
+    const warning = document.createElement("div");
+    warning.id = "server-connection-warning";
+    warning.className = "server-connection-warning";
+    warning.setAttribute("role", "alert");
+    warning.textContent = "אבדה התקשורת עם השרת. נסה להפעיל מחדש את האפליקציה או את המכשיר.";
+    warning.hidden = navigator.onLine;
+    document.body.prepend(warning);
+    window.addEventListener("offline", () => { warning.hidden = false; });
+    window.addEventListener("online", () => { warning.hidden = true; });
+    document.addEventListener("ezeizo:connection-lost", () => { warning.hidden = false; });
+  }
   main.hidden = true;
   const panel = document.createElement("section");
   panel.className = "card auth-card";
@@ -234,15 +279,26 @@ export async function assignLegacyKeyLoadSerial(id) {
   });
 }
 
-export async function closeKeyLoad(id, completedBy, work) {
+export async function closeKeyLoad(id, completedBy, work, session) {
   const ref = doc(db, "keyLoads", id);
   await runTransaction(db, async (transaction) => {
+    await requireEditLock(transaction, "key", id, session, completedBy);
     const current = await transaction.get(ref);
     if (!current.exists() || current.data().status !== "open") throw new Error("ההטענה כבר נסגרה או אינה קיימת.");
     const load = current.data();
     if (!load.teamUids.includes(completedBy)) throw new Error("אינך משויך לצוות ההטענה.");
     const completedAt = new Date().toISOString();
-    transaction.update(ref, { status: "closed", work, completedAt, completedBy });
+    transaction.update(ref, { status: "closed", work, completedAt, completedBy, workDraft: deleteField() });
+  });
+}
+
+export async function saveKeyWorkDraft(id, uid, work, session) {
+  const ref = doc(db, "keyLoads", id);
+  await runTransaction(db, async (transaction) => {
+    await requireEditLock(transaction, "key", id, session, uid);
+    const current = await transaction.get(ref);
+    if (!current.exists() || current.data().status !== "open" || !current.data().teamUids.includes(uid)) throw new Error("ההטענה אינה פתוחה עוד לעריכה.");
+    transaction.update(ref, { workDraft: work, draftBy: uid });
   });
 }
 
@@ -306,12 +362,14 @@ export async function assignIssue(id, uid, name) {
   await updateDoc(doc(db, "issues", id), { assigneeUid: uid, assigneeName: name });
 }
 
-export async function submitForReview(id, record, state) {
+export async function submitForReview(id, record, state, session) {
   const issueRef = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {
+    await requireEditLock(transaction, "issue", record.serial, session, auth.currentUser?.uid);
     const current = await transaction.get(issueRef);
     if (!current.exists() || current.data().status !== "open") throw new Error("התקלה כבר נשלחה לבדיקה או אינה קיימת. רענן את הדף.");
     if (current.data().sheet.serial !== record.serial) throw new Error("מספר התקלה אינו תואם.");
+    if (current.data().assigneeUid !== auth.currentUser?.uid) throw new Error("השיוך לטכנאי השתנה. לא ניתן לשמור את הדף הזה.");
     transaction.update(issueRef, { status: "pendingReview", closed: { record, state } });
   });
 }

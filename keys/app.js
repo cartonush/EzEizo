@@ -1,8 +1,9 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote } from "../firebase-sync.js?v=1.6.2";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.6.2";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.6.2";
-import { attachTimeNow } from "../time-now.js?v=1.6.2";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.6.2";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft } from "../firebase-sync.js?v=1.6.3";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.6.3";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.6.3";
+import { attachTimeNow } from "../time-now.js?v=1.6.3";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.6.3";
+import { createEditLock } from "../edit-lock.js?v=1.6.3";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -19,6 +20,20 @@ const defaultDraft = () => ({ date: currentDate(), time: currentTime(), squadron
 let draft;
 try { draft = { ...defaultDraft(), ...JSON.parse(localStorage.getItem(draftKey) || "{}") }; } catch { draft = defaultDraft(); }
 let loads = [], history = new Map(), technicians = [], activeLoad = null, selectedSquadron = "101", work = null;
+let editLock = null, lockedLoadId = "";
+let workLoadId = "", draftTimer = null, pendingDraft = Promise.resolve();
+function queueDraft(id, snapshot, session) {
+  pendingDraft = pendingDraft.catch(() => {}).then(() => saveKeyWorkDraft(id, user.uid, snapshot, session));
+  pendingDraft.catch((error) => { if (activeLoad?.id === id && activeLoad.status === "open") setMessage("#work-status", `שמירת הטיוטה המשותפת נכשלה: ${error.message}. נסה שוב לפני סגירת החלון.`, true); });
+  return pendingDraft;
+}
+function flushDraft(lock, id) {
+  if (draftTimer !== null && lock?.held && work && id) {
+    clearTimeout(draftTimer); draftTimer = null;
+    return queueDraft(id, structuredClone(work), lock.session);
+  }
+  return pendingDraft;
+}
 let loadsReady = false;
 let numberingLegacyLoads = false;
 const matchesKeyNumber = (load, search) => {
@@ -29,7 +44,15 @@ const matchesKeyNumber = (load, search) => {
 };
 let dispatchSignature = "";
 const saveDraft = () => localStorage.setItem(draftKey, JSON.stringify(draft));
-const saveWork = () => { if (activeLoad && activeLoad.status === "open") localStorage.setItem(`ezeizo-key-work:${activeLoad.id}`, JSON.stringify(work)); };
+const saveWork = () => {
+  if (activeLoad && activeLoad.status === "open" && editLock?.held) {
+    try { localStorage.setItem(`ezeizo-key-work:${activeLoad.id}`, JSON.stringify(work)); }
+    catch { setMessage("#work-status", "שמירת הטיוטה במכשיר נכשלה. השאר את הטופס פתוח ונסה לפנות מקום באחסון.", true); }
+    clearTimeout(draftTimer);
+    const id = activeLoad.id, snapshot = structuredClone(work), session = editLock.session;
+    draftTimer = setTimeout(() => { draftTimer = null; void queueDraft(id, snapshot, session); }, 550);
+  }
+};
 if (manager && embedded) document.addEventListener("ezeizo:reset-key-draft", () => {
   draft = defaultDraft();
   saveDraft();
@@ -211,14 +234,17 @@ function defaultWork(load) {
   return { actions: [true, ...Array(KEY_TASKS.length - 1).fill(false)], aircraft: load.rows.map((row) => ({ aircraft: row.aircraft, blueDone: false, shachDone: false, technicianNote: "" })), toolsEnabled: false, takenEnabled: false, rejectedEnabled: false, entryEnabled: false, interimEnabled: false, finalEnabled: false, tools: [], taken: [], rejected: [] };
 }
 function readWork(load) {
-  const saved = { ...defaultWork(load), ...(load.work || {}) };
+  const saved = { ...defaultWork(load), ...(load.work || {}), ...(load.workDraft || {}) };
   if (load.status === "closed") return saved;
+  if (load.workDraft) return saved;
   try { return { ...saved, ...JSON.parse(localStorage.getItem(`ezeizo-key-work:${load.id}`) || "{}") }; }
   catch { return saved; }
 }
 function renderWork() {
   if (!activeLoad) return;
-  const load = activeLoad, closed = load.status === "closed" || manager;
+  const load = activeLoad, closed = load.status === "closed" || manager || !editLock?.held;
+  const lockNotice = $("#key-edit-lock-notice");
+  if (lockNotice) lockNotice.hidden = manager || load.status !== "open" || Boolean(editLock?.held);
   $("#work-summary").textContent = `${load.serial ? `${load.serial} · ` : ""}${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${load.status === "closed" ? " · נסגר" : ""}`;
   $("#work-manager-notes").textContent = load.managerNotes || "";
   $("#work-manager-notes").hidden = !load.managerNotes;
@@ -277,19 +303,18 @@ function renderWork() {
     $("#key-reopen-history").open = true;
     $("#key-reopen-events").replaceChildren(...keyLoadTimeline(load).map(({ label, at }) => make("li", `${label} · ${new Date(at).toLocaleString("he-IL")}`)));
   }
-  setMessage("#work-status", load.status === "closed" ? "ההטענה נסגרה וההיסטוריה עודכנה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול לסגור את ההטענה." : "ההתקדמות נשמרת במכשיר עד לסגירת הטופס.");
+  setMessage("#work-status", load.status === "closed" ? "ההטענה נסגרה וההיסטוריה עודכנה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול לסגור את ההטענה." : !editLock?.held ? "העריכה ממתינה לנעילת הטופס. בדוק את ההודעה שמעליו." : "ההתקדמות נשמרת במכשיר ובשרת עד לסגירת הטופס.");
 }
 const signatures = new Map();
 let signatureLoadId = "";
 function initializeSignatures(root) {
   root.querySelectorAll("canvas[data-signature]").forEach((canvas) => {
-    if (canvas.clientWidth === 0 || signatures.has(canvas)) return;
+    if (canvas.clientWidth === 0) return;
     const key = canvas.dataset.signature;
-    const clear = attachSignaturePad(canvas, { initial: work[key] || "", onChange: (value) => { work[key] = value; saveWork(); } });
-    signatures.set(canvas, clear);
+    if (!signatures.has(canvas)) signatures.set(canvas, attachSignaturePad(canvas, { initial: work[key] || "", onChange: (value) => { work[key] = value; saveWork(); } }));
     const button = root.querySelector(`[data-clear-signature="${key}"]`);
-    if (button) { button.onclick = clear; button.disabled = manager || activeLoad.status === "closed"; }
-    canvas.style.pointerEvents = manager || activeLoad.status === "closed" ? "none" : "auto";
+    if (button) { button.onclick = signatures.get(canvas); button.disabled = manager || activeLoad.status === "closed" || !editLock?.held; }
+    canvas.style.pointerEvents = manager || activeLoad.status === "closed" || !editLock?.held ? "none" : "auto";
   });
 }
 function renderExtraRows(type, closed) {
@@ -326,6 +351,7 @@ function bindExtraTables(closed) {
   initializeSignatures(root);
 }
 function validateWork() {
+  if (!editLock?.held) return "הטופס אינו נעול לעריכה עבורך. לחץ על בדוק שוב.";
   if (work.actions.length !== 12 || work.actions.some((done) => !done)) return "יש לסמן את כל 12 המשימות.";
   for (const [index, row] of activeLoad.rows.entries()) if ((row.blue && !work.aircraft[index]?.blueDone) || (row.shach && !work.aircraft[index]?.shachDone)) return `יש לסמן ביצוע הטענה במטוס ${row.aircraft}.`;
   for (const type of ["tools", "taken", "rejected"]) if (work[`${type}Enabled`]) {
@@ -344,13 +370,14 @@ function validateWork() {
     if (!String(work[key] || "").trim()) return "יש למלא את כל פרטי הביקורות והחתימות שסומנו.";
     if ((key.endsWith("InspectorNumber") || key === "takenPersonalNumber") && !/^[0-9]{1,7}$/.test(work[key])) return "מספר אישי חייב להכיל ספרות בלבד, עד שבע ספרות.";
   }
+  if (work.finalEnabled && !/^([01]\d|2[0-3]):[0-5]\d$/.test(work.departureTime || "")) return "יש לבחור שעת עזיבה תקינה בביקורת סיום.";
   return "";
 }
 $("#complete-key-load").addEventListener("click", async () => {
   const error = validateWork(); if (error) return setMessage("#work-status", error, true);
   const button = $("#complete-key-load"); button.disabled = true;
   const clean = { ...work }; for (const [type, columns] of Object.entries(KEY_TABLES)) clean[type] = compactRows(work[type], columns);
-  try { await closeKeyLoad(activeLoad.id, user.uid, clean); localStorage.removeItem(`ezeizo-key-work:${activeLoad.id}`); if (manager) { location.hash = route("open"); showView(); } else location.replace("./"); }
+  try { clearTimeout(draftTimer); draftTimer = null; await pendingDraft.catch(() => {}); await closeKeyLoad(activeLoad.id, user.uid, clean, editLock.session); try { localStorage.removeItem(`ezeizo-key-work:${activeLoad.id}`); } catch { /* The server already saved the completed form. */ } editLock.dispose(); editLock = null; if (manager) { location.hash = route("open"); showView(); } else location.replace("./"); }
   catch (failure) { setMessage("#work-status", `סגירת ההטענה נכשלה: ${failure.message}`, true); }
   finally { button.disabled = false; }
 });
@@ -376,6 +403,24 @@ function showView() {
   if (activeLoad && !manager && !activeLoad.teamUids.includes(user.uid)) activeLoad = null;
   if (!manager && loadsReady && !activeLoad) { location.replace("./"); return; }
   const view = activeLoad ? "work" : manager && ["history", "create", "open", "closed"].includes(hash) ? hash : "open";
+  const wantsLock = !manager && view === "work" && activeLoad?.status === "open";
+  if (!wantsLock || lockedLoadId !== activeLoad.id) {
+    const oldLock = editLock, oldId = lockedLoadId;
+    if (oldLock) void flushDraft(oldLock, oldId).catch(() => {}).finally(() => oldLock.dispose());
+    editLock = null; lockedLoadId = "";
+  }
+  if (wantsLock && !editLock) {
+    lockedLoadId = activeLoad.id;
+    editLock = createEditLock({ kind: "key", serialOrId: activeLoad.id, formId: activeLoad.id,
+      user: { uid: user.uid, name: activeLoad.teamNames[activeLoad.teamUids.indexOf(user.uid)] },
+      onChange: ({ held, message }) => {
+        const notice = $("#key-edit-lock-notice");
+        if (notice) { notice.querySelector("strong").textContent = message; notice.hidden = held; }
+        if (activeLoad?.id === lockedLoadId && work) renderWork();
+      }
+    });
+    void editLock.acquire();
+  }
   ["history", "create", "open", "closed", "work"].forEach((name) => { $(`#${name}-view`).hidden = name !== view; });
   if (manager && !embedded) $("#keys-manager-nav").hidden = false;
   $("#keys-nav").hidden = !manager || view === "work";
@@ -388,11 +433,17 @@ function showView() {
   if (view === "create" && !dispatchPadReady) { clearDispatch = attachSignaturePad($("#key-dispatch-signature"), { onChange: (value) => { dispatchSignature = value; } }); dispatchPadReady = true; }
   if (view === "open") renderOpen();
   if (view === "closed") renderClosed();
-  if (view === "work") { work = readWork(activeLoad); renderWork(); }
+  if (view === "work") {
+    if (workLoadId !== activeLoad.id || !editLock?.held || activeLoad.status === "closed") work = readWork(activeLoad);
+    workLoadId = activeLoad.id;
+    renderWork();
+  } else { workLoadId = ""; }
 }
 $("#keys-nav").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => { location.hash = route(button.dataset.view); if (!embedded) showView(); }));
 if (manager) for (const [id, render] of [["open-key-search", renderOpen], ["closed-key-search", renderClosed]]) $("#" + id)?.addEventListener("input", render);
 window.addEventListener("hashchange", showView);
+$("#retry-key-edit-lock")?.addEventListener("click", () => editLock?.acquire());
+window.addEventListener("pagehide", () => { const oldLock = editLock; if (oldLock) void flushDraft(oldLock, lockedLoadId).catch(() => {}).finally(() => oldLock.dispose()); });
 renderCreateFields();
 attachTimeNow(embedded ? $("#view-keys") : document);
 if (manager) {
@@ -412,7 +463,8 @@ async function numberLegacyLoads(items) {
     status(error.code === "permission-denied" ? "כדי למספר הטענות קיימות יש לפרסם את כללי Firestore המעודכנים." : `מספור הטענות נכשל: ${error.message}`, true);
   } finally { numberingLegacyLoads = false; }
 }
-watchKeyLoads((items) => { loads = items; if (manager) history = keyHistoryByAircraft(loads); loadsReady = true; if (embedded) { $("#keys-loading").hidden = true; $("#keys-content").hidden = false; } if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); showView(); if (manager) void numberLegacyLoads(items); if (!embedded) revealApp(); }, (error) => {
+watchKeyLoads((items) => { loads = items; if (manager) history = keyHistoryByAircraft(loads); loadsReady = true; if (embedded) { $("#keys-loading").hidden = true; $("#keys-content").hidden = false; } if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); if (!manager && editLock?.held && activeLoad?.status === "open") { $("#work-manager-notes").textContent = activeLoad.managerNotes || ""; $("#work-manager-notes").hidden = !activeLoad.managerNotes; } else showView(); if (manager) void numberLegacyLoads(items); if (!embedded) revealApp(); }, (error) => {
+  if (error.code === "unavailable") document.dispatchEvent(new Event("ezeizo:connection-lost"));
   $("#open-key-loads").textContent = `טעינת ההטענות נכשלה: ${error.message}`;
   $("#open-key-loads").style.color = "#d40000";
   if (embedded) { loadsReady = true; $("#keys-loading").hidden = true; $("#keys-content").hidden = false; showView(); }

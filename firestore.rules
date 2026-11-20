@@ -14,6 +14,47 @@ service cloud.firestore {
         get(/databases/$(database)/documents/roles/$(uid)).data.role == 'technician' &&
         get(/databases/$(database)/documents/roles/$(uid)).data.active == true;
     }
+    function validEditLease(data, id) {
+      return hasRole('technician')
+        && data.keys().hasAll(['kind', 'formId', 'serial', 'ownerUid', 'ownerName', 'session', 'expiresAt'])
+        && data.keys().hasOnly(['kind', 'formId', 'serial', 'ownerUid', 'ownerName', 'session', 'expiresAt'])
+        && data.ownerUid == request.auth.uid
+        && data.ownerName is string && data.ownerName.size() <= 100
+        && data.session is string && data.session.size() <= 100
+        && data.expiresAt is timestamp && data.expiresAt > request.time
+        && data.expiresAt <= request.time + duration.value(2, 'm')
+        && id == data.kind + '_' + data.serial
+        && (
+          (data.kind == 'key' && data.serial == data.formId
+            && exists(/databases/$(database)/documents/keyLoads/$(data.formId))
+            && get(/databases/$(database)/documents/keyLoads/$(data.formId)).data.status == 'open'
+            && request.auth.uid in get(/databases/$(database)/documents/keyLoads/$(data.formId)).data.teamUids)
+          || (data.kind == 'issue'
+            && exists(/databases/$(database)/documents/issues/$(data.formId))
+            && get(/databases/$(database)/documents/issues/$(data.formId)).data.status == 'open'
+            && get(/databases/$(database)/documents/issues/$(data.formId)).data.assigneeUid == request.auth.uid
+            && get(/databases/$(database)/documents/issues/$(data.formId)).data.sheet.serial == data.serial)
+        );
+    }
+    function ownsEditLock(id) {
+      return exists(/databases/$(database)/documents/editLocks/$(id))
+        && get(/databases/$(database)/documents/editLocks/$(id)).data.ownerUid == request.auth.uid
+        && get(/databases/$(database)/documents/editLocks/$(id)).data.expiresAt > request.time;
+    }
+    function ownsIssueLock(issueId, serial) {
+      let lockId = 'issue_' + serial;
+      return ownsEditLock(lockId)
+        && get(/databases/$(database)/documents/editLocks/$(lockId)).data.formId == issueId;
+    }
+    match /editLocks/{id} {
+      allow get: if isManager() || hasRole('technician');
+      allow list: if false;
+      allow create: if validEditLease(request.resource.data, id);
+      allow update: if validEditLease(request.resource.data, id)
+        && (resource.data.expiresAt <= request.time
+          || (resource.data.ownerUid == request.auth.uid && resource.data.session == request.resource.data.session));
+      allow delete: if hasRole('technician') && resource.data.ownerUid == request.auth.uid;
+    }
 
     match /roles/{uid} {
       allow get: if (request.auth != null && request.auth.uid == uid) || isManager();
@@ -86,7 +127,15 @@ service cloud.firestore {
       allow update: if hasRole('technician')
         && resource.data.status == 'open'
         && request.auth.uid in resource.data.teamUids
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'work', 'completedAt', 'completedBy'])
+        && ownsEditLock('key_' + id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['workDraft', 'draftBy'])
+        && request.resource.data.draftBy == request.auth.uid
+        && request.resource.data.workDraft is map;
+      allow update: if hasRole('technician')
+        && resource.data.status == 'open'
+        && request.auth.uid in resource.data.teamUids
+        && ownsEditLock('key_' + id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'work', 'completedAt', 'completedBy', 'workDraft'])
         && request.resource.data.status == 'closed'
         && request.resource.data.completedBy == request.auth.uid
         && request.resource.data.completedAt is string
@@ -161,6 +210,7 @@ service cloud.firestore {
       allow update: if hasRole('technician')
         && resource.data.status == 'open'
         && resource.data.assigneeUid == request.auth.uid
+        && ownsIssueLock(id, resource.data.sheet.serial)
         && request.resource.data.status == 'pendingReview'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'closed'])
         && request.resource.data.closed.keys().hasOnly(['record', 'state'])

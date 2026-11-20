@@ -1,5 +1,5 @@
-import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.6.2";
-import { KEY_TASKS, KEY_TABLES } from "../keys/data.js?v=1.6.2";
+import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.6.3";
+import { KEY_TASKS, KEY_TABLES } from "../keys/data.js?v=1.6.3";
 
 const left = MARGIN, right = PAGE_WIDTH - MARGIN;
 const dateTime = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -228,5 +228,9 @@ async function keyPdf(load) {
 
 export async function createFormPdf(form, type) {
   await document.fonts?.ready;
-  return type === "key" ? keyPdf(form) : issuePdf(form);
+  const blob = await (type === "key" ? keyPdf(form) : issuePdf(form));
+  if (blob.type !== "application/pdf" || blob.size < 100 || new TextDecoder().decode(await blob.slice(0, 5).arrayBuffer()) !== "%PDF-") {
+    throw new Error("קובץ ה־PDF לא נוצר כראוי. נסה להוריד אותו שוב.");
+  }
+  return blob;
 }

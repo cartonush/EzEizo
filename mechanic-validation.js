@@ -13,8 +13,8 @@ export function validateTreatment(sheet, state, tables) {
     if (index === 10 && !["done", "notRequired"].includes(state.action11Result)) {
       return missing("לא ניתן לסגור: בפעולה 11 חובה לבחור ✓ אם בוצעה או X אם לא נדרשה.", "#action-list li:nth-child(11) input");
     }
-    if (index === sheet.actions.length - 1 && !filled(state.completionTime)) {
-      return missing("לא ניתן לסגור: חובה לבחור שעת סיום תקלה.", `#action-list li:nth-child(${index + 1}) input`);
+    if (index === sheet.actions.length - 1 && !/^([01]\d|2[0-3]):[0-5]\d$/.test(state.completionTime || "")) {
+      return missing("לא ניתן לסגור: חובה לבחור שעת סיום תקלה תקינה.", `#action-list li:nth-child(${index + 1}) input`);
     }
     if (!state.actions[index]) {
       return missing(`לא ניתן לסגור: פעולה ${index + 1} עדיין לא סומנה.`, `#action-list li:nth-child(${index + 1}) input`);
@@ -79,6 +79,7 @@ export function validateTreatment(sheet, state, tables) {
         ["departureTime", "שעת העזיבה"]
       ]);
       if (final) return final;
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(state.departureTime || "")) return missing("לא ניתן לסגור: יש לבחור שעת עזיבה תקינה.", '[data-state-field="departureTime"]');
     }
   }
   if (state.takenEnabled) {

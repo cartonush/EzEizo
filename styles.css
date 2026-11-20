@@ -226,3 +226,19 @@ td input:focus { border-color: #5da8c5; }
 .safety-card .signature-field, .close-card .signature-field, .review-card .signature-field { margin: 15px 0; max-width: 560px; }
 [data-state="error"] { color: #a80018 !important; background: #fff0f1; border: 2px solid #ff243e; border-radius: 10px; padding: 10px 12px; font-weight: 700; line-height: 1.6; }
 .closed-signature { max-width: 280px; width: 100%; background: #fff; border: 1px solid #d5e3e9; border-radius: 8px; }
+.server-connection-warning {
+  position: fixed;
+  z-index: 1200;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 24px;
+  background: #bf1515;
+  color: #fff;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 750;
+  box-shadow: 0 4px 15px #0004;
+}
+.server-connection-warning[hidden], .edit-lock-notice[hidden] { display: none; }
+.edit-lock-notice { border: 2px solid #d01b1b; color: #b01212; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }

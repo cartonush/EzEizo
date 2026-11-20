@@ -1,9 +1,10 @@
-import "./sheet-data.js?v=1.6.2";
-import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.6.2";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.6.2";
-import { validateTreatment } from "./mechanic-validation.js?v=1.6.2";
-import { attachTimeNow } from "./time-now.js?v=1.6.2";
-import { issueTimeline } from "./lifecycle.js?v=1.6.2";
+import "./sheet-data.js?v=1.6.3";
+import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.6.3";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.6.3";
+import { validateTreatment } from "./mechanic-validation.js?v=1.6.3";
+import { attachTimeNow } from "./time-now.js?v=1.6.3";
+import { issueTimeline } from "./lifecycle.js?v=1.6.3";
+import { createEditLock } from "./edit-lock.js?v=1.6.3";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -18,7 +19,7 @@ if (selectedId) {
 }
 const sheet = EzEizoData.normalizeSheet(remoteIssue?.sheet || EzEizoData.defaultSheet);
 const selectedSheet = Boolean(remoteIssue && (managerClosedView ? ["closed", "pendingReview"].includes(remoteIssue.status) : remoteIssue.assigneeUid === currentUser.uid));
-document.querySelector("#sheet-form").hidden = !selectedSheet;
+document.querySelector("#sheet-form").hidden = !selectedSheet || (!managerClosedView && remoteIssue?.status === "open");
 document.querySelector("#mechanic-back").hidden = !selectedSheet && !managerClosedView;
 document.querySelector(".queue-card").hidden = selectedSheet;
 const ACTIONS = sheet.actions;
@@ -27,6 +28,26 @@ const actionList = document.querySelector("#action-list");
 const repairField = document.querySelector("#repair-description");
 const unitsToggle = document.querySelector("#units-toggle");
 const unitsArea = document.querySelector("#units-area");
+let editLock = null;
+if (selectedSheet && !managerClosedView && remoteIssue.status === "open") {
+  const notice = document.createElement("section");
+  notice.className = "card edit-lock-notice";
+  notice.setAttribute("role", "status");
+  notice.setAttribute("aria-live", "polite");
+  const message = document.createElement("strong");
+  const retry = document.createElement("button"); retry.className = "secondary-button"; retry.type = "button"; retry.textContent = "בדוק שוב";
+  retry.addEventListener("click", () => editLock?.acquire());
+  notice.append(message, retry);
+  document.querySelector("#sheet-form").before(notice);
+  editLock = createEditLock({ kind: "issue", serialOrId: sheet.serial, formId: sheet.id, user: { uid: currentUser.uid, name: remoteIssue.assigneeName }, onChange: ({ held, message: info }) => {
+    notice.hidden = held;
+    message.textContent = info;
+    document.querySelector("#sheet-form").hidden = !held;
+    if (held) setupSignaturePads();
+  } });
+  window.addEventListener("pagehide", () => editLock?.dispose());
+  void editLock.acquire();
+}
 const TABLES = {
   removed: [
     { key: "name", label: "שם יחידה", placeholder: "בחר יחידה", options: ["MLPRF", "PSP", "DMT"] },
@@ -90,8 +111,10 @@ function loadState() {
 function saveState() {
   if (managerClosedView) return;
   if (state.closedAt) return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   const status = document.querySelector("#save-state");
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch { status.textContent = "שמירת הטיוטה במכשיר נכשלה. השאר את הטופס פתוח ופנה מקום באחסון."; status.dataset.state = "error"; return; }
+  delete status.dataset.state;
   status.textContent = "נשמר עכשיו במכשיר";
   window.clearTimeout(saveState.timer);
   saveState.timer = window.setTimeout(() => { status.textContent = "נשמר אוטומטית במכשיר"; }, 1400);
@@ -348,6 +371,7 @@ if (managerClosedView && selectedSheet) {
 
 async function submitTreatment() {
   if (managerClosedView) return;
+  if (!editLock?.held) { document.querySelector("#close-message").textContent = "הטופס אינו נעול לעריכה עבורך. לחץ על בדוק שוב."; return; }
   if (document.querySelector("#close-sheet").disabled) return;
   const validation = validateTreatment(sheet, state, TABLES);
   if (validation) {
@@ -366,10 +390,11 @@ async function submitTreatment() {
   for (const [type, fields] of Object.entries(TABLES)) closingState[type] = compactRows(state[type], fields);
   const record = { ...closureRecord(), closedAt, actionsComplete: true };
   try {
-    await submitForReview(sheet.id, record, closingState);
+    await submitForReview(sheet.id, record, closingState, editLock.session);
     Object.assign(state, closingState);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* The transaction has already saved the form on the server. */ }
     showClosed();
+    editLock.dispose();
     document.querySelector("#close-title").scrollIntoView({ behavior: "smooth", block: "center" });
   } catch (error) {
     const message = document.querySelector("#close-message");
@@ -396,7 +421,7 @@ watchIssues((issues) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     location.reload();
   }
-}, (error) => { const list = document.querySelector("#mechanic-issues"); list.textContent = `לא ניתן לטעון תקלות: ${error.message}`; list.dataset.state = "error"; }, managerClosedView ? null : currentUser.uid);
+}, (error) => { const list = document.querySelector("#mechanic-issues"); list.textContent = `לא ניתן לטעון תקלות: ${error.message}`; list.dataset.state = "error"; if (error.code === "unavailable") document.dispatchEvent(new Event("ezeizo:connection-lost")); }, managerClosedView ? null : currentUser.uid);
 
 if (!managerClosedView) watchKeyLoads((loads) => { keyLoads = loads; keyLoadError = ""; renderIssueList(); }, (error) => { keyLoadError = error.message; renderIssueList(); }, currentUser.uid);
 
