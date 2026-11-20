@@ -1,5 +1,5 @@
-import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.6.1";
-import { KEY_TASKS, KEY_TABLES, periodFor } from "../keys/data.js?v=1.6.1";
+import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.6.2";
+import { KEY_TASKS, KEY_TABLES } from "../keys/data.js?v=1.6.2";
 
 const left = MARGIN, right = PAGE_WIDTH - MARGIN;
 const dateTime = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -29,7 +29,7 @@ function pdfPages(title, subtitle) {
     images.push(Uint8Array.from(bytes, (char) => char.charCodeAt(0)));
     page.width = 0;
   }
-  function space(height) { if (y + height > PAGE_HEIGHT - 115) { finish(); start(); } }
+  function space(height) { if (y + height > PAGE_HEIGHT - 115) { finish(); start(); return true; } return false; }
   function heading(title) {
     space(85); y += 17; ctx.fillStyle = "#eaf4f8"; ctx.fillRect(left, y, CONTENT_WIDTH, 54);
     ctx.fillStyle = "#173b5d"; ctx.font = "bold 28px Arial"; ctx.fillText(title, right - 17, y + 12); y += 65;
@@ -59,10 +59,90 @@ function pdfPages(title, subtitle) {
     for (const line of lines) { ctx.fillText(line, right - 16, lineY); lineY += 31; }
     y += height + 6;
   }
-  function rows(title, entries, fields) {
+  function rows(title, entries, fields, proportions) {
     heading(title);
-    if (!entries?.length) { paragraph("לא נרשמו פריטים."); return; }
-    for (const [index, entry] of entries.entries()) row([`שורה ${index + 1}`, ...fields.map(([label, key]) => `${label}: ${show(entry?.[key])}`)]);
+    const active = (entries || []).filter((entry) => fields.some(([, key]) => String(entry?.[key] ?? "").trim()));
+    if (!active.length) { paragraph("לא נרשמו פריטים."); return; }
+    const weights = proportions || fields.map(() => 1);
+    const total = weights.reduce((sum, weight) => sum + weight, 0);
+    const widths = weights.map((weight) => CONTENT_WIDTH * weight / total);
+    const fontSize = fields.length > 4 ? 18 : 21;
+    const lineHeight = fontSize + 8;
+    const headerHeight = 56;
+    const tableHeader = () => {
+      ctx.fillStyle = "#eaf4f8"; ctx.fillRect(left, y, CONTENT_WIDTH, headerHeight);
+      ctx.strokeStyle = "#d6e4eb"; ctx.strokeRect(left, y, CONTENT_WIDTH, headerHeight);
+      let edge = right;
+      ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = "#173b5d";
+      fields.forEach(([label], index) => {
+        wrapped(ctx, label, widths[index] - 18).slice(0, 2).forEach((line, lineIndex) => ctx.fillText(line, edge - 10, y + 7 + lineIndex * 23));
+        edge -= widths[index];
+      });
+      y += headerHeight;
+    };
+    space(headerHeight + 55); tableHeader();
+    for (const [index, entry] of active.entries()) {
+      ctx.font = `${fontSize}px Arial`;
+      const lines = fields.map(([, key], column) => {
+        const value = show(entry?.[key]);
+        const words = wrapped(ctx, value, widths[column] - 20);
+        // A long identifier without spaces still needs to fit its column.
+        return words.flatMap((word) => {
+          if (ctx.measureText(word).width <= widths[column] - 20) return [word];
+          const segments = []; let segment = "";
+          for (const char of word) {
+            if (segment && ctx.measureText(segment + char).width > widths[column] - 20) { segments.push(segment); segment = ""; }
+            segment += char;
+          }
+          if (segment) segments.push(segment);
+          return segments;
+        });
+      });
+      const height = Math.max(47, 16 + Math.max(...lines.map((item) => item.length)) * lineHeight);
+      if (y + height > PAGE_HEIGHT - 115) { finish(); start(); tableHeader(); }
+      ctx.fillStyle = index % 2 ? "#f6fafc" : "#ffffff";
+      ctx.fillRect(left, y, CONTENT_WIDTH, height);
+      ctx.strokeStyle = "#d6e4eb"; ctx.strokeRect(left, y, CONTENT_WIDTH, height);
+      let edge = right;
+      ctx.fillStyle = "#274457"; ctx.font = `${fontSize}px Arial`;
+      lines.forEach((cellLines, column) => {
+        let textY = y + 9;
+        for (const line of cellLines) { ctx.fillText(line, edge - 10, textY); textY += lineHeight; }
+        edge -= widths[column];
+        if (column < fields.length - 1) { ctx.beginPath(); ctx.moveTo(edge, y); ctx.lineTo(edge, y + height); ctx.stroke(); }
+      });
+      y += height;
+    }
+    y += 10;
+  }
+  async function inspection(title, details, signatures) {
+    const detailLines = details.map(([label, value]) => `${label}: ${show(value)}`);
+    ctx.font = "20px Arial";
+    const detailRows = wrapped(ctx, detailLines.join("     ·     "), CONTENT_WIDTH - 32);
+    const titleHeight = 40, detailsHeight = detailRows.length * 27 + 15, signatureHeight = 80;
+    const height = titleHeight + detailsHeight + signatureHeight;
+    space(height + 12);
+    ctx.fillStyle = "#eaf4f8"; ctx.fillRect(left, y, CONTENT_WIDTH, titleHeight);
+    ctx.fillStyle = "#173b5d"; ctx.font = "bold 22px Arial"; ctx.fillText(title, right - 12, y + 8);
+    ctx.fillStyle = "#f8fbfd"; ctx.fillRect(left, y + titleHeight, CONTENT_WIDTH, detailsHeight + signatureHeight);
+    ctx.strokeStyle = "#d6e4eb"; ctx.strokeRect(left, y, CONTENT_WIDTH, height);
+    ctx.fillStyle = "#274457"; ctx.font = "20px Arial";
+    detailRows.forEach((line, index) => ctx.fillText(line, right - 12, y + titleHeight + 9 + index * 27));
+    const signatureTop = y + titleHeight + detailsHeight;
+    const width = CONTENT_WIDTH / signatures.length;
+    for (const [index, [label, dataUrl]] of signatures.entries()) {
+      const edge = right - index * width;
+      ctx.strokeStyle = "#d6e4eb"; ctx.strokeRect(edge - width, signatureTop, width, signatureHeight);
+      ctx.fillStyle = "#5a7180"; ctx.font = "18px Arial"; ctx.fillText(label, edge - 10, signatureTop + 6);
+      if (dataUrl?.startsWith("data:image/")) {
+        try {
+          const img = new Image(); img.src = dataUrl; await img.decode();
+          const scale = Math.min((width - 26) / img.naturalWidth, 44 / img.naturalHeight);
+          ctx.drawImage(img, edge - 12 - img.naturalWidth * scale, signatureTop + 32, img.naturalWidth * scale, img.naturalHeight * scale);
+        } catch { ctx.fillText("חתימה שמורה", edge - 10, signatureTop + 38); }
+      } else ctx.fillText("טרם נחתם", edge - 10, signatureTop + 38);
+    }
+    y += height + 12;
   }
   async function signature(label, dataUrl) {
     if (!dataUrl?.startsWith("data:image/")) { text(label, "טרם נחתם"); return; }
@@ -75,24 +155,23 @@ function pdfPages(title, subtitle) {
     y += 95;
   }
   start();
-  return { heading, text, paragraph, row, rows, signature, blob: () => { finish(); return pdfFromJpegs(images); } };
+  return { heading, text, paragraph, row, rows, inspection, signature, blob: () => { finish(); return pdfFromJpegs(images); } };
 }
 
 async function materials(pdf, state) {
   if (state.toolsEnabled) {
-    pdf.rows("כלים", state.tools, columns.tools);
-    for (const [enabled, title, fields] of [
-      ["entryEnabled", "ביקורת כניסה", [["מספר אישי של הבודק", "entryInspectorNumber"], ["חתימת הטכנאי", "entryTechnicianSignature"], ["חתימת הבודק", "entryInspectorSignature"]]],
-      ["interimEnabled", "ביקורת במהלך העבודה", [["מספר אישי של הבודק", "interimInspectorNumber"], ["שם פ.כלים / מ״ע", "interimToolsName"], ["חתימת הטכנאי", "interimTechnicianSignature"], ["חתימת הבודק", "interimInspectorSignature"], ["חתימת פ.כלים / מ״ע", "interimToolsSignature"]]],
-      ["finalEnabled", "ביקורת בסיום העבודה", [["מספר אישי של הבודק", "finalInspectorNumber"], ["שם ר״צ / מ״ע", "finalLeadName"], ["שעת עזיבה", "departureTime"], ["חתימת הטכנאי", "finalTechnicianSignature"], ["חתימת הבודק", "finalInspectorSignature"], ["חתימת ר״צ / מ״ע", "finalLeadSignature"]]]
-    ]) if (state[enabled]) { pdf.heading(title); for (const [label, key] of fields) { if (key.includes("Signature")) await pdf.signature(label, state[key]); else pdf.text(label, state[key]); } }
+    pdf.rows("כלים", state.tools, columns.tools, [3, 2, 3]);
+    for (const [enabled, title, details, signatures] of [
+      ["entryEnabled", "ביקורת כניסה", [["מספר אישי של הבודק", "entryInspectorNumber"]], [["חתימת הטכנאי", "entryTechnicianSignature"], ["חתימת הבודק", "entryInspectorSignature"]]],
+      ["interimEnabled", "ביקורת במהלך העבודה", [["מספר אישי של הבודק", "interimInspectorNumber"], ["שם פ.כלים / מ״ע", "interimToolsName"]], [["חתימת הטכנאי", "interimTechnicianSignature"], ["חתימת הבודק", "interimInspectorSignature"], ["חתימת פ.כלים / מ״ע", "interimToolsSignature"]]],
+      ["finalEnabled", "ביקורת בסיום העבודה", [["מספר אישי של הבודק", "finalInspectorNumber"], ["שם ר״צ / מ״ע", "finalLeadName"], ["שעת עזיבה", "departureTime"]], [["חתימת הטכנאי", "finalTechnicianSignature"], ["חתימת הבודק", "finalInspectorSignature"], ["חתימת ר״צ / מ״ע", "finalLeadSignature"]]]
+    ]) if (state[enabled]) await pdf.inspection(title, details.map(([label, key]) => [label, state[key]]), signatures.map(([label, key]) => [label, state[key]]));
   }
   if (state.takenEnabled) {
-    pdf.rows("קשיחים נצרכים", state.taken, columns.taken);
-    for (const [label, key] of [["שם מלא", "takenFullName"], ["מספר אישי", "takenPersonalNumber"], ["דרגה", "takenRank"]]) pdf.text(label, state[key]);
-    await pdf.signature("חתימת קשיחים נצרכים", state.takenSignature);
+    pdf.rows("קשיחים נצרכים", state.taken, columns.taken, [3, 2.5, 2, 2, 2.5]);
+    await pdf.inspection("אישור קשיחים נצרכים", [["שם מלא", state.takenFullName], ["מספר אישי", state.takenPersonalNumber], ["דרגה", state.takenRank]], [["חתימה", state.takenSignature]]);
   }
-  if (state.rejectedEnabled) pdf.rows("קשיחים שנפסלו", state.rejected, columns.rejected);
+  if (state.rejectedEnabled) pdf.rows("קשיחים שנפסלו", state.rejected, columns.rejected, [3, 1.3, 1.7, 3]);
 }
 
 async function issuePdf(issue) {
@@ -130,14 +209,11 @@ async function keyPdf(load) {
   const pdf = pdfPages(`הטענת מפתחות ${show(load.serial)}`, `${load.status === "closed" ? "סגור" : "פתוח"} · טייסת ${load.squadron}`);
   pdf.heading("פרטי הטענה");
   for (const [label, value] of [["מספר הטענה", load.serial], ["תאריך", load.date], ["שעה", load.time], ["טייסת", load.squadron], ["דת״ק", load.shelter], ["צוות", (load.teamNames || []).join(" · ")], ["נפתחה", dateTime(load.createdAt)], ["נסגרה", dateTime(load.completedAt)]]) if (value) pdf.text(label, value);
-  pdf.heading("רשימת הטענה");
   if (load.status === "open") pdf.paragraph("ההטענה פתוחה. נתונים שהטכנאי הזין ונשמרו במכשירו בלבד יופיעו כאן לאחר סגירת הטופס.");
-  for (const [index, entry] of (load.rows || []).entries()) {
+  pdf.rows("רשימת הטענה", (load.rows || []).map((entry, index) => {
     const done = state.aircraft?.[index] || {};
-    pdf.row([`מטוס ${entry.aircraft}`, `ארז כחול: ${entry.blue ? checked(done.blueDone) : "לא נדרש"}`, `שחק: ${entry.shach ? checked(done.shachDone) : "לא נדרש"}`]);
-    if (entry.notes) pdf.text(`הערות מנהל למטוס ${entry.aircraft}`, entry.notes);
-    if (done.technicianNote) pdf.text(`הערות טכנאי למטוס ${entry.aircraft}`, done.technicianNote);
-  }
+    return { aircraft: entry.aircraft, blue: entry.blue ? checked(done.blueDone) : "לא נדרש", shach: entry.shach ? checked(done.shachDone) : "לא נדרש", notes: [entry.notes && `מנהל: ${entry.notes}`, done.technicianNote && `טכנאי: ${done.technicianNote}`].filter(Boolean).join(" · ") };
+  }), [["מס׳ מטוס", "aircraft"], ["ארז כחול", "blue"], ["שחק", "shach"], ["הערות", "notes"]], [1.6, 1.5, 1.2, 4]);
   if (load.managerNotes) pdf.text("הערות מנהל", load.managerNotes);
   pdf.heading("הנחיות עבודה");
   pdf.paragraph(`אחזקה נדרשת לביצוע: הטענת מטוסים במסגרת ביצוע שינוי מפתחות לחודשים ${load.period}.`);
@@ -146,12 +222,6 @@ async function keyPdf(load) {
   pdf.heading("משימות לביצוע");
   KEY_TASKS.forEach((task, index) => pdf.row([`${String(index + 1).padStart(2, "0")}. ${task}`, checked(index === 0 || state.actions?.[index])]));
   await pdf.signature("חתימת משלח המשימה", load.dispatcherSignature);
-  if (load.date) {
-    const period = periodFor(load.date);
-    pdf.heading("מידע לעזר הטכנאי");
-    pdf.paragraph("קוד ביקורת: ברק 1 – 500, ברק 2 – 584 לביצוע מפתחות שחק. ברק 1 – 510, ברק 2 – 578 לביצוע מפתחות ארז.");
-    [["כר-156 · ארז כחול", "6003-216", "כרטיס מחיקה שנתי", period.year], ["כר-156 · ארז כחול", "6001-295", "חודש נוכחי", period.current], ["כר-156 · ארז כחול", "6001-296", "חודש הבא", period.next], ["כר-116 · שחק", "6016-385", "חודש נוכחי", period.current], ["כר-116 · שחק", "6016-386", "חודש הבא", period.next]].forEach((values) => pdf.row(values));
-  }
   await materials(pdf, state);
   return pdf.blob();
 }
