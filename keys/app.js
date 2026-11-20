@@ -231,7 +231,7 @@ function validateWork() {
   for (const [index, row] of activeLoad.rows.entries()) if ((row.blue && !work.aircraft[index]?.blueDone) || (row.shach && !work.aircraft[index]?.shachDone)) return `יש לסמן ביצוע הטענה במטוס ${row.aircraft}.`;
   for (const type of ["tools", "taken", "rejected"]) if (work[`${type}Enabled`]) {
     const rows = compactRows(work[type], KEY_TABLES[type]);
-    if (!rows.length) return `יש למלא שורה בטבלת ${type === "tools" ? "כלים" : type === "taken" ? "קשיחים שנלקחו" : "קשיחים שנפסלו"}.`;
+    if (!rows.length) return `יש למלא שורה בטבלת ${type === "tools" ? "כלים" : type === "taken" ? "קשיחים נצרכים" : "קשיחים שנפסלו"}.`;
     const error = validateRows(rows, KEY_TABLES[type], type); if (error) return error;
   }
   const required = [];

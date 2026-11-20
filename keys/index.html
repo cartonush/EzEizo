@@ -76,24 +76,24 @@
 
       <section class="card parts-card" aria-labelledby="taken-title">
         <div class="section-heading">
-          <div><p class="section-kicker">תיעוד חומרים</p><h2 id="taken-title">קשיחים שנלקחו</h2></div>
+          <div><p class="section-kicker">תיעוד חומרים</p><h2 id="taken-title">קשיחים נצרכים</h2></div>
           <span class="step-badge">06</span>
         </div>
         <label class="replaced-toggle" for="taken-toggle">
           <input id="taken-toggle" type="checkbox" data-toggle-state="takenEnabled" data-target="taken-area">
           <span class="custom-check" aria-hidden="true"></span>
-          <span><strong>תיעוד קשיחים שנלקחו</strong><small>סמן כדי לפתוח טבלה ופרטי חתימה</small></span>
+          <span><strong>תיעוד קשיחים נצרכים</strong><small>סמן כדי לפתוח טבלה ופרטי חתימה</small></span>
         </label>
         <div id="taken-area" class="conditional-area" hidden>
           <div class="unit-table-card wide-table">
-            <div class="unit-table-heading"><h3>קשיחים שנלקחו</h3></div>
+            <div class="unit-table-heading"><h3>קשיחים נצרכים</h3></div>
             <div class="table-wrap"><table><thead><tr><th>תיאור קשיח / נצרך</th><th>הוסר מרכיב / אזור</th><th>כמות בכניסה</th><th>כמות ביציאה</th><th>הערות</th><th aria-label="פעולות"></th></tr></thead><tbody id="taken-rows"></tbody></table></div>
           </div>
           <div class="signature-grid taken-signature-grid">
             <label class="input-field">שם מלא<input type="text" data-state-field="takenFullName" autocomplete="name"></label>
             <label class="input-field">מספר אישי<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="takenPersonalNumber"></label>
             <label class="input-field">דרגה<input type="text" data-state-field="takenRank"></label>
-            <div class="signature-field"><span class="field-label">חתימה</span><canvas class="signature-pad" data-signature="takenSignature" aria-label="חתימה על קשיחים שנלקחו"></canvas><button type="button" class="clear-signature" data-clear-signature="takenSignature">נקה חתימה</button></div>
+            <div class="signature-field"><span class="field-label">חתימה</span><canvas class="signature-pad" data-signature="takenSignature" aria-label="חתימה על קשיחים נצרכים"></canvas><button type="button" class="clear-signature" data-clear-signature="takenSignature">נקה חתימה</button></div>
           </div>
         </div>
       </section>
