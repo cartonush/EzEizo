@@ -1,6 +1,6 @@
-import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.1";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.1";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.1";
+import { gate, revealApp, watchKeyLoads, watchKeyHistory, watchTechnicians, createKeyLoad, closeKeyLoad } from "../firebase-sync.js?v=1.3.2";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.2";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows } from "./data.js?v=1.3.2";
 
 const manager = !location.pathname.toLowerCase().includes("/mechanic/");
 const user = await gate(manager ? "manager" : "technician");
@@ -68,16 +68,18 @@ function renderAircraftRows() {
   normalizedAircraftRows().forEach((item, index) => {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    const input = document.createElement("input"); input.type = "search"; input.inputMode = "numeric"; input.placeholder = "חפש מטוס"; input.autocomplete = "off"; input.value = item.aircraft || "";
-    const choices = make("div", undefined, "picker-list"); choices.hidden = true;
+    const input = document.createElement("input"); input.type = "search"; input.inputMode = "numeric"; input.placeholder = "בחר מטוס"; input.autocomplete = "off"; input.value = item.aircraft || "";
+    input.setAttribute("role", "combobox"); input.setAttribute("aria-autocomplete", "list"); input.setAttribute("aria-expanded", "false");
+    const choices = make("div", undefined, "picker-list"); choices.hidden = true; choices.id = `key-options-${index}`; choices.setAttribute("role", "listbox"); input.setAttribute("aria-controls", choices.id);
     const holder = make("div", undefined, "search-picker");
     function showChoices() {
       choices.replaceChildren(); const matches = aircraftFor(draft.squadron).filter((value) => value.includes(input.value.trim()) && (value === item.aircraft || !draft.rows.some((other, at) => at !== index && other.aircraft === value)));
-      matches.forEach((value) => { const button = make("button", value, "picker-option"); button.type = "button"; button.addEventListener("pointerdown", (event) => event.preventDefault()); button.addEventListener("click", () => { const target = draft.rows[index] || (draft.rows[index] = { aircraft: "", blue: false, shach: false, notes: "" }); target.aircraft = value; saveDraft(); renderAircraftRows(); }); choices.append(button); }); choices.hidden = !matches.length;
+      matches.forEach((value) => { const button = make("button", value, "picker-option"); button.type = "button"; button.setAttribute("role", "option"); button.setAttribute("aria-selected", String(value === item.aircraft)); button.addEventListener("pointerdown", (event) => event.preventDefault()); button.addEventListener("click", () => { const target = draft.rows[index] || (draft.rows[index] = { aircraft: "", blue: false, shach: false, notes: "" }); target.aircraft = value; saveDraft(); renderAircraftRows(); }); choices.append(button); }); choices.hidden = !matches.length; input.setAttribute("aria-expanded", String(!choices.hidden));
     }
     input.addEventListener("focus", showChoices);
     input.addEventListener("input", () => { if (draft.rows[index]) { draft.rows[index].aircraft = ""; saveDraft(); } showChoices(); });
-    input.addEventListener("blur", () => setTimeout(() => { choices.hidden = true; input.value = draft.rows[index]?.aircraft || ""; }, 150));
+    input.addEventListener("keydown", (event) => { if (event.key === "Escape") { choices.hidden = true; input.setAttribute("aria-expanded", "false"); } else if (event.key === "Enter" && !choices.hidden && choices.querySelector("button")) { event.preventDefault(); choices.querySelector("button").click(); } else if (event.key === "ArrowDown") showChoices(); });
+    input.addEventListener("blur", () => setTimeout(() => { choices.hidden = true; input.setAttribute("aria-expanded", "false"); input.value = draft.rows[index]?.aircraft || ""; }, 150));
     holder.append(input, choices); cell.append(holder); row.append(cell);
     ["blue", "shach"].forEach((key) => { const td = document.createElement("td"), box = document.createElement("input"); box.type = "checkbox"; box.checked = Boolean(item[key]); box.setAttribute("aria-label", `${key === "blue" ? "ארז כחול" : "שחק"}, שורה ${index + 1}`); box.addEventListener("change", () => { const target = draft.rows[index] || (draft.rows[index] = { aircraft: "", blue: false, shach: false, notes: "" }); target[key] = box.checked; saveDraft(); if (index === draft.rows.length - 1 && box.checked && !target.aircraft) renderAircraftRows(); }); td.append(box); row.append(td); });
     const noteCell = document.createElement("td"), note = document.createElement("input"); note.type = "text"; note.placeholder = "לא חובה"; note.maxLength = 500; note.value = item.notes || ""; note.setAttribute("aria-label", `הערות, שורה ${index + 1}`); note.addEventListener("input", () => { const target = draft.rows[index] || (draft.rows[index] = { aircraft: "", blue: false, shach: false, notes: "" }); target.notes = note.value; saveDraft(); }); noteCell.append(note); row.append(noteCell);
@@ -88,7 +90,7 @@ $("#manager-key-tasks").replaceChildren(...KEY_TASKS.map((text, index) => make("
 $("#key-briefed").checked = false;
 let clearDispatch = () => {};
 let dispatchPadReady = false;
-$("#key-clear-signature").addEventListener("click", clearDispatch);
+$("#key-clear-signature").addEventListener("click", () => clearDispatch());
 $("#create-key-load").addEventListener("click", async () => {
   const button = $("#create-key-load");
   let period; try { period = periodFor(draft.date); } catch { return setMessage("#create-status", "בחר תאריך תקין.", true); }
@@ -202,7 +204,7 @@ function renderExtraRows(type, closed) {
   rows.forEach((row, index) => {
     const tr = document.createElement("tr");
     columns.forEach(({ key, label }) => {
-      const td = document.createElement("td"), input = document.createElement("input"); input.type = "text"; input.value = row[key] || ""; input.placeholder = label; input.disabled = closed; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
+      const td = document.createElement("td"), input = document.createElement("input"); td.dataset.label = label; input.type = "text"; input.value = row[key] || ""; input.placeholder = label; input.disabled = closed; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
       input.addEventListener("input", () => { row[key] = input.value; if (index === rows.length - 1 && input.value.trim()) { const caret = input.selectionStart; renderExtraRows(type, false); const next = target.children[index]?.querySelectorAll("input")[columns.findIndex((field) => field.key === key)]; next?.focus({ preventScroll: true }); next?.setSelectionRange(caret, caret); } saveWork(); }); td.append(input); tr.append(td);
     });
     const cell = document.createElement("td"); if (!closed && columns.some(({ key }) => row[key])) { const remove = make("button", "×", "remove-row"); remove.type = "button"; remove.addEventListener("click", () => { work[type].splice(index, 1); renderExtraRows(type, false); saveWork(); }); cell.append(remove); } tr.append(cell); target.append(tr);
@@ -265,7 +267,7 @@ function showView() {
   const view = activeLoad ? "work" : manager && ["history", "create", "open"].includes(hash) ? hash : "open";
   ["history", "create", "open", "work"].forEach((name) => { $(`#${name}-view`).hidden = name !== view; });
   $("#keys-nav").hidden = !manager || view === "work";
-  $("#back-link").href = manager ? view === "work" ? "#open" : "../Metis/" : "./";
+  $("#back-link").href = manager ? view === "work" ? "#open" : "../Metis/#home" : "./";
   $("#back-link").textContent = view === "work" ? "→ חזרה להטענות" : "→ חזרה";
   $("#keys-nav").querySelectorAll("button").forEach((button) => { if (button.dataset.view === view) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
   if (view === "history") renderHistory();

@@ -68,3 +68,15 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .credentials-panel { margin: 12px 0; padding: 12px; border-radius: 10px; background: #eaf5f4; color: #163d40; overflow-wrap: anywhere; }
 .credentials-panel p { margin: 8px 0 0; }
 @media (max-width: 620px) { .manager-nav { gap: 5px; padding-inline: 8px; } .manager-nav-link { font-size: 11px; padding-inline: 3px; } }
+
+.manager-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.manager-home-intro p { margin-bottom: 0; color: #526b7e; }
+.manager-home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.manager-home-tile { display: flex; flex-direction: column; gap: 8px; min-height: 105px; padding: 19px; border: 1px solid #c8dce7; border-radius: 15px; background: #fff; color: #173b5d; text-decoration: none; box-shadow: var(--shadow); }
+.manager-home-tile strong { font-size: 18px; }
+.manager-home-tile span { color: #607686; font-size: 13px; }
+.manager-home-tile:hover,.manager-home-tile:focus-visible { border-color: #176b96; outline: none; background: #f3f9fc; }
+.management-link { margin-top: 16px; min-height: auto; }
+.fault-nav { margin: 4px 0 16px; }
+.fault-nav[hidden] { display: none; }
+@media (max-width: 620px) { .manager-home-grid { grid-template-columns: 1fr; gap: 9px; } .manager-home-tile { min-height: 78px; padding: 14px; } .manager-home-tile strong { font-size: 16px; } }

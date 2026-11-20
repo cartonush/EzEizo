@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.3.1">
-  <link rel="stylesheet" href="styles.css?v=1.3.1">
+  <link rel="stylesheet" href="../styles.css?v=1.3.2">
+  <link rel="stylesheet" href="styles.css?v=1.3.2">
 </head>
 <body>
   <div class="app-shell">
@@ -23,7 +23,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.3.1</span>
+      <span class="version-pill">v1.3.2</span>
     </header>
 
     <div id="app-skeleton" class="app-skeleton" role="status" aria-live="polite" aria-label="הדף נטען">
@@ -37,12 +37,27 @@
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
       </div>
       <nav class="manager-nav" aria-label="דפי ניהול">
-        <a class="manager-nav-link" href="#new" data-view-link="new">פתיחת תקלה חדשה</a>
-        <a class="manager-nav-link" href="#open" data-view-link="open">תקלות פתוחות</a>
-        <a class="manager-nav-link" href="#closed" data-view-link="closed">תקלות סגורות</a>
-        <a class="manager-nav-link" href="#users" data-view-link="users">ניהול משתמשים</a>
+        <a class="manager-nav-link" href="#home" data-view-link="home">בית</a>
+        <a class="manager-nav-link" href="#new" data-view-link="faults">תקלות</a>
         <a class="manager-nav-link" href="../keys/">מפתחות</a>
+        <a class="manager-nav-link" href="#management" data-view-link="management">ניהול</a>
       </nav>
+      <div id="view-home" data-manager-view="home">
+        <section class="card manager-home-intro"><div class="section-heading"><div><p class="section-kicker">דף בית</p><h2>שלום נימר</h2></div></div><p>בחר את תחום העבודה כדי לפתוח דף או לעקוב אחר משימות הצוות.</p></section>
+        <div class="manager-home-grid">
+          <a href="#new" class="manager-home-tile"><strong>פתיחת תקלה</strong><span>יצירת דף טיפול חדש לטכנאים</span></a>
+          <a href="#open" class="manager-home-tile"><strong>תקלות פתוחות</strong><span id="home-open-count">משימות טיפול פעילות</span></a>
+          <a href="#closed" class="manager-home-tile"><strong>תקלות לסגירה וסגורות</strong><span id="home-review-count">סקירה וחתימת בודק הדף</span></a>
+          <a href="../keys/" class="manager-home-tile"><strong>מפתחות</strong><span>פתיחת הטענה, מעקב והיסטוריה</span></a>
+          <a href="#management" class="manager-home-tile"><strong>ניהול</strong><span>משתמשים ואפשרויות ניהול</span></a>
+        </div>
+      </div>
+      <nav id="fault-nav" class="review-tabs fault-nav" aria-label="דפי תקלות" hidden>
+        <a href="#new" data-fault-link="new">פתיחת תקלה</a><a href="#open" data-fault-link="open">פתוחות</a><a href="#closed" data-fault-link="closed">סגורות</a>
+      </nav>
+      <div id="view-management" data-manager-view="management" hidden>
+        <section class="card"><div class="section-heading"><div><p class="section-kicker">דף ראשי</p><h2>ניהול</h2></div></div><p>כאן ירוכזו כלי הניהול של המערכת.</p><a href="#users" class="manager-home-tile management-link"><strong>ניהול משתמשים</strong><span>יצירה, הסרה וצפייה בתקלות לפי טכנאי</span></a></section>
+      </div>
       <div id="view-new" data-manager-view="new">
       <section class="card manager-intro">
         <div class="section-heading"><div><p class="section-kicker">דף חדש</p><h2>יצירת תקלה</h2></div><span class="step-badge">01</span></div>
@@ -130,6 +145,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.3.1"></script>
+  <script type="module" src="app.js?v=1.3.2"></script>
 </body>
 </html>

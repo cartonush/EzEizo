@@ -1,8 +1,8 @@
-import "../sheet-data.js?v=1.3.1";
-import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.3.1";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.3.1";
-import { resolveAssignees } from "./assignee-selection.js?v=1.3.1";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.3.1";
+import "../sheet-data.js?v=1.3.2";
+import { gate, revealApp, watchIssues, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue } from "../firebase-sync.js?v=1.3.2";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.3.2";
+import { resolveAssignees } from "./assignee-selection.js?v=1.3.2";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.3.2";
 
 await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -328,18 +328,22 @@ function renderIssueLists() {
 
 function showManagerView() {
   const requested = window.location.hash.slice(1);
-  const selected = ["new", "open", "pending", "closed", "users"].includes(requested) ? requested : "new";
-  document.querySelector("#manager-back").hidden = true;
+  const selected = ["home", "management", "new", "open", "pending", "closed", "users"].includes(requested) ? requested : "home";
+  document.querySelector("#manager-back").hidden = selected !== "users";
+  document.querySelector("#fault-nav").hidden = !["new", "open", "pending", "closed"].includes(selected);
   document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== (selected === "pending" ? "closed" : selected); });
   document.querySelector("#pending-section").hidden = selected !== "pending";
   document.querySelector("#closed-section").hidden = selected === "pending";
   document.querySelectorAll("[data-view-link]").forEach((link) => {
-    if (link.dataset.viewLink === (selected === "pending" ? "closed" : selected)) link.setAttribute("aria-current", "page");
+    const nav = ["new", "open", "pending", "closed"].includes(selected) ? "faults" : selected === "users" ? "management" : selected;
+    if (link.dataset.viewLink === nav) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
+  document.querySelectorAll("[data-fault-link]").forEach((link) => { if (link.dataset.faultLink === (selected === "pending" ? "closed" : selected)) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current"); });
   document.querySelectorAll("[data-review-link]").forEach((link) => { if (link.dataset.reviewLink === selected) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current"); });
   if (selected !== "new") renderIssueLists();
 }
+document.querySelector("#manager-back").addEventListener("click", () => { location.hash = "management"; });
 window.addEventListener("hashchange", showManagerView);
 document.querySelector("#new-draft").addEventListener("click", () => {
   draft = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
@@ -363,7 +367,12 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   document.querySelector("#manager-details-title").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-watchIssues((issues) => { cloudIssues = issues; renderIssueLists(); renderUsers(); }, (error) => {
+watchIssues((issues) => {
+  cloudIssues = issues;
+  document.querySelector("#home-open-count").textContent = `${issues.filter((item) => item.status === "open").length} תקלות פתוחות`;
+  document.querySelector("#home-review-count").textContent = `${issues.filter((item) => item.status === "pendingReview").length} ממתינות לסגירה · ${issues.filter((item) => item.status === "closed").length} סגורות`;
+  renderIssueLists(); renderUsers();
+}, (error) => {
   setStatus("#issued-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
   setStatus("#closed-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
 });
