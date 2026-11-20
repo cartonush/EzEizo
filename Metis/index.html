@@ -11,9 +11,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.4.7">
-  <link rel="stylesheet" href="styles.css?v=1.4.7">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.4.7">
+  <link rel="stylesheet" href="../styles.css?v=1.4.8">
+  <link rel="stylesheet" href="styles.css?v=1.4.8">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.4.8">
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.4.7</span>
+      <span class="version-pill">v1.4.8</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -52,14 +52,14 @@
           <a href="#open" class="manager-home-tile"><strong>תקלות פתוחות</strong><span id="home-open-count">משימות טיפול פעילות</span></a>
           <a href="#closed" class="manager-home-tile"><strong>תקלות לסגירה וסגורות</strong><span id="home-review-count">סקירה וחתימת בודק הדף</span></a>
           <a href="#keys" class="manager-home-tile"><strong>מפתחות</strong><span>פתיחת הטענה, מעקב והיסטוריה</span></a>
-          <a href="#management" class="manager-home-tile"><strong>ניהול</strong><span>משתמשים, הפקדת דוחות ועדכון קבועים לפי מטוס</span></a>
+          <a href="#management" class="manager-home-tile"><strong>ניהול</strong><span>משתמשים, הפקת דוחות ועדכון קבועים לפי מטוס</span></a>
         </div>
       </div>
       <nav id="fault-nav" class="review-tabs fault-nav" aria-label="דפי תקלות" hidden>
         <a href="#new" data-fault-link="new">פתיחת תקלה</a><a href="#open" data-fault-link="open">פתוחות</a><a href="#closed" data-fault-link="closed">סגורות</a>
       </nav>
       <div id="view-management" data-manager-view="management" hidden>
-        <section class="card"><div class="section-heading"><div><p class="section-kicker">דף ראשי</p><h2>ניהול</h2></div></div><div class="manager-home-grid"><a href="#users" class="manager-home-tile"><strong>ניהול משתמשים</strong><span>יצירה, הסרה וצפייה בתקלות לפי טכנאי</span></a><a href="#reports" class="manager-home-tile"><strong>הפקדת דוחות</strong><span>דף להפקדת דוחות</span></a><a href="#aircraft-constants" class="manager-home-tile"><strong>עדכון קבועים לפי מטוס</strong><span>דף קבועים למטוסים</span></a></div></section>
+        <section class="card"><div class="section-heading"><div><p class="section-kicker">דף ראשי</p><h2>ניהול</h2></div></div><div class="manager-home-grid"><a href="#users" class="manager-home-tile"><strong>ניהול משתמשים</strong><span>יצירה, הסרה וצפייה בתקלות לפי טכנאי</span></a><a href="#reports" class="manager-home-tile"><strong>הפקת דוחות</strong><span>סינון, תצוגה מקדימה והפקת PDF או CSV</span></a><a href="#aircraft-constants" class="manager-home-tile"><strong>עדכון קבועים לפי מטוס</strong><span>דף קבועים למטוסים</span></a></div></section>
       </div>
       <div id="view-keys" data-manager-view="keys" hidden>
 <div id="keys-loading" class="app-skeleton" role="status" aria-label="דף המפתחות נטען"><div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-input"></span></div></div>
@@ -181,7 +181,7 @@
 
       </div></div>
       <div id="view-reports" data-manager-view="reports" hidden>
-        <section class="card report-filters"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>הפקדת דוחות</h2></div></div>
+        <section class="card report-filters"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>הפקת דוחות</h2></div></div>
           <div class="manager-grid">
             <label class="input-field">טייסת<select id="report-squadron"></select></label>
             <label class="input-field">סוג דוח<select id="report-kind"><option value="journal">יומן פעילות</option><option value="aircraft">היסטוריית מטוס</option><option value="technician">פעילות טכנאי</option><option value="squadron">סיכום טייסת</option><option value="pending">דפים הממתינים לסגירה</option></select></label>
@@ -192,7 +192,7 @@
           <div class="manager-grid"><label class="input-field">סוג טופס<select id="report-form"><option value="all">תקלות והטענות מפתחות</option><option value="issue">תקלות</option><option value="key">הטענות מפתחות</option></select></label><label class="input-field">סטטוס<select id="report-status"><option value="closed">סגור</option><option value="all">כל המצבים</option><option value="open">פתוח</option><option value="pendingReview">ממתין לסגירה</option></select></label></div>
           <p class="section-note">טווח ברירת המחדל הוא 24 השעות האחרונות. הסינון מתייחס למועד העדכון האחרון של הטופס.</p><p id="report-error" class="copy-status" role="status"></p>
         </section>
-        <section class="card report-output"><div class="section-heading"><div><p class="section-kicker">תצוגה מקדימה</p><h2 id="report-title">יומן פעילות</h2></div></div><p id="report-period" class="section-note"></p><p id="report-count" class="section-note" aria-live="polite"></p><div id="report-summary" class="report-summary"></div><div id="report-results" class="report-results"></div><div class="report-export"><button id="report-print" type="button" class="primary-button">הדפסה / שמירה כ־PDF</button><button id="report-csv" type="button" class="secondary-button">הורדת CSV</button></div></section>
+        <section class="card report-output"><div class="section-heading"><div><p class="section-kicker">תצוגה מקדימה לדוח</p><h2 id="report-title">יומן פעילות</h2></div></div><p id="report-period" class="section-note"></p><p id="report-count" class="section-note" aria-live="polite"></p><div id="report-summary" class="report-summary"></div><div id="report-results" class="report-results"></div><div class="report-export"><button id="report-print" type="button" class="primary-button">הפק PDF / הדפס</button><button id="report-csv" type="button" class="secondary-button">הפק CSV</button></div></section>
       </div>
       <div id="view-aircraft-constants" data-manager-view="aircraft-constants" hidden>
         <section id="constants-picker" class="card">
@@ -291,6 +291,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.4.7"></script>
+  <script type="module" src="app.js?v=1.4.8"></script>
 </body>
 </html>
