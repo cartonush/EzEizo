@@ -11,9 +11,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.4.5">
-  <link rel="stylesheet" href="styles.css?v=1.4.5">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.4.5">
+  <link rel="stylesheet" href="../styles.css?v=1.4.6">
+  <link rel="stylesheet" href="styles.css?v=1.4.6">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.4.6">
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.4.5</span>
+      <span class="version-pill">v1.4.6</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -194,7 +194,14 @@
         <section class="card report-output"><div class="section-heading"><div><p class="section-kicker">תצוגה מקדימה</p><h2 id="report-title">יומן פעילות</h2></div></div><p id="report-period" class="section-note"></p><p id="report-count" class="section-note" aria-live="polite"></p><div id="report-summary" class="report-summary"></div><div id="report-results" class="report-results"></div><div class="report-export"><button id="report-print" type="button" class="primary-button">הדפסה / שמירה כ־PDF</button><button id="report-csv" type="button" class="secondary-button">הורדת CSV</button></div></section>
       </div>
       <div id="view-aircraft-constants" data-manager-view="aircraft-constants" hidden>
-        <section id="constants-picker" class="card"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>עדכון קבועים לפי מטוס</h2></div></div><label class="input-field">טייסת<select id="constants-squadron"></select></label><p class="section-note">בחר מטוס מהרשימה כדי לראות ולערוך את הקבועים שלו. לכל מטוס נשמרת רשומה משלו.</p><div id="constants-aircraft-list" class="aircraft-picker-list"></div></section>
+        <section id="constants-picker" class="card">
+          <div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>עדכון קבועים לפי מטוס</h2></div></div>
+          <div class="constants-picker-fields">
+            <p class="constants-help">בחר טייסת ומטוס כדי לראות ולערוך את הקבועים שלו. לכל מטוס נשמרת רשומה משלו.</p>
+            <label class="input-field">טייסת<select id="constants-squadron"></select></label>
+            <div id="constants-aircraft-list" class="aircraft-picker-list"></div>
+          </div>
+        </section>
         <section id="constants-editor" class="card" hidden><div class="section-heading"><div><p class="section-kicker">קבועים למטוס</p><h2 id="constants-aircraft-title"></h2></div><button id="constants-close" type="button" class="secondary-button">→ חזרה לרשימה</button></div><div id="constants-fields" class="constants-grid"></div><button id="constants-save" type="button" class="primary-button">שמור קבועים למטוס</button><p id="constants-status" class="copy-status" role="status" aria-live="polite"></p></section>
       </div>
       <div id="view-new" data-manager-view="new">
@@ -284,6 +291,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.4.5"></script>
+  <script type="module" src="app.js?v=1.4.6"></script>
 </body>
 </html>

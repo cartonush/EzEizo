@@ -100,7 +100,9 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .report-export { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .report-export button:disabled { opacity: .5; cursor: not-allowed; }
 .aircraft-picker-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 9px; margin-top: 16px; }
-#constants-picker .section-note { margin: 12px 0 14px; line-height: 1.55; }
+.constants-picker-fields { display: grid; gap: 16px; }
+.constants-help { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.constants-picker-fields .aircraft-picker-list { margin-top: 0; }
 .aircraft-picker-list button { width: 100%; }
 #constants-editor .constants-grid { margin: 15px 0; }
 #constants-editor .manager-constant-row input { font-size: 16px; }
