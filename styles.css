@@ -242,3 +242,68 @@ td input:focus { border-color: #5da8c5; }
 }
 .server-connection-warning[hidden], .edit-lock-notice[hidden] { display: none; }
 .edit-lock-notice { border: 2px solid #d01b1b; color: #b01212; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+
+
+/* Consistent native checkbox treatment across the PWA. */
+input[type="checkbox"]:not(.replaced-toggle input) {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  place-content: center;
+  margin: 0;
+  border: 1.5px solid #aebfc9;
+  border-radius: 6px;
+  background: #fff;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: background-color .14s ease, border-color .14s ease, box-shadow .14s ease, transform .14s ease;
+}
+input[type="checkbox"]:not(.replaced-toggle input)::before {
+  content: "";
+  width: 6px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform .12s ease;
+}
+input[type="checkbox"]:not(.replaced-toggle input):checked {
+  border-color: #168b79;
+  background: #168b79;
+}
+input[type="checkbox"]:not(.replaced-toggle input):checked::before {
+  transform: rotate(45deg) scale(1);
+}
+input[type="checkbox"]:not(.replaced-toggle input):indeterminate {
+  border-color: #168b79;
+  background: #168b79;
+}
+input[type="checkbox"]:not(.replaced-toggle input):indeterminate::before {
+  width: 9px;
+  height: 0;
+  border-width: 0 0 2px;
+  transform: none;
+}
+input[type="checkbox"]:not(.replaced-toggle input):focus-visible {
+  outline: 3px solid #5da8c55c;
+  outline-offset: 2px;
+}
+input[type="checkbox"]:not(.replaced-toggle input):disabled {
+  opacity: .52;
+  cursor: not-allowed;
+}
+.action-check { width: 23px; height: 23px; }
+#close-sheet, #create-key-load, #complete-key-load, #create-link {
+  position: fixed;
+  z-index: 120;
+  inset-inline: max(16px, calc((100vw - 848px) / 2));
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  width: auto;
+  min-height: 50px;
+  border-radius: 13px;
+  box-shadow: 0 8px 24px #102e4440;
+}
+main { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
