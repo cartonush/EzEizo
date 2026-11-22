@@ -245,7 +245,7 @@ td input:focus { border-color: #5da8c5; }
 
 
 /* Consistent native checkbox treatment across the PWA. */
-input[type="checkbox"]:not(.replaced-toggle input) {
+input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   display: inline-grid;
@@ -261,7 +261,7 @@ input[type="checkbox"]:not(.replaced-toggle input) {
   cursor: pointer;
   transition: background-color .14s ease, border-color .14s ease, box-shadow .14s ease, transform .14s ease;
 }
-input[type="checkbox"]:not(.replaced-toggle input)::before {
+input[type="checkbox"]::before {
   content: "";
   width: 6px;
   height: 10px;
@@ -270,28 +270,29 @@ input[type="checkbox"]:not(.replaced-toggle input)::before {
   transform: rotate(45deg) scale(0);
   transition: transform .12s ease;
 }
-input[type="checkbox"]:not(.replaced-toggle input):checked {
+input[type="checkbox"]:checked {
   border-color: #168b79;
   background: #168b79;
 }
-input[type="checkbox"]:not(.replaced-toggle input):checked::before {
+input[type="checkbox"]:checked::before {
   transform: rotate(45deg) scale(1);
 }
-input[type="checkbox"]:not(.replaced-toggle input):indeterminate {
+input[type="checkbox"]:indeterminate {
   border-color: #168b79;
   background: #168b79;
 }
-input[type="checkbox"]:not(.replaced-toggle input):indeterminate::before {
+input[type="checkbox"]:indeterminate::before {
   width: 9px;
   height: 0;
   border-width: 0 0 2px;
   transform: none;
 }
-input[type="checkbox"]:not(.replaced-toggle input):focus-visible {
+input[type="checkbox"]:focus-visible {
   outline: 3px solid #5da8c55c;
   outline-offset: 2px;
 }
-input[type="checkbox"]:not(.replaced-toggle input):disabled {
+.replaced-toggle input[type="checkbox"] { position: absolute; opacity: 0; width: 1px; height: 1px; display: block; border: 0; padding: 0; }
+input[type="checkbox"]:disabled {
   opacity: .52;
   cursor: not-allowed;
 }
