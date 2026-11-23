@@ -705,6 +705,8 @@ function renderUsers() {
     }
     (person.active ? list : removedList).append(card);
   });
+  if (search && !list.children.length) list.textContent = "לא נמצאו משתמשים פעילים התואמים לחיפוש.";
+  if (search && !removedList.children.length) removedList.textContent = "לא נמצאו משתמשים שהוסרו התואמים לחיפוש.";
 }
 document.querySelector("#user-search").addEventListener("input", renderUsers);
 function refreshTechnicianFilter() {
