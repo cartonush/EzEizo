@@ -252,7 +252,7 @@ service cloud.firestore {
         && activeTechnician(request.resource.data.assigneeUid);
       allow update: if isManager() && resource.data.status == 'open'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sheet', 'assigneeUid', 'assigneeName', 'teamUids', 'teamNames', 'definitionUpdatedAt'])
-        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['sheet', 'definitionUpdatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['definitionUpdatedAt'])
         && request.resource.data.sheet.id == id
         && request.resource.data.sheet.serial == resource.data.sheet.serial
         && request.resource.data.teamUids is list
