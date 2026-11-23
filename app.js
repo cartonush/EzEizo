@@ -1,10 +1,10 @@
-import "./sheet-data.js?v=1.7.0";
-import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.7.0";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.7.0";
-import { validateTreatment } from "./mechanic-validation.js?v=1.7.0";
-import { attachTimeNow } from "./time-now.js?v=1.7.0";
-import { issueTimeline } from "./lifecycle.js?v=1.7.0";
-import { createEditLock } from "./edit-lock.js?v=1.7.0";
+import "./sheet-data.js?v=1.7.1";
+import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.7.1";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.7.1";
+import { validateTreatment } from "./mechanic-validation.js?v=1.7.1";
+import { attachTimeNow } from "./time-now.js?v=1.7.1";
+import { issueTimeline } from "./lifecycle.js?v=1.7.1";
+import { createEditLock } from "./edit-lock.js?v=1.7.1";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -144,6 +144,8 @@ function renderSheetDetails() {
   document.querySelectorAll("[data-sheet-field]").forEach((element) => {
     element.textContent = sheet[element.dataset.sheetField] || "—";
   });
+  const originDisplay = document.querySelector("#fault-origins-display");
+  if (originDisplay) originDisplay.textContent = (sheet.faultOrigins?.length ? sheet.faultOrigins : [sheet.faultOrigin].filter(Boolean)).join(" · ") || "—";
   document.querySelector("#fault-description").value = sheet.fault;
   document.querySelector("#dispatch-briefing").hidden = !sheet.dispatcherSignature;
   if (sheet.dispatcherSignature) document.querySelector("#dispatcher-signature-display").src = sheet.dispatcherSignature;
@@ -348,7 +350,28 @@ if (managerClosedView && selectedSheet) {
   });
   const reviewPanel = document.querySelector("#review-panel");
   const managerReview = remoteIssue.managerReview || {};
-  document.querySelectorAll("[data-review]").forEach((input) => { input[input.type === "checkbox" ? "checked" : "value"] = managerReview[input.dataset.review] || (input.type === "checkbox" ? false : ""); input.disabled = remoteIssue.status !== "pendingReview"; });
+  document.querySelectorAll("[data-review]").forEach((input) => { input[input.type === "checkbox" ? "checked" : "value"] = managerReview[input.dataset.review] || (input.type === "checkbox" ? false : ""); });
+  document.querySelectorAll("[data-date-toggle]").forEach((toggle) => {
+    const field = document.querySelector(`[data-review="${toggle.dataset.dateToggle}"]`);
+    toggle.checked = Boolean(field.value);
+    field.closest(".review-date-field").hidden = !toggle.checked;
+    toggle.addEventListener("change", () => { field.closest(".review-date-field").hidden = !toggle.checked; if (!toggle.checked) field.value = ""; });
+  });
+  const answer = managerReview.recurrentAnswer || (managerReview.recurrent ? "yes" : "");
+  document.querySelectorAll("[data-recurrent-answer]").forEach((toggle) => {
+    toggle.checked = toggle.dataset.recurrentAnswer === answer;
+    toggle.addEventListener("change", () => { if (toggle.checked) document.querySelectorAll("[data-recurrent-answer]").forEach((other) => { if (other !== toggle) other.checked = false; }); });
+  });
+  function collectManagerReview() {
+    const review = Object.fromEntries([...document.querySelectorAll("[data-review]")].map((input) => [input.dataset.review, input.type === "checkbox" ? input.checked : input.value]));
+    review.recurrentAnswer = document.querySelector("[data-recurrent-answer]:checked")?.dataset.recurrentAnswer || "";
+    review.recurrent = review.recurrentAnswer === "yes";
+    for (const toggle of document.querySelectorAll("[data-date-toggle]:checked")) {
+      const date = document.querySelector(`[data-review="${toggle.dataset.dateToggle}"]`);
+      if (!date.value) { date.focus(); throw new Error("יש לבחור תאריך לסימון היתר או אישור."); }
+    }
+    return review;
+  }
   const firstTechnicianCard = document.querySelector(".safety-card") || document.querySelector(".parts-card");
   if (firstTechnicianCard && firstTechnicianCard.parentElement === reviewPanel.parentElement) {
     const details = document.createElement("details"); details.className = "card";
@@ -357,7 +380,17 @@ if (managerClosedView && selectedSheet) {
     while (node && node !== reviewPanel) { const next = node.nextElementSibling; details.append(node); node = next; }
     reviewPanel.before(details);
   }
-  reviewPanel.hidden = remoteIssue.status !== "pendingReview" && !remoteIssue.reviewerSignature;
+  reviewPanel.hidden = false;
+  const saveClosed = document.querySelector("#save-closed-review");
+  saveClosed.hidden = remoteIssue.status !== "closed";
+  if (!saveClosed.hidden) saveClosed.addEventListener("click", async () => {
+    try {
+      const review = collectManagerReview(); saveClosed.disabled = true;
+      await updateClosedIssueReview(sheet.id, currentUser.uid, review);
+      document.querySelector("#review-status").textContent = "הבקרה נשמרה. הסינון ברשימת התקלות הסגורות עודכן.";
+    } catch (error) { document.querySelector("#review-status").textContent = `שמירת הבקרה נכשלה: ${error.message}`; }
+    finally { saveClosed.disabled = false; }
+  });
   if (!reviewPanel.hidden) {
     const isPending = remoteIssue.status === "pendingReview";
     const canvas = document.querySelector("#reviewer-signature");
@@ -373,7 +406,7 @@ if (managerClosedView && selectedSheet) {
     document.querySelector("#approve-sheet").addEventListener("click", async (event) => {
       if (!signature) { document.querySelector("#review-status").textContent = "יש לחתום כבודק הדף לפני הסגירה."; return; }
       const button = event.currentTarget; button.disabled = true;
-      try { const review = Object.fromEntries([...document.querySelectorAll("[data-review]")].map((input) => [input.dataset.review, input.type === "checkbox" ? input.checked : input.value])); await approveIssue(sheet.id, currentUser.uid, signature, review); location.replace("./#closed"); }
+      try { const review = collectManagerReview(); await approveIssue(sheet.id, currentUser.uid, signature, review); location.replace("./#closed"); }
       catch (error) { document.querySelector("#review-status").textContent = `הסגירה נכשלה: ${error.message}`; button.disabled = false; }
     });
   }

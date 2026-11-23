@@ -14,6 +14,7 @@
     fault: "פירוק והרכבה אנטנת מכם",
     managerNotes: "",
     faultOrigin: "",
+    faultOrigins: [],
     reviewCategory: "",
     dispatcherSignature: "",
     constants: {
@@ -47,6 +48,7 @@
     scalarKeys.forEach((key) => {
       if (typeof input[key] === "string") sheet[key] = input[key].slice(0, ["fault", "managerNotes"].includes(key) ? 2000 : 200);
     });
+    sheet.faultOrigins = Array.isArray(input.faultOrigins) ? [...new Set(input.faultOrigins.filter((value) => typeof value === "string").map((value) => value.slice(0, 80)))].slice(0, 7) : (sheet.faultOrigin ? [sheet.faultOrigin] : []);
     if (typeof input.dispatcherSignature === "string" && input.dispatcherSignature.startsWith("data:image/png;base64,")) {
       sheet.dispatcherSignature = input.dispatcherSignature.slice(0, 200000);
     }

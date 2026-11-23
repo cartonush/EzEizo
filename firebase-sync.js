@@ -378,6 +378,15 @@ export async function approveIssue(id, reviewerUid, signature, managerReview = {
   });
 }
 
+export async function updateClosedIssueReview(id, reviewerUid, managerReview) {
+  const issueRef = doc(db, "issues", id);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(issueRef);
+    if (!snapshot.exists() || snapshot.data().status !== "closed") throw new Error("התקלה אינה סגורה עוד. רענן את הדף.");
+    transaction.update(issueRef, { managerReview, reviewUpdatedAt: new Date().toISOString(), reviewUpdatedBy: reviewerUid });
+  });
+}
+
 export async function reopenIssue(id, managerUid) {
   const issueRef = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {

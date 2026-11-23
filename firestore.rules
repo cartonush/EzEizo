@@ -9,6 +9,18 @@ service cloud.firestore {
     function isManager() {
       return hasRole('manager');
     }
+    function validManagerReview(data) {
+      return data is map
+        && data.keys().hasAll(['verified', 'unitsReplaced', 'repairPerformed', 'recurrent', 'recurrentAnswer', 'missionCancelled', 'sortieCancelled', 'inspectionPermitUntil', 'flightPermitUntil', 'trackingPermit', 'approvalUntil'])
+        && data.keys().hasOnly(['verified', 'unitsReplaced', 'repairPerformed', 'recurrent', 'recurrentAnswer', 'missionCancelled', 'sortieCancelled', 'inspectionPermitUntil', 'flightPermitUntil', 'trackingPermit', 'approvalUntil'])
+        && data.verified is bool && data.unitsReplaced is bool && data.repairPerformed is bool
+        && data.recurrent is bool && data.recurrentAnswer in ['', 'yes', 'no']
+        && data.recurrent == (data.recurrentAnswer == 'yes')
+        && data.missionCancelled is bool && data.sortieCancelled is bool && data.trackingPermit is bool
+        && data.inspectionPermitUntil is string && data.inspectionPermitUntil.size() <= 10
+        && data.flightPermitUntil is string && data.flightPermitUntil.size() <= 10
+        && data.approvalUntil is string && data.approvalUntil.size() <= 10;
+    }
     function activeTechnician(uid) {
       return exists(/databases/$(database)/documents/roles/$(uid)) &&
         get(/databases/$(database)/documents/roles/$(uid)).data.role == 'technician' &&
@@ -224,23 +236,18 @@ service cloud.firestore {
         && resource.data.status == 'pendingReview'
         && request.resource.data.status == 'closed'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'reviewerSignature', 'managerReview'])
-        && request.resource.data.managerReview is map
-        && request.resource.data.managerReview.keys().hasOnly(['verified', 'unitsReplaced', 'repairPerformed', 'recurrent', 'missionCancelled', 'sortieCancelled', 'inspectionPermitUntil', 'flightPermitUntil', 'trackingPermit', 'approvalUntil'])
-        && request.resource.data.managerReview.keys().hasAll(['verified', 'unitsReplaced', 'repairPerformed', 'recurrent', 'missionCancelled', 'sortieCancelled', 'inspectionPermitUntil', 'flightPermitUntil', 'trackingPermit', 'approvalUntil'])
-        && request.resource.data.managerReview.verified is bool
-        && request.resource.data.managerReview.unitsReplaced is bool
-        && request.resource.data.managerReview.repairPerformed is bool
-        && request.resource.data.managerReview.recurrent is bool
-        && request.resource.data.managerReview.missionCancelled is bool
-        && request.resource.data.managerReview.sortieCancelled is bool
-        && request.resource.data.managerReview.trackingPermit is bool
-        && request.resource.data.managerReview.inspectionPermitUntil is string
-        && request.resource.data.managerReview.flightPermitUntil is string
-        && request.resource.data.managerReview.approvalUntil is string
+        && validManagerReview(request.resource.data.managerReview)
         && request.resource.data.reviewedBy == request.auth.uid
         && request.resource.data.reviewedAt is string
         && request.resource.data.reviewerSignature is string
         && request.resource.data.reviewerSignature.size() > 100;
+      allow update: if isManager()
+        && resource.data.status == 'closed'
+        && request.resource.data.status == 'closed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['managerReview', 'reviewUpdatedAt', 'reviewUpdatedBy'])
+        && validManagerReview(request.resource.data.managerReview)
+        && request.resource.data.reviewUpdatedBy == request.auth.uid
+        && request.resource.data.reviewUpdatedAt is string;
       allow update: if isManager()
         && resource.data.status in ['closed', 'pendingReview']
         && request.resource.data.status == 'open'
