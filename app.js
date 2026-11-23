@@ -332,6 +332,8 @@ function closureRecord() {
 function showClosed() {
   if (!selectedSheet) return;
   document.querySelector("#sheet-form").classList.add("is-closed");
+  const saveToolbar = document.querySelector(".sheet-save-toolbar");
+  if (saveToolbar) saveToolbar.hidden = true;
   document.querySelector("#sheet-form").querySelectorAll("input, textarea, select, button").forEach((element) => {
     if (element.closest("#review-panel")) return;
     element.disabled = true;
@@ -657,7 +659,6 @@ function setupSignaturePads(root = document) {
       drawing = false;
       state[key] = canvas.toDataURL("image/png");
       saveState();
-      if (key === "technicianDeclarationSignature" && !managerClosedView) submitTreatment();
     };
     canvas.addEventListener("pointerup", finish);
     canvas.addEventListener("pointercancel", finish);
