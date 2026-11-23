@@ -1,5 +1,5 @@
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, inMemoryPersistence, deleteUser, signOut } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, getIdTokenResult, signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, inMemoryPersistence, deleteUser, signOut } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocsFromServer, setDoc, updateDoc, onSnapshot, query, where, runTransaction, Timestamp, deleteField } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-functions.js";
 
@@ -24,12 +24,13 @@ export function watchEditLock(kind, serialOrId, onChange, onError) {
   return onSnapshot(editLockRef(kind, serialOrId), (snapshot) => onChange(snapshot.exists() ? snapshot.data() : null), onError);
 }
 
-export async function acquireEditLock(kind, serialOrId, formId, user, session) {
+export async function acquireEditLock(kind, serialOrId, formId, user, session, manager = false) {
   const ref = editLockRef(kind, serialOrId);
   return runTransaction(db, async (transaction) => {
     const [current, form] = await Promise.all([transaction.get(ref), transaction.get(doc(db, kind === "key" ? "keyLoads" : "issues", formId))]);
     if (!form.exists() || form.data().status !== "open") throw new Error("הטופס אינו פתוח לעריכה.");
-    if (kind === "key" ? !form.data().teamUids.includes(user.uid) : !(form.data().teamUids || [form.data().assigneeUid]).includes(user.uid) || form.data().sheet.serial !== serialOrId) throw new Error("אינך משויך לטופס הזה.");
+    if (!manager && (kind === "key" ? !form.data().teamUids.includes(user.uid) : !(form.data().teamUids || [form.data().assigneeUid]).includes(user.uid) || form.data().sheet.serial !== serialOrId)) throw new Error("אינך משויך לטופס הזה.");
+    if (manager && kind !== "issue") throw new Error("עריכת מנהל נתמכת כרגע רק בתקלה.");
     const lock = current.data(), now = Date.now();
     if (lock && lock.expiresAt.toMillis() > now && lock.session !== session) return { held: false, ownerName: lock.ownerName, expiresAt: lock.expiresAt.toMillis() };
     transaction.set(ref, { kind, formId, serial: serialOrId, ownerUid: user.uid, ownerName: user.name || user.email || "טכנאי", session, expiresAt: Timestamp.fromMillis(now + leaseMillis) });
@@ -97,7 +98,8 @@ export function gate(role) {
     status.textContent = reason;
     status.dataset.state = "error";
     help.replaceChildren();
-    if (role === "manager") {
+    if (reason === "המשתמש אינו מורשה גישה.") { help.hidden = true; return; }
+    if (role === "manager" && reason !== "המשתמש אינו מורשה גישה.") {
       const instructions = document.createElement("p");
       instructions.textContent = "ההזדהות ב־Firebase הצליחה. ודא שקיים מסמך הרשאת מנהל פעיל ב־Firestore עבור ה־UID הזה, פרסם את הכללים המעודכנים ולחץ ״בדוק שוב״. ה־UID שלך:";
       const uid = document.createElement("code"); uid.textContent = user.uid;
@@ -111,6 +113,29 @@ export function gate(role) {
     retry.addEventListener("click", () => location.reload());
     help.append(retry);
     help.hidden = false;
+  }
+  function requireNewPassword(user) {
+    document.querySelector("#app-skeleton")?.remove();
+    panel.hidden = false; help.hidden = true;
+    const loginForm = panel.querySelector("form"); loginForm.hidden = true;
+    panel.querySelector("h2").textContent = "בחירת סיסמה חדשה";
+    status.textContent = "נכנסת עם סיסמה זמנית. בחר סיסמה חדשה בת 8 ספרות.";
+    delete status.dataset.state;
+    let form = panel.querySelector("#password-change-form");
+    if (!form) {
+      form = document.createElement("form"); form.id = "password-change-form";
+      form.innerHTML = '<label class="input-field">סיסמה חדשה<input name="password" type="password" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" required autocomplete="new-password"></label><label class="input-field">אימות סיסמה<input name="confirm" type="password" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" required autocomplete="new-password"></label><button class="primary-button" type="submit">שמור סיסמה חדשה</button><button class="secondary-button" type="button" id="password-change-logout">החלף משתמש</button>';
+      form.querySelector("#password-change-logout").addEventListener("click", () => signOut(auth));
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const password = form.elements.password.value;
+        if (!/^[0-9]{8}$/.test(password) || password !== form.elements.confirm.value) { status.textContent = "הסיסמאות צריכות להיות זהות ולהכיל בדיוק 8 ספרות."; status.dataset.state = "error"; return; }
+        form.querySelector("button").disabled = true;
+        try { await completeTemporaryPassword(password); status.textContent = "הסיסמה הוחלפה. טוען את המערכת…"; location.reload(); }
+        catch (error) { status.textContent = `לא ניתן לשנות סיסמה: ${error.message}`; status.dataset.state = "error"; form.querySelector("button").disabled = false; }
+      });
+      panel.append(form);
+    }
   }
   panel.querySelector("form").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -127,8 +152,9 @@ export function gate(role) {
   });
   return new Promise((resolve) => {
     let active = false;
+    let resetSessionPending = false;
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { if (active) location.reload(); document.querySelector("#app-skeleton")?.remove(); panel.hidden = false; help.hidden = true; status.textContent = "יש להתחבר כדי לראות תקלות."; delete status.dataset.state; return; }
+      if (!user) { if (active) location.reload(); document.querySelector("#app-skeleton")?.remove(); panel.hidden = false; help.hidden = true; panel.querySelector("h2").textContent = "כניסה למערכת"; panel.querySelector("form").hidden = false; panel.querySelector("#password-change-form")?.setAttribute("hidden", ""); status.textContent = resetSessionPending ? "הסיסמה אופסה. התחבר עם הסיסמה הזמנית שקיבלת מהמנהל." : "יש להתחבר כדי לראות תקלות."; resetSessionPending = false; delete status.dataset.state; return; }
       status.textContent = "ההזדהות הצליחה. בודק הרשאות Firestore…";
       delete status.dataset.state;
       try {
@@ -139,8 +165,13 @@ export function gate(role) {
         ]);
         if (roleDoc.data()?.role !== role || roleDoc.data()?.active === false) {
           panel.hidden = false;
-          showSetup(user, `אין לחשבון הזה הרשאת ${role === "manager" ? "מנהל" : "טכנאי"} פעילה.`);
+          showSetup(user, "המשתמש אינו מורשה גישה.");
           return;
+        }
+        if (roleDoc.data()?.passwordResetRequired === true) {
+          const token = await getIdTokenResult(user);
+          if (Math.floor(new Date(token.authTime).getTime() / 1000) < Math.ceil(new Date(roleDoc.data().passwordResetAt).getTime() / 1000)) { resetSessionPending = true; await signOut(auth); return; }
+          requireNewPassword(user); return;
         }
         if (active) return;
         active = true;
@@ -152,7 +183,7 @@ export function gate(role) {
         if (headerActions) headerActions.append(logout);
         else document.querySelector(".topbar").append(logout);
         onSnapshot(doc(db, "roles", user.uid), (snapshot) => {
-          if (!snapshot.exists() || snapshot.data().active === false || snapshot.data().role !== role) location.reload();
+          if (!snapshot.exists() || snapshot.data().active === false || snapshot.data().role !== role || snapshot.data().passwordResetRequired === true) location.reload();
         }, () => { main.hidden = true; location.reload(); });
         resolve(user);
       } catch (error) {
@@ -247,6 +278,23 @@ export function watchTechnicians(onChange, onError) {
   return onSnapshot(collection(db, "roles"), (snapshot) => {
     onChange(snapshot.docs.filter((entry) => entry.data().role === "technician").map((entry) => ({ uid: entry.id, ...entry.data() })));
   }, onError);
+}
+export function watchAccounts(onChange, onError) {
+  return onSnapshot(collection(db, "roles"), (snapshot) => onChange(snapshot.docs.filter((entry) => ["technician", "manager"].includes(entry.data().role)).map((entry) => ({ uid: entry.id, ...entry.data() }))), onError);
+}
+export function watchSystems(onChange, onError) {
+  return onSnapshot(collection(db, "systemCatalog"), (snapshot) => onChange(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }))), onError);
+}
+export function watchComponents(onChange, onError) {
+  return onSnapshot(collection(db, "componentCatalog"), (snapshot) => onChange(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }))), onError);
+}
+export async function saveSystem(id, name, code, volume) {
+  if (!name.trim() || !code.trim()) throw new Error("שם וקוד מערכת הם שדות חובה.");
+  await setDoc(doc(db, "systemCatalog", id), { name: name.trim(), code: code.trim(), volume: volume.trim(), updatedAt: new Date().toISOString() });
+}
+export async function saveComponent(id, name, systemId) {
+  if (!name.trim() || !systemId) throw new Error("בחר מכלול ומערכת.");
+  await setDoc(doc(db, "componentCatalog", id), { name: name.trim(), systemId, updatedAt: new Date().toISOString() });
 }
 
 export function watchKeyLoads(onChange, onError, technicianUid = null) {
@@ -357,8 +405,9 @@ export async function reopenKeyLoad(id, managerUid) {
   });
 }
 
-export async function createTechnician(name, email, password, personalNumber) {
+export async function createTechnician(name, email, password, personalNumber, profile = {}) {
   if (!/^\d{7}$/.test(personalNumber)) throw new Error("מספר אישי חייב להכיל שבע ספרות.");
+  if (!/^[0-9]{8}$/.test(password)) throw new Error("הסיסמה חייבת להכיל בדיוק 8 ספרות.");
   const secondary = initializeApp(firebaseConfig, `provision-${crypto.randomUUID()}`);
   const provisioningAuth = getAuth(secondary);
   let createdUser = null;
@@ -369,7 +418,7 @@ export async function createTechnician(name, email, password, personalNumber) {
     await runTransaction(db, async (transaction) => {
       const numberRef = doc(db, "personalNumbers", personalNumber);
       if ((await transaction.get(numberRef)).exists()) throw new Error("המספר האישי כבר משויך למשתמש אחר.");
-      transaction.set(doc(db, "roles", createdUser.uid), { role: "technician", name: name.trim(), email: email.trim(), personalNumber, active: true, createdAt: new Date().toISOString() });
+      transaction.set(doc(db, "roles", createdUser.uid), { role: "technician", name: name.trim(), email: email.trim(), personalNumber, firstName: profile.firstName || "", lastName: profile.lastName || "", workStage: profile.workStage || "", department: profile.department || "", serviceType: profile.serviceType || "", active: true, createdAt: new Date().toISOString() });
       transaction.set(numberRef, { uid: createdUser.uid });
     });
     return createdUser.uid;
@@ -387,20 +436,23 @@ export async function setTechnicianPersonalNumber(uid, personalNumber) {
   await runTransaction(db, async (transaction) => {
     const roleRef = doc(db, "roles", uid), numberRef = doc(db, "personalNumbers", personalNumber);
     const [role, number] = await Promise.all([transaction.get(roleRef), transaction.get(numberRef)]);
-    if (!role.exists() || role.data().role !== "technician") throw new Error("הטכנאי אינו קיים.");
+    if (!role.exists() || !["technician", "manager"].includes(role.data().role)) throw new Error("המשתמש אינו קיים.");
+    if (role.data().personalNumber && role.data().personalNumber !== personalNumber) throw new Error("מספר אישי שכבר נקבע אינו ניתן לשינוי.");
     if (number.exists() && number.data().uid !== uid) throw new Error("המספר האישי כבר משויך למשתמש אחר.");
-    const previous = role.data().personalNumber;
-    if (previous && previous !== personalNumber) {
-      const oldRef = doc(db, "personalNumbers", previous);
-      const oldNumber = await transaction.get(oldRef);
-      if (oldNumber.exists() && oldNumber.data().uid === uid) transaction.delete(oldRef);
-    }
+    if (role.data().personalNumber === personalNumber) return;
     transaction.update(roleRef, { personalNumber });
     if (!number.exists()) transaction.set(numberRef, { uid });
   });
 }
 
-export async function updateOpenIssueDefinition(id, sheet, team) {
+export async function updateAccountProfile(uid, profile) {
+  const fields = ["firstName", "lastName", "workStage", "department", "serviceType"];
+  const changes = Object.fromEntries(fields.map((key) => [key, String(profile[key] || "").trim().slice(0, 80)]));
+  if (!changes.firstName || !changes.lastName) throw new Error("יש להזין שם ושם משפחה.");
+  await updateDoc(doc(db, "roles", uid), { ...changes, name: `${changes.firstName} ${changes.lastName}` });
+}
+
+export async function updateOpenIssueDefinition(id, sheet, team, session) {
   if (team.length < 2 || new Set(team.map((person) => person.uid)).size !== team.length) throw new Error("בחר לפחות שני טכנאים שונים.");
   const ref = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {
@@ -408,7 +460,7 @@ export async function updateOpenIssueDefinition(id, sheet, team) {
     if (!current.exists() || current.data().status !== "open") throw new Error("התקלה כבר אינה פתוחה לעריכה.");
     const issue = current.data();
     const lock = await transaction.get(editLockRef("issue", issue.sheet.serial));
-    if (lock.exists() && lock.data().expiresAt.toMillis() > Date.now()) throw new Error(`הטופס נמצא כרגע בעריכה של ${lock.data().ownerName || "טכנאי"}.`);
+    if (!lock.exists() || lock.data().ownerUid !== auth.currentUser?.uid || lock.data().session !== session || lock.data().expiresAt.toMillis() <= Date.now()) throw new Error("נעילת המנהל אבדה. פתח את העריכה מחדש.");
     transaction.update(ref, {
       sheet: storedSheet({ ...restoredSheet(issue.sheet), ...sheet, id, serial: issue.sheet.serial, technicians: team.map((person) => person.name).join(" · ") }),
       assigneeUid: team[0].uid, assigneeName: team[0].name,
@@ -420,6 +472,16 @@ export async function updateOpenIssueDefinition(id, sheet, team) {
 
 export async function setTechnicianActive(uid, active) {
   await updateDoc(doc(db, "roles", uid), { active });
+}
+
+export async function resetUserPassword(uid) {
+  const callable = httpsCallable(getFunctions(app, "us-central1"), "resetUserPassword");
+  return (await callable({ uid })).data.temporaryPassword;
+}
+
+export async function completeTemporaryPassword(password) {
+  const callable = httpsCallable(getFunctions(app, "us-central1"), "completeTemporaryPassword");
+  return (await callable({ password })).data;
 }
 
 export async function deleteTechnicianPermanently(uid) {

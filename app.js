@@ -1,10 +1,10 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, refreshTechnicianTasks, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.8.0";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchSystems, watchComponents, refreshTechnicianTasks, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.0";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
 import { validateTreatment } from "./mechanic-validation.js?v=1.7.6";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.7.6";
-import { createEditLock } from "./edit-lock.js?v=1.7.6";
+import { createEditLock } from "./edit-lock.js?v=1.9.0";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -60,11 +60,11 @@ if (selectedSheet && !managerClosedView && remoteIssue.status === "open") {
 }
 const TABLES = {
   removed: [
-    { key: "name", label: "שם יחידה", placeholder: "בחר יחידה", options: ["MLPRF", "PSP", "DMT"] },
+    { key: "name", label: "שם יחידה", placeholder: "בחר יחידה", options: ["ANT", "MLPRF", "PSP", "DMT"] },
     { key: "serial", label: "מס״ד", placeholder: "מס״ד" }
   ],
   installed: [
-    { key: "name", label: "שם יחידה", placeholder: "בחר יחידה", options: ["MLPRF", "PSP", "DMT"] },
+    { key: "name", label: "שם יחידה", placeholder: "בחר יחידה", options: ["ANT", "MLPRF", "PSP", "DMT"] },
     { key: "serial", label: "מס״ד", placeholder: "מס״ד" }
   ],
   tools: [
@@ -720,6 +720,17 @@ if (managerClosedView) document.querySelector("#save-state").textContent = "דף
 renderTechnicianNotes();
 renderActions();
 Object.keys(TABLES).forEach((table) => renderRows(table));
+if (selectedSheet) {
+  let knownSystems = [], knownComponents = [];
+  const updateUnitOptions = () => {
+    const systemId = knownSystems.find((entry) => entry.name === sheet.systemName)?.id || ({ "מכם | FCR": "system_fcr", "טאקאן | TCN": "system_tcn", "אימפריה פאסיבית": "system_ew" })[sheet.systemName] || (String(sheet.systemName).includes("מכם") ? "system_fcr" : "");
+    const names = systemId === "system_fcr" ? ["ANT", "DMT", "MLPRF", "PSP"] : [];
+    knownComponents.filter((entry) => entry.systemId === systemId).forEach((entry) => { if (!names.includes(entry.name)) names.push(entry.name); });
+    for (const type of ["removed", "installed"]) { TABLES[type][0].options = names; renderRows(type); }
+  };
+  watchSystems((items) => { knownSystems = items; updateUnitOptions(); }, () => {});
+  watchComponents((items) => { knownComponents = items; updateUnitOptions(); }, () => {});
+}
 bindToggleInputs();
 bindStateFields();
 attachTimeNow();

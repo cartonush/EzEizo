@@ -12,7 +12,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="../styles.css?v=1.8.0">
-  <link rel="stylesheet" href="styles.css?v=1.8.0">
+  <link rel="stylesheet" href="styles.css?v=1.9.0">
   <link rel="stylesheet" href="../keys/styles.css?v=1.8.0">
 </head>
 <body>
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.8.0</span>
+      <span class="version-pill">v1.9.0</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -59,7 +59,7 @@
         <a href="#new" data-fault-link="new">פתיחת תקלה</a><a href="#open" data-fault-link="open">כל התקלות</a><a href="#pending" data-fault-link="pending">לסגירה</a><a href="#history" data-fault-link="history">היסטוריה</a>
       </nav>
       <div id="view-management" data-manager-view="management" hidden>
-        <section class="card"><div class="section-heading"><div><p class="section-kicker">דף ראשי</p><h2>ניהול</h2></div></div><div class="manager-home-grid"><a href="#users" class="manager-home-tile"><strong>ניהול משתמשים</strong><span>יצירה, הסרה וצפייה בתקלות לפי טכנאי</span></a><a href="#reports" class="manager-home-tile"><strong>הפקת דוחות</strong><span>סינון, תצוגה מקדימה והפקת PDF או CSV</span></a><a href="#aircraft-constants" class="manager-home-tile"><strong>עדכון קבועים לפי מטוס</strong><span>דף קבועים למטוסים</span></a></div></section>
+        <section class="card"><div class="section-heading"><div><p class="section-kicker">דף ראשי</p><h2>ניהול</h2></div></div><div class="manager-home-grid"><a href="#technicians" class="manager-home-tile"><strong>טכנאים ומשתמשים</strong><span>טבלת טכנאים, יצירה, פרטים והיסטוריה</span></a><a href="#systems" class="manager-home-tile"><strong>מערכות</strong><span>שם מערכת, קוד וכרך</span></a><a href="#components" class="manager-home-tile"><strong>מכלולים</strong><span>רשימת מכלולים ושיוך למערכת</span></a><a href="#reports" class="manager-home-tile"><strong>הפקת דוחות</strong><span>סינון, תצוגה מקדימה והפקת PDF או CSV</span></a><a href="#aircraft-constants" class="manager-home-tile"><strong>עדכון קבועים לפי מטוס</strong><span>דף קבועים למטוסים</span></a></div></section>
       </div>
       <div id="view-keys" data-manager-view="keys" hidden>
 <div id="keys-loading" class="app-skeleton" role="status" aria-label="דף המפתחות נטען"><div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-input"></span></div></div>
@@ -300,13 +300,20 @@
       </div>
       <div id="view-users" data-manager-view="users" hidden>
         <section class="card" aria-labelledby="users-title">
-          <div class="section-heading"><div><p class="section-kicker">ניהול צוות</p><h2 id="users-title">משתמשים</h2></div></div>
-          <p>נימר יכול ליצור טכנאים ולהסיר אותם מהמערכת. ההסרה חוסמת גישה ושומרת היסטוריית תקלות; חשבון ההתחברות ב־Firebase Authentication נשאר קיים.</p>
+          <div class="section-heading"><div><p class="section-kicker">ניהול</p><h2 id="users-title">טכנאים ומשתמשים</h2></div></div>
+          <p>רשימת הטכנאים כוללת גם את חשבון המנהל. עריכת פרטים אינה משנה את המספר האישי שנקבע לחשבון.</p>
+          <div class="table-wrap"><table class="directory-table"><thead><tr><th>שם</th><th>שם משפחה</th><th>מספר אישי</th><th>שלב עבודה</th><th>מחלקה</th><th>סוג שירות</th><th>פעולות</th></tr></thead><tbody id="technician-directory"></tbody></table></div>
+          <p id="directory-status" class="copy-status" role="status" aria-live="polite"></p>
+          <h3>יצירת משתמש טכנאי</h3>
           <form id="create-user-form" class="user-form">
-            <label class="input-field">שם הטכנאי<input name="name" required maxlength="80" autocomplete="off"></label>
+            <label class="input-field">שם<input name="firstName" required maxlength="80" autocomplete="off"></label>
+            <label class="input-field">שם משפחה<input name="lastName" required maxlength="80" autocomplete="off"></label>
             <label class="input-field">מספר אישי<input name="personalNumber" required inputmode="numeric" pattern="[0-9]{7}" maxlength="7" title="שבע ספרות" autocomplete="off"></label>
+            <label class="input-field">שלב עבודה<input name="workStage" maxlength="80" autocomplete="off"></label>
+            <label class="input-field">מחלקה<input name="department" maxlength="80" autocomplete="off"></label>
+            <label class="input-field">סוג שירות<input name="serviceType" maxlength="80" autocomplete="off"></label>
             <label class="input-field">דואר אלקטרוני<input name="email" type="email" required autocomplete="off"></label>
-            <label class="input-field">סיסמה ראשונית<input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+            <label class="input-field">סיסמה ראשונית · 8 ספרות<input name="password" type="password" inputmode="numeric" pattern="[0-9]{8}" required minlength="8" maxlength="8" autocomplete="new-password"></label>
             <button class="primary-button" type="submit">צור משתמש טכנאי</button>
           </form>
           <label class="input-field list-search">חיפוש משתמש לפי שם או מספר אישי<input id="user-search" type="search" placeholder="שם או שבע ספרות" autocomplete="off"></label>
@@ -315,8 +322,10 @@
           <details class="removed-users"><summary>משתמשים שהוסרו</summary><div id="removed-users-list" class="issue-list"></div></details>
         </section>
       </div>
+      <div id="view-systems" data-manager-view="systems" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>מערכות</h2></div></div><form id="system-form" class="directory-form manager-grid"><label class="input-field">שם מערכת<input name="name" required maxlength="80"></label><label class="input-field">קוד מערכת<input name="code" required maxlength="30"></label><label class="input-field">כרך<input name="volume" maxlength="30"></label><button class="primary-button" type="submit">הוסף מערכת</button></form><p id="system-status" class="copy-status" role="status"></p><div class="table-wrap"><table class="directory-table"><thead><tr><th>שם מערכת</th><th>קוד מערכת</th><th>כרך</th><th>פעולות</th></tr></thead><tbody id="systems-table"></tbody></table></div></section></div>
+      <div id="view-components" data-manager-view="components" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>מכלולים</h2></div></div><form id="component-form" class="directory-form manager-grid"><label class="input-field">שם מכלול<input name="name" required maxlength="80"></label><label class="input-field">מערכת<select name="systemId" required></select></label><button class="primary-button" type="submit">הוסף מכלול</button></form><p id="component-status" class="copy-status" role="status"></p><div class="table-wrap"><table class="directory-table"><thead><tr><th>מכלול</th><th>מערכת</th><th>פעולות</th></tr></thead><tbody id="components-table"></tbody></table></div></section></div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.8.0"></script>
+  <script type="module" src="app.js?v=1.9.0"></script>
 </body>
 </html>

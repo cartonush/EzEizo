@@ -1,7 +1,7 @@
-import { acquireEditLock, releaseEditLock, watchEditLock } from "./firebase-sync.js?v=1.7.6";
+import { acquireEditLock, releaseEditLock, watchEditLock } from "./firebase-sync.js?v=1.9.0";
 
 // The lease expires after a crashed window. A live editor renews it regularly.
-export function createEditLock({ kind, serialOrId, formId, user, onChange }) {
+export function createEditLock({ kind, serialOrId, formId, user, onChange, manager = false }) {
   const session = crypto.randomUUID();
   let held = false, disposed = false, acquiring = false;
   const emit = (message) => { if (!disposed) onChange({ held, message }); };
@@ -20,7 +20,7 @@ export function createEditLock({ kind, serialOrId, formId, user, onChange }) {
   const timer = setInterval(async () => {
     if (!held || disposed) return;
     try {
-      const result = await acquireEditLock(kind, serialOrId, formId, user, session);
+      const result = await acquireEditLock(kind, serialOrId, formId, user, session, manager);
       if (!result.held) { held = false; emit(`הטופס נמצא כעת בעריכה של ${result.ownerName}.`); }
     } catch (error) { held = false; if (error.code === "unavailable") document.dispatchEvent(new Event("ezeizo:connection-lost")); emit(`לא ניתן להמשיך לערוך: ${error.message}. בדוק את החיבור ונסה שוב.`); }
   }, 25000);
@@ -29,7 +29,7 @@ export function createEditLock({ kind, serialOrId, formId, user, onChange }) {
     acquiring = true;
     emit("בודק אם הטופס פנוי לעריכה…");
     try {
-      const result = await acquireEditLock(kind, serialOrId, formId, user, session);
+      const result = await acquireEditLock(kind, serialOrId, formId, user, session, manager);
       if (disposed) { if (result.held) await releaseEditLock(kind, serialOrId, session).catch(() => {}); return; }
       held = result.held;
       emit(result.held ? "" : `הטופס נמצא כעת בעריכה של ${result.ownerName}. אפשר לנסות שוב לאחר שיסיים.`);
