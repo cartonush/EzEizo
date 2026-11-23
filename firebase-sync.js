@@ -1,6 +1,6 @@
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, inMemoryPersistence, deleteUser, signOut } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, runTransaction, Timestamp, deleteField } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, getDocsFromServer, setDoc, updateDoc, onSnapshot, query, where, runTransaction, Timestamp, deleteField } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-functions.js";
 
 const firebaseConfig = {
@@ -173,10 +173,22 @@ export function watchIssues(onChange, onError, technicianUid = null) {
   const mapDocs = (snapshot) => snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data(), sheet: restoredSheet(entry.data().sheet) }));
   if (!technicianUid) return onSnapshot(source, (snapshot) => onChange(mapDocs(snapshot)), onError);
   const snapshots = [null, null];
-  const merge = () => onChange([...new Map(snapshots.flatMap((items) => items || []).map((item) => [item.id, item])).values()]);
+  const errors = [null, null];
+  const merge = () => onChange([...new Map(snapshots.flatMap((items) => items || []).map((item) => [item.id, item])).values()], errors.filter(Boolean).map((error) => error.message).join(" · "));
   const unsubs = [query(source, where("assigneeUid", "==", technicianUid)), query(source, where("teamUids", "array-contains", technicianUid))]
-    .map((queryRef, index) => onSnapshot(queryRef, (snapshot) => { snapshots[index] = mapDocs(snapshot); merge(); }, onError));
+    .map((queryRef, index) => onSnapshot(queryRef, (snapshot) => { snapshots[index] = mapDocs(snapshot); errors[index] = null; merge(); }, (error) => { errors[index] = error; merge(); onError?.(error); }));
   return () => unsubs.forEach((unsubscribe) => unsubscribe());
+}
+
+export async function refreshTechnicianTasks(uid) {
+  const issues = collection(db, "issues");
+  const [assigned, team, keys] = await Promise.all([
+    getDocsFromServer(query(issues, where("assigneeUid", "==", uid))),
+    getDocsFromServer(query(issues, where("teamUids", "array-contains", uid))),
+    getDocsFromServer(query(collection(db, "keyLoads"), where("teamUids", "array-contains", uid)))
+  ]);
+  const faultItems = [...new Map([...assigned.docs, ...team.docs].map((entry) => [entry.id, { id: entry.id, ...entry.data(), sheet: restoredSheet(entry.data().sheet) }])).values()];
+  return { issues: faultItems, keyLoads: keys.docs.map((entry) => ({ id: entry.id, ...entry.data() })) };
 }
 
 export function watchAircraftConstants(onChange, onError) {

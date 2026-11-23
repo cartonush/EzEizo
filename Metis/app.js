@@ -1,5 +1,5 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.7.6";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.7.9";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.7.6";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
@@ -266,10 +266,8 @@ document.querySelector("#create-link").addEventListener("click", async () => {
   sheet.id = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   try {
     sheet.serial = await createAssignedIssues(sheet, assignees);
-    acknowledgment.checked = false;
-    draft.dispatcherSignature = "";
-    clearDispatcherSignature();
-    setStatus("#created-status", `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. לצוות דף משותף אחד.`);
+    resetFaultDraft();
+    setStatus("#created-status", `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. הטופס מוכן לפתיחת תקלה חדשה.`);
     window.location.hash = "open";
   } catch (error) { setStatus("#created-status", `פתיחת התקלה נכשלה: ${error.message}`, true); }
   finally { button.disabled = false; }
@@ -539,6 +537,16 @@ for (const squadron of Object.keys(SQUADRONS)) {
   document.querySelector("#fault-squadron").append(new Option(squadron, squadron));
   document.querySelector("#history-squadron").append(new Option(squadron, squadron));
 }
+function refreshFaultAircraftOptions() {
+  const select = document.querySelector("#fault-aircraft");
+  const current = select.value;
+  const squadron = document.querySelector("#fault-squadron").value;
+  const aircraft = squadron ? [...(SQUADRONS[squadron]?.aircraft || [])] : [...new Set(Object.values(SQUADRONS).flatMap((item) => item.aircraft))];
+  select.replaceChildren(new Option("כל המטוסים", ""), ...aircraft.sort((a, b) => a.localeCompare(b, "he", { numeric: true })).map((number) => new Option(number, number)));
+  select.value = aircraft.includes(current) ? current : "";
+}
+refreshFaultAircraftOptions();
+document.querySelector("#fault-squadron").addEventListener("change", () => { refreshFaultAircraftOptions(); renderIssueLists(); });
 for (const [inputId, optionsId, values] of [["history-aircraft", "history-aircraft-options", () => SQUADRONS[document.querySelector("#history-squadron").value]?.aircraft || []]]) {
   const input = document.getElementById(inputId), list = document.getElementById(optionsId);
   function showChoices() {

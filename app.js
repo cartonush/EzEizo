@@ -1,5 +1,5 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.7.6";
+import { gate, revealApp, watchIssues, watchKeyLoads, refreshTechnicianTasks, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.7.9";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
 import { validateTreatment } from "./mechanic-validation.js?v=1.7.6";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
@@ -11,16 +11,20 @@ const currentUser = await gate(managerClosedView ? "manager" : "technician");
 let cloudIssues = [];
 let keyLoads = [];
 let keyLoadError = "";
+let issueListError = "";
+let selectedIssueError = "";
+let issuesReady = false, keyLoadsReady = false;
 const selectedId = new URLSearchParams(window.location.search).get("id");
 let remoteIssue = null;
 if (selectedId) {
-  try { remoteIssue = await getIssue(selectedId); }
-  catch (error) { const list = document.querySelector("#mechanic-issues"); list.textContent = `טעינת התקלה נכשלה: ${error.message}`; list.dataset.state = "error"; }
+  try { remoteIssue = await Promise.race([getIssue(selectedId), new Promise((_, reject) => setTimeout(() => reject(new Error("השרת לא השיב בזמן")), 12000))]); }
+  catch (error) { selectedIssueError = error.code === "permission-denied" ? "אין הרשאה לפתוח את התקלה. בדוק שהחשבון משויך לצוות ושהרשאות Firestore מעודכנות." : `טעינת התקלה נכשלה: ${error.message}. חזור לרשימה ונסה לרענן.`; }
 }
 const sheet = EzEizoData.normalizeSheet(remoteIssue?.sheet || EzEizoData.defaultSheet);
 const selectedSheet = Boolean(remoteIssue && (managerClosedView ? ["closed", "pendingReview"].includes(remoteIssue.status) : remoteIssue.status !== "cancelled" && (remoteIssue.teamUids || [remoteIssue.assigneeUid]).includes(currentUser.uid)));
+if (selectedId && !managerClosedView && !selectedSheet && !selectedIssueError) selectedIssueError = remoteIssue ? "התקלה אינה משויכת לחשבון זה או שהשילוח בוטל." : "התקלה לא נמצאה. חזור לרשימה ורענן משימות.";
 document.querySelector("#sheet-form").hidden = !selectedSheet || (!managerClosedView && remoteIssue?.status === "open");
-document.querySelector("#mechanic-back").hidden = !selectedSheet && !managerClosedView;
+document.querySelector("#mechanic-back").hidden = !selectedId && !managerClosedView;
 document.querySelector(".queue-card").hidden = selectedSheet;
 const ACTIONS = sheet.actions;
 const STORAGE_KEY = selectedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
@@ -288,10 +292,20 @@ function renderIssueList() {
     if (!selectedSheet) list.textContent = "התקלה הסגורה לא נמצאה. חזור לרשימת התקלות הסגורות.";
     return;
   }
+  if (selectedIssueError || issueListError || keyLoadError) {
+    const warning = document.createElement("p"); warning.className = "copy-status"; warning.dataset.state = "error";
+    warning.textContent = [selectedIssueError, issueListError && `לא ניתן לטעון תקלות: ${issueListError}`, keyLoadError && `לא ניתן לטעון הטענות מפתחות: ${keyLoadError}`].filter(Boolean).join(" · ");
+    list.append(warning);
+  }
+  if (!issuesReady || !keyLoadsReady) {
+    const loading = document.createElement("p"); loading.className = "section-note";
+    loading.textContent = "טוען משימות מהשרת…"; list.append(loading);
+    return;
+  }
   const issues = cloudIssues.filter((item) => item.status === "open").map((item) => ({ type: "issue", createdAt: item.createdAt, data: item.sheet }));
   const loads = keyLoads.filter((item) => item.status === "open").map((item) => ({ type: "keys", createdAt: item.createdAt, data: item }));
   const tasks = [...issues, ...loads].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-  if (!tasks.length) list.textContent = "אין משימות פתוחות כרגע.";
+  if (!tasks.length && !issueListError && !keyLoadError && !selectedIssueError) list.textContent = "אין משימות פתוחות כרגע.";
   tasks.forEach(({ type, data: item }) => {
     const card = document.createElement("a");
     card.className = "issue-item";
@@ -303,13 +317,6 @@ function renderIssueList() {
     card.append(title, info);
     list.append(card);
   });
-  if (keyLoadError) {
-    const warning = document.createElement("p");
-    warning.className = "copy-status";
-    warning.dataset.state = "error";
-    warning.textContent = `לא ניתן לטעון הטענות מפתחות: ${keyLoadError}`;
-    list.append(warning);
-  }
 }
 
 function closureRecord() {
@@ -478,8 +485,10 @@ document.querySelector("#save-sheet")?.addEventListener("click", async (event) =
   finally { button.disabled = false; }
 });
 
-watchIssues((issues) => {
+watchIssues((issues, partialError = "") => {
   cloudIssues = issues;
+  issuesReady = true;
+  issueListError = partialError;
   renderIssueList();
   const current = issues.find((item) => item.id === selectedId);
   if (!managerClosedView && current?.status === "cancelled") {
@@ -499,9 +508,23 @@ watchIssues((issues) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     location.reload();
   }
-}, (error) => { const list = document.querySelector("#mechanic-issues"); list.textContent = `לא ניתן לטעון תקלות: ${error.message}`; list.dataset.state = "error"; if (error.code === "unavailable") document.dispatchEvent(new Event("ezeizo:connection-lost")); }, managerClosedView ? null : currentUser.uid);
+}, (error) => { issuesReady = true; issueListError = error.message; renderIssueList(); if (error.code === "unavailable") document.dispatchEvent(new Event("ezeizo:connection-lost")); }, managerClosedView ? null : currentUser.uid);
 
-if (!managerClosedView) watchKeyLoads((loads) => { keyLoads = loads; keyLoadError = ""; renderIssueList(); }, (error) => { keyLoadError = error.message; renderIssueList(); }, currentUser.uid);
+if (!managerClosedView) watchKeyLoads((loads) => { keyLoads = loads; keyLoadsReady = true; keyLoadError = ""; renderIssueList(); }, (error) => { keyLoadsReady = true; keyLoadError = error.message; renderIssueList(); }, currentUser.uid);
+document.querySelector("#refresh-tasks")?.addEventListener("click", async (event) => {
+  const button = event.currentTarget, status = document.querySelector("#refresh-tasks-status");
+  button.disabled = true;
+  status.textContent = "מרענן משימות מהשרת…";
+  delete status.dataset.state;
+  try {
+    const fresh = await Promise.race([refreshTechnicianTasks(currentUser.uid), new Promise((_, reject) => setTimeout(() => reject(new Error("השרת לא השיב בזמן. בדוק את החיבור ונסה שוב.")), 12000))]);
+    cloudIssues = fresh.issues; keyLoads = fresh.keyLoads;
+    issuesReady = true; keyLoadsReady = true; issueListError = ""; keyLoadError = ""; selectedIssueError = "";
+    renderIssueList();
+    status.textContent = `הרשימה עודכנה · ${fresh.issues.filter((item) => item.status === "open").length + fresh.keyLoads.filter((item) => item.status === "open").length} משימות פתוחות.`;
+  } catch (error) { status.textContent = `הרענון נכשל: ${error.message}`; status.dataset.state = "error"; }
+  finally { button.disabled = false; }
+});
 
 function rowHasValue(item, fields) {
   return fields.some(({ key }) => String(item?.[key] ?? "").trim() !== "");

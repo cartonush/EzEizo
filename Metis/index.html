@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.7.7</span>
+      <span class="version-pill">v1.7.9</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -262,7 +262,7 @@
       <div id="view-open" data-manager-view="open" hidden>
       <section class="card" aria-labelledby="issued-title">
         <div class="section-heading"><div><p class="section-kicker">מעקב משותף</p><h2 id="issued-title">כל התקלות</h2></div></div>
-        <div class="manager-grid"><label class="input-field">סינון תקלות<select id="fault-mode"></select></label><label class="input-field">טייסת<select id="fault-squadron"><option value="">כל הטייסות</option></select></label><label class="input-field">מספר מטוס<input id="fault-aircraft" type="search" inputmode="numeric" placeholder="כל המטוסים"></label><label class="input-field">מתאריך<input id="fault-from" type="date"></label><label class="input-field">עד תאריך<input id="fault-to" type="date"></label></div>
+        <div class="manager-grid"><label class="input-field">סינון תקלות<select id="fault-mode"></select></label><label class="input-field">טייסת<select id="fault-squadron"><option value="">כל הטייסות</option></select></label><label class="input-field">מספר מטוס<select id="fault-aircraft"><option value="">כל המטוסים</option></select></label><label class="input-field">מתאריך<input id="fault-from" type="date"></label><label class="input-field">עד תאריך<input id="fault-to" type="date"></label></div>
         <label class="input-field list-search">חיפוש לפי מספר תקלה<input id="open-issue-search" type="search" inputmode="numeric" placeholder="לדוגמה: 000001" autocomplete="off"></label>
         <details id="closed-review-filters" class="review-filter-panel" hidden><summary>סינון לפי הבקרה בתקלות סגורות</summary><div class="review-filter-grid"><fieldset><legend>טיפול בתקלה</legend><label><input type="checkbox" data-closed-filter="notVerified"> לא אומת</label><label><input type="checkbox" data-closed-filter="verified"> אומת</label><label><input type="checkbox" data-closed-filter="unitsReplaced"> הוחלפו יחידות</label><label><input type="checkbox" data-closed-filter="repairPerformed"> בוצע תיקון</label></fieldset><fieldset><legend>חוזרת וביטולים</legend><label><input type="checkbox" data-closed-filter="missionCancelled"> ביטול משימה</label><label><input type="checkbox" data-closed-filter="sortieCancelled"> ביטול גיחה</label><label><input type="checkbox" data-closed-filter="recurrentYes"> חוזרת: כן</label><label><input type="checkbox" data-closed-filter="recurrentNo"> חוזרת: לא</label></fieldset><fieldset><legend>היתרים ואישורים</legend><label><input type="checkbox" data-closed-filter="flightPermitUntil"> היתר לטיסה</label><label><input type="checkbox" data-closed-filter="trackingPermit"> היתר למעקב</label><label><input type="checkbox" data-closed-filter="approvalUntil"> אישור עד תאריך</label></fieldset></div><fieldset class="origin-options"><legend>מקור התקלה בפתיחה</legend><div id="closed-origin-filters" class="origin-grid"></div></fieldset><button id="clear-closed-filters" type="button" class="secondary-button">נקה סינון בקרה</button></details>
         <div id="issued-list" class="issue-list"></div>
@@ -314,6 +314,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.7.6"></script>
+  <script type="module" src="app.js?v=1.7.9"></script>
 </body>
 </html>
