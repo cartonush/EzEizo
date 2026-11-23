@@ -7,6 +7,7 @@ export function issueTimeline(issue) {
   }
   if (issue.status === "closed") events.push({ label: (issue.reopenEvents || []).length ? "נסגר לאחר עריכה" : "נסגר", at: issue.reviewedAt || issue.closed?.state?.closedAt });
   if (issue.status === "pendingReview") events.push({ label: (issue.reopenEvents || []).length ? "הוגש לסגירה לאחר עריכה" : "הוגש לסגירה", at: issue.closed?.state?.closedAt });
+  if (issue.status === "cancelled") events.push({ label: `שילוח בוטל: ${issue.cancellationReason || "—"}`, at: issue.cancelledAt });
   return events.filter((event) => event.at);
 }
 
@@ -19,5 +20,6 @@ export function keyLoadTimeline(load) {
   }
   if (["pendingReview", "closed"].includes(load.status)) events.push({ label: "הוגש לבדיקת מנהל", at: load.completedAt });
   if (load.status === "closed") events.push({ label: "נסגר בחתימת מנהל", at: load.reviewedAt || load.completedAt });
+  if (load.status === "cancelled") events.push({ label: `שילוח בוטל: ${load.cancellationReason || "—"}`, at: load.cancelledAt });
   return events.filter((event) => event.at);
 }

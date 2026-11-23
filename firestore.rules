@@ -147,6 +147,15 @@ service cloud.firestore {
         && request.resource.data.work.actions.size() == 12
         && request.resource.data.work.actions.hasOnly([true]);
       allow update: if isManager()
+        && resource.data.status == 'open'
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt', 'cancelledBy', 'cancellationReason'])
+        && request.resource.data.cancelledBy == request.auth.uid
+        && request.resource.data.cancelledAt is string
+        && request.resource.data.cancellationReason is string
+        && request.resource.data.cancellationReason.size() > 0
+        && request.resource.data.cancellationReason.size() <= 500;
+      allow update: if isManager()
         && resource.data.status == 'pendingReview'
         && request.resource.data.status == 'closed'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'reviewerSignature', 'managerReview'])
@@ -225,6 +234,15 @@ service cloud.firestore {
         && request.resource.data.assigneeUid is string
         && request.resource.data.assigneeName is string
         && activeTechnician(request.resource.data.assigneeUid);
+      allow update: if isManager()
+        && resource.data.status == 'open'
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt', 'cancelledBy', 'cancellationReason'])
+        && request.resource.data.cancelledBy == request.auth.uid
+        && request.resource.data.cancelledAt is string
+        && request.resource.data.cancellationReason is string
+        && request.resource.data.cancellationReason.size() > 0
+        && request.resource.data.cancellationReason.size() <= 500;
       allow update: if isManager()
         && resource.data.status == 'open'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sheet'])

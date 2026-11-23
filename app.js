@@ -1,10 +1,10 @@
-import "./sheet-data.js?v=1.7.3";
-import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.7.3";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.7.3";
-import { validateTreatment } from "./mechanic-validation.js?v=1.7.3";
-import { attachTimeNow } from "./time-now.js?v=1.7.3";
-import { issueTimeline } from "./lifecycle.js?v=1.7.3";
-import { createEditLock } from "./edit-lock.js?v=1.7.3";
+import "./sheet-data.js?v=1.7.4";
+import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.7.4";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.7.4";
+import { validateTreatment } from "./mechanic-validation.js?v=1.7.4";
+import { attachTimeNow } from "./time-now.js?v=1.7.4";
+import { issueTimeline } from "./lifecycle.js?v=1.7.4";
+import { createEditLock } from "./edit-lock.js?v=1.7.4";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -18,7 +18,7 @@ if (selectedId) {
   catch (error) { const list = document.querySelector("#mechanic-issues"); list.textContent = `טעינת התקלה נכשלה: ${error.message}`; list.dataset.state = "error"; }
 }
 const sheet = EzEizoData.normalizeSheet(remoteIssue?.sheet || EzEizoData.defaultSheet);
-const selectedSheet = Boolean(remoteIssue && (managerClosedView ? ["closed", "pendingReview"].includes(remoteIssue.status) : (remoteIssue.teamUids || [remoteIssue.assigneeUid]).includes(currentUser.uid)));
+const selectedSheet = Boolean(remoteIssue && (managerClosedView ? ["closed", "pendingReview"].includes(remoteIssue.status) : remoteIssue.status !== "cancelled" && (remoteIssue.teamUids || [remoteIssue.assigneeUid]).includes(currentUser.uid)));
 document.querySelector("#sheet-form").hidden = !selectedSheet || (!managerClosedView && remoteIssue?.status === "open");
 document.querySelector("#mechanic-back").hidden = !selectedSheet && !managerClosedView;
 document.querySelector(".queue-card").hidden = selectedSheet;
@@ -476,6 +476,11 @@ watchIssues((issues) => {
   cloudIssues = issues;
   renderIssueList();
   const current = issues.find((item) => item.id === selectedId);
+  if (!managerClosedView && current?.status === "cancelled") {
+    editLock?.dispose();
+    location.replace("./");
+    return;
+  }
   if (current?.status === "open" && current.sheet.managerNotes !== sheet.managerNotes) {
     document.querySelector("#combined-notes").updateManagerNotes?.(current.sheet.managerNotes || "");
   }

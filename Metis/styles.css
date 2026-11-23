@@ -24,6 +24,27 @@
 .review-filter-grid label, #closed-origin-filters label { display: flex; align-items: center; gap: 7px; font-size: 13px; }
 #history-results .issue-item { min-width: 0; overflow: hidden; overflow-wrap: anywhere; word-break: break-word; }
 #history-results .issue-item > * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
+.history-page { direction: rtl; }
+.history-mode-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 14px; }
+.history-mode-tabs button { flex: 1 1 130px; min-height: 42px; border: 1px solid #cbdce5; border-radius: 10px; color: #234960; background: #f5f9fb; font: inherit; font-weight: 700; cursor: pointer; }
+.history-mode-tabs button[aria-pressed="true"] { background: #176b96; color: #fff; border-color: #176b96; }
+.history-search-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.history-search-fields[hidden] { display: none; }
+.history-search-fields > * { min-width: 0; }
+.history-search-fields input, .history-search-fields select { box-sizing: border-box; width: 100%; min-width: 0; }
+.history-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; margin-top: 15px; }
+.history-card { display: grid; align-content: start; gap: 10px; box-sizing: border-box; min-width: 0; }
+.history-card-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.history-card-heading strong { font-size: 15px; direction: ltr; unicode-bidi: isolate; }
+.history-status { display: inline-flex; align-items: center; border-radius: 99px; padding: 4px 9px; background: #e7f4ee; color: #176d57; font-size: 11px; font-weight: 700; }
+.history-status-open { background: #eaf4fa; color: #176b96; }
+.history-status-pendingReview { background: #fff3d8; color: #835b0b; }
+.history-status-cancelled { background: #fce8e7; color: #a32929; }
+.history-metadata { display: flex; flex-wrap: wrap; gap: 6px; }
+.history-metadata span { padding: 4px 8px; border-radius: 8px; background: #edf4f7; color: #405c6e; font-size: 12px; }
+.history-description, .history-unit-note { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.history-unit-note { padding: 8px; border-inline-start: 3px solid #68afa7; background: #eff9f6; border-radius: 6px; }
+@media (max-width: 600px) { .history-search-fields { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 760px) { .review-columns, .review-filter-grid { grid-template-columns: 1fr; } }
 @media (max-width: 400px) { .review-date-field { grid-template-columns: minmax(0, 1fr); } }
 .manager-grid .input-field input { height: 43px; }

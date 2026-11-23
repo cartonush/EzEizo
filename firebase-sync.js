@@ -377,6 +377,28 @@ export async function assignIssue(id, uid, name) {
   await updateDoc(doc(db, "issues", id), { assigneeUid: uid, assigneeName: name });
 }
 
+export async function cancelIssueDispatch(id, managerUid, reason) {
+  const trimmed = reason.trim();
+  if (!trimmed || trimmed.length > 500) throw new Error("יש להזין סיבת ביטול עד 500 תווים.");
+  const ref = doc(db, "issues", id);
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(ref);
+    if (!current.exists() || current.data().status !== "open") throw new Error("השילוח כבר אינו פתוח. רענן את הרשימה.");
+    transaction.update(ref, { status: "cancelled", cancelledAt: new Date().toISOString(), cancelledBy: managerUid, cancellationReason: trimmed });
+  });
+}
+
+export async function cancelKeyDispatch(id, managerUid, reason) {
+  const trimmed = reason.trim();
+  if (!trimmed || trimmed.length > 500) throw new Error("יש להזין סיבת ביטול עד 500 תווים.");
+  const ref = doc(db, "keyLoads", id);
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(ref);
+    if (!current.exists() || current.data().status !== "open") throw new Error("השילוח כבר אינו פתוח. רענן את הרשימה.");
+    transaction.update(ref, { status: "cancelled", cancelledAt: new Date().toISOString(), cancelledBy: managerUid, cancellationReason: trimmed });
+  });
+}
+
 export async function submitForReview(id, record, state, session) {
   const issueRef = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {

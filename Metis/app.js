@@ -1,11 +1,11 @@
-import "../sheet-data.js?v=1.7.3";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.7.3";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.7.3";
-import { resolveAssignees } from "./assignee-selection.js?v=1.7.3";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.7.3";
-import { initKeyPages } from "../keys/app.js?v=1.7.3";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.7.3";
-import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.7.3";
+import "../sheet-data.js?v=1.7.4";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.7.4";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.7.4";
+import { resolveAssignees } from "./assignee-selection.js?v=1.7.4";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.7.4";
+import { initKeyPages } from "../keys/app.js?v=1.7.4";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.7.4";
+import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.7.4";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -282,9 +282,11 @@ function addIssueCard(container, item, mode) {
   title.textContent = `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
   const subtitle = document.createElement("span");
   const fullIssue = cloudIssues.find((issue) => issue.id === item.id);
-  subtitle.textContent = `${item.fault || "ללא תיאור"} · ${mode === "closed" ? "סגורה" : mode === "pendingReview" ? "ממתינה לבודק הדף" : "פתוחה"} · ${(fullIssue?.teamNames || [fullIssue?.assigneeName || "לא שובצה"]).join(" · ")}`;
+  subtitle.textContent = `${item.fault || "ללא תיאור"} · ${mode === "closed" ? "סגורה" : mode === "pendingReview" ? "ממתינה לבודק הדף" : mode === "cancelled" ? "שילוח בוטל" : "פתוחה"} · ${(fullIssue?.teamNames || [fullIssue?.assigneeName || "לא שובצה"]).join(" · ")}`;
   card.append(title, subtitle);
-  if (mode !== "open") {
+  if (mode === "cancelled") {
+    const reason = document.createElement("span"); reason.textContent = `סיבת הביטול: ${fullIssue?.cancellationReason || "—"}`; card.append(reason);
+  } else if (mode !== "open") {
     const view = document.createElement("a");
     view.className = "secondary-button";
     view.href = `./closed.html?id=${encodeURIComponent(item.id)}`;
@@ -331,6 +333,20 @@ function addIssueCard(container, item, mode) {
     });
     editor.append(summary, existing, note, send, feedback); card.append(editor);
   }
+  if (mode === "open") {
+    const cancel = document.createElement("details"); cancel.className = "manager-note-editor";
+    const summary = document.createElement("summary"); summary.textContent = "ביטול שילוח משימה";
+    const reason = document.createElement("textarea"); reason.rows = 2; reason.maxLength = 500; reason.placeholder = "סיבת הביטול (חובה)"; reason.setAttribute("aria-label", `סיבת ביטול שילוח תקלה ${item.serial}`);
+    const confirm = document.createElement("button"); confirm.type = "button"; confirm.className = "secondary-button"; confirm.textContent = "אשר ביטול שילוח";
+    const feedback = document.createElement("p"); feedback.className = "copy-status"; feedback.setAttribute("role", "status");
+    confirm.addEventListener("click", async () => {
+      if (!reason.value.trim()) { feedback.textContent = "יש להזין סיבה לביטול השילוח."; feedback.dataset.state = "error"; return; }
+      confirm.disabled = true;
+      try { await cancelIssueDispatch(item.id, managerUser.uid, reason.value); feedback.textContent = "השילוח בוטל ונשמר בהיסטוריה."; }
+      catch (error) { feedback.textContent = `הביטול נכשל: ${error.message}`; feedback.dataset.state = "error"; confirm.disabled = false; }
+    });
+    cancel.append(summary, reason, confirm, feedback); card.append(cancel);
+  }
   container.append(card);
 }
 
@@ -366,25 +382,43 @@ function renderIssueLists() {
   renderFaultHistory();
 }
 
+let historyMode = "aircraft";
 function renderFaultHistory() {
   const results = document.querySelector("#history-results");
   results.replaceChildren();
   const squadron = document.querySelector("#history-squadron").value;
   const aircraft = document.querySelector("#history-aircraft").value.trim();
   const component = document.querySelector("#history-unit").value.trim();
-  if (!component && (!squadron || !aircraft)) { results.textContent = "בחר טייסת ומטוס, או בחר מכלול מהרשימה."; return; }
-  const matching = component ? componentHistory(cloudIssues, component).map(({ issue, kind, unit }) => ({ issue, detail: `${kind === "removed" ? "פורק" : "הורכב"}: ${unit.name || "מכלול"} · ${unit.serial || "ללא מספר סידורי"}` })) : filterIssues(cloudIssues, { mode: "date", squadron, aircraft }).map((issue) => ({ issue, detail: "" }));
+  if (historyMode === "aircraft" && (!squadron || !aircraft)) { results.textContent = "בחר טייסת ומטוס כדי לראות את ההיסטוריה."; return; }
+  if (historyMode === "component" && !component) { results.textContent = "בחר מכלול מהרשימה כדי לראות פירוקים והרכבות."; return; }
+  const matching = historyMode === "component" ? componentHistory(cloudIssues, component).map(({ issue, kind, unit }) => ({ issue, detail: `${kind === "removed" ? "פורק" : "הורכב"}: ${unit.name || "מכלול"} · ${unit.serial || "ללא מספר סידורי"}` })) : filterIssues(cloudIssues, { mode: "date", squadron, aircraft }).map((issue) => ({ issue, detail: "" }));
   matching.forEach(({ issue, detail }) => {
-    const card = document.createElement("article"); card.className = "issue-item";
-    const title = document.createElement("strong"); title.textContent = `תקלה ${issue.sheet?.serial || "—"} · ${issue.sheet?.squadron || "—"}/${issue.sheet?.aircraft || "—"} · ${issue.status === "closed" ? "סגורה" : issue.status === "pendingReview" ? "לסגירה" : "פתוחה"}`;
-    const description = document.createElement("span"); description.textContent = `${new Date(issue.createdAt).toLocaleDateString("he-IL")} · ${issue.sheet?.fault || ""}${detail ? ` · ${detail}` : ""}`;
-    card.append(title, description);
-    if (!component) ["removed", "installed"].forEach((kind) => (issue.closed?.state?.[kind] || []).forEach((unit) => { const note = document.createElement("span"); note.textContent = `${kind === "removed" ? "פורק" : "הורכב"}: ${unit.name || "מכלול"} · ${unit.serial || "ללא מספר סידורי"}`; card.append(note); }));
-    if (issue.status !== "open") { const link = document.createElement("a"); link.className = "secondary-button"; link.href = `./closed.html?id=${encodeURIComponent(issue.id)}`; link.textContent = "פתח דף תקלה"; card.append(link); }
+    const card = document.createElement("article"); card.className = "issue-item history-card";
+    const heading = document.createElement("div"); heading.className = "history-card-heading";
+    const title = document.createElement("strong"); title.textContent = `תקלה ${issue.sheet?.serial || "—"}`;
+    const badge = document.createElement("span"); badge.className = `history-status history-status-${issue.status}`;
+    badge.textContent = issue.status === "closed" ? "סגורה" : issue.status === "pendingReview" ? "לסגירה" : issue.status === "cancelled" ? "שילוח בוטל" : "פתוחה";
+    heading.append(title, badge);
+    const metadata = document.createElement("div"); metadata.className = "history-metadata";
+    for (const value of [`טייסת ${issue.sheet?.squadron || "—"}`, `מטוס ${issue.sheet?.aircraft || "—"}`, new Date(issue.createdAt).toLocaleDateString("he-IL")]) { const chip = document.createElement("span"); chip.textContent = value; metadata.append(chip); }
+    const description = document.createElement("p"); description.className = "history-description"; description.textContent = issue.sheet?.fault || "ללא תיאור תקלה";
+    card.append(heading, metadata, description);
+    if (detail) { const note = document.createElement("p"); note.className = "history-unit-note"; note.textContent = detail; card.append(note); }
+    if (historyMode === "aircraft") ["removed", "installed"].forEach((kind) => (issue.closed?.state?.[kind] || []).forEach((unit) => { const note = document.createElement("p"); note.className = "history-unit-note"; note.textContent = `${kind === "removed" ? "פורק" : "הורכב"}: ${unit.name || "מכלול"} · ${unit.serial || "ללא מספר סידורי"}`; card.append(note); }));
+    if (issue.status === "cancelled") { const note = document.createElement("span"); note.textContent = `שילוח בוטל: ${issue.cancellationReason || "—"}`; card.append(note); }
+    if (["closed", "pendingReview"].includes(issue.status)) { const link = document.createElement("a"); link.className = "secondary-button"; link.href = `./closed.html?id=${encodeURIComponent(issue.id)}`; link.textContent = "פתח דף תקלה"; card.append(link); }
     results.append(card);
   });
   if (!matching.length) results.textContent = "לא נמצאה היסטוריה התואמת לחיפוש.";
 }
+
+document.querySelectorAll("[data-history-mode]").forEach((button) => button.addEventListener("click", () => {
+  historyMode = button.dataset.historyMode;
+  document.querySelectorAll("[data-history-mode]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+  document.querySelectorAll("[data-history-fields]").forEach((group) => { group.hidden = group.dataset.historyFields !== historyMode; });
+  document.querySelector("#history-hint").textContent = historyMode === "aircraft" ? "בחר טייסת ומטוס להצגת כל התקלות והחלפות המכלולים שלו." : "בחר שם מכלול להצגת הפירוקים וההרכבות בכל המטוסים. חיפוש לפי מספר סידורי יתווסף בהמשך.";
+  renderFaultHistory();
+}));
 
 let keyPagesStarted = false;
 let previousManagerView = "";

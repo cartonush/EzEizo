@@ -11,9 +11,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.7.3">
-  <link rel="stylesheet" href="styles.css?v=1.7.3">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.7.3">
+  <link rel="stylesheet" href="../styles.css?v=1.7.4">
+  <link rel="stylesheet" href="styles.css?v=1.7.4">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.7.4">
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.7.3</span>
+      <span class="version-pill">v1.7.4</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -77,7 +77,7 @@
 <button id="create-key-load" class="primary-button" type="button">פתח הטענת מפתחות</button><div id="key-create-loading" class="key-create-loading" role="status" aria-live="polite" hidden><p>הטענת המפתחות נפתחת…</p><div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-line short"></span></div><div class="skeleton-card"><span class="skeleton-line"></span><span class="skeleton-input"></span></div></div><p id="create-status" class="copy-status" role="status" aria-live="polite"></p></section>
 <section id="open-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">מעקב צוות</p><h2>הטענות פתוחות</h2></div></div><label class="input-field list-search">חיפוש לפי מספר הטענה<input id="open-key-search" type="search" inputmode="numeric" placeholder="לדוגמה: 1" autocomplete="off"></label><p class="key-numbering-status copy-status" role="status"></p><div id="open-key-loads" class="issue-list"></div></section>
 <section id="pending-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">בדיקת מנהל</p><h2>הטענות מפתחות לסגירה</h2></div></div><div id="pending-key-loads" class="issue-list"></div></section>
-<section id="closed-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">ארכיון הטענות</p><h2>הטענות סגורות</h2></div></div><label class="input-field list-search">חיפוש לפי מספר הטענה<input id="closed-key-search" type="search" inputmode="numeric" placeholder="לדוגמה: 1" autocomplete="off"></label><p class="key-numbering-status copy-status" role="status"></p><div id="closed-key-loads" class="issue-list"></div></section>
+<section id="closed-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">ארכיון הטענות</p><h2>הטענות סגורות ושילוחים שבוטלו</h2></div></div><label class="input-field list-search">חיפוש לפי מספר הטענה<input id="closed-key-search" type="search" inputmode="numeric" placeholder="לדוגמה: 1" autocomplete="off"></label><p class="key-numbering-status copy-status" role="status"></p><div id="closed-key-loads" class="issue-list"></div></section>
 <section id="work-view" hidden>
 <section id="key-edit-lock-notice" class="card edit-lock-notice" role="status" aria-live="polite" hidden><strong>בודק אם הטופס פנוי לעריכה…</strong><button id="retry-key-edit-lock" type="button" class="secondary-button">בדוק שוב</button></section>
 <section class="card"><div class="section-heading"><div><p class="section-kicker">דף צוות</p><h2>ביצוע הטענת מפתחות</h2></div></div><div id="work-summary"></div><div id="work-manager-notes" class="key-manager-notes" hidden></div><div id="work-rows" class="table-wrap"></div><div id="work-instructions" class="instruction-table"></div></section>
@@ -189,7 +189,7 @@
           <div id="report-aircraft-fields" class="report-subject-fields"><label class="input-field">טייסת<select id="report-squadron"></select></label><button type="button" id="report-squadron-summary" class="secondary-button" hidden>סיכום טייסת</button><div id="report-aircraft-fields-picker" class="report-multi-aircraft" hidden><span class="field-label">מטוסים</span><details id="report-aircraft-picker"><summary id="report-aircraft-summary">בחר מטוסים</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-squadron-aircraft" class="secondary-button">בחר את כל המטוסים</button><button type="button" id="report-clear-squadron-aircraft" class="secondary-button">נקה בחירה</button></div><div id="report-aircraft-options" class="report-aircraft-options"></div></div></details></div></div>
           <div id="report-technician-field" class="report-subject-fields" hidden><div id="report-technician-header" class="report-technician-header"><div class="report-multi-aircraft report-technician-picker"><span class="field-label">טכנאים</span><details id="report-technician-picker"><summary id="report-technician-summary">בחר טכנאים</summary><div class="report-multi-aircraft-panel"><label class="input-field">חיפוש טכנאי<input id="report-technician-search" type="search" placeholder="חפש לפי שם טכנאי" autocomplete="off"></label><div id="report-technician-options" class="report-aircraft-options"></div></div></details></div></div><button type="button" id="report-technician-all" class="secondary-button report-all-aircraft">בחר את כל המטוסים</button><div class="report-multi-aircraft report-technician-squadrons"><span class="field-label">טייסות</span><details id="report-technician-squadron-picker"><summary id="report-technician-squadron-summary">בחר טייסות</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-squadrons" class="secondary-button">בחר את כל הטייסות</button><button type="button" id="report-clear-squadrons" class="secondary-button">נקה בחירה</button></div><div id="report-technician-squadron-options" class="report-aircraft-options"></div></div></details></div><div id="report-technician-aircraft-fields" class="report-multi-aircraft" hidden><span class="field-label">מטוסים</span><details id="report-technician-aircraft-picker"><summary id="report-technician-aircraft-summary">בחר מטוסים</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-aircraft" class="secondary-button">בחר את כל המטוסים</button><button type="button" id="report-clear-aircraft" class="secondary-button">נקה בחירה</button></div><div id="report-technician-aircraft-options" class="report-aircraft-options"></div></div></details></div></div>
           <label id="report-all-dates-field" class="report-all-dates"><input id="report-all-dates" type="checkbox"> כל התקופות</label><div id="report-view-dates" class="manager-grid report-dates"><label class="input-field">מתאריך ושעה<input id="report-from" type="datetime-local"></label><label class="input-field">עד תאריך ושעה<input id="report-to" type="datetime-local"></label></div>
-          <div id="report-form-status" class="manager-grid"><label class="input-field">סוג טופס<select id="report-form"><option value="all">תקלות והטענות מפתחות</option><option value="issue">תקלות</option><option value="key">הטענות מפתחות</option></select></label><label class="input-field">סטטוס<select id="report-status"><option value="all" selected>כל המצבים</option><option value="closed">סגור</option><option value="open">פתוח</option><option value="pendingReview">ממתין לסגירה</option></select></label></div>
+          <div id="report-form-status" class="manager-grid"><label class="input-field">סוג טופס<select id="report-form"><option value="all">תקלות והטענות מפתחות</option><option value="issue">תקלות</option><option value="key">הטענות מפתחות</option></select></label><label class="input-field">סטטוס<select id="report-status"><option value="all" selected>כל המצבים</option><option value="closed">סגור</option><option value="open">פתוח</option><option value="pendingReview">ממתין לסגירה</option><option value="cancelled">שילוח בוטל</option></select></label></div>
           <p id="report-help" class="report-help">טווח ברירת המחדל הוא 24 השעות האחרונות. אפשר לבחור ״כל התקופות״ כדי למצוא טפסים ישנים. דוחות פתוחים וסגורים כוללים גם הטענות מפתחות.</p></div><p id="report-error" class="copy-status" role="status"></p>
         </section>
         <section class="card report-output"><div class="section-heading"><div><p class="section-kicker">תצוגה מקדימה לדוח</p><h2 id="report-title">יומן פעילות</h2></div></div><p id="report-period" class="section-note"></p><p id="report-count" class="section-note" aria-live="polite"></p><div id="report-summary" class="report-summary"></div><div id="report-results" class="report-results"></div><div class="report-export"><button id="report-pdf" type="button" class="primary-button">הורד PDF של הדוח</button><button id="report-print" type="button" class="secondary-button">הדפס</button><button id="report-csv" type="button" class="secondary-button">הפק CSV</button><button id="report-download-all" type="button" class="secondary-button">הורד את תוצאות החיפוש</button></div><p id="report-download-status" class="copy-status" role="status"></p></section>
@@ -281,7 +281,24 @@
         <div id="closed-list" class="issue-list"></div>
       </section>
       </div>
-      <div id="view-history" data-manager-view="history" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">היסטוריה</p><h2>מטוס ומכלול</h2></div></div><div class="manager-grid"><label class="input-field">טייסת<select id="history-squadron"><option value="">בחר טייסת</option></select></label><div class="input-field"><label for="history-aircraft">מספר מטוס</label><div class="search-picker"><input id="history-aircraft" type="search" inputmode="numeric" placeholder="חפש ובחר מטוס" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="history-aircraft-options"><div id="history-aircraft-options" class="picker-list" role="listbox" hidden></div></div></div><div class="input-field"><label for="history-unit">מכלול</label><div class="search-picker"><input id="history-unit" type="search" placeholder="חפש ובחר מכלול" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="history-unit-options"><div id="history-unit-options" class="picker-list" role="listbox" hidden></div></div></div></div><p class="section-note">בחר טייסת ומטוס להצגת כל התקלות והחלפות המכלולים, או בחר מכלול להצגת פירוקים והרכבות בכל המטוסים. חיפוש לפי מספר סידורי יתווסף בהמשך.</p><div id="history-results" class="issue-list"></div></section></div>
+      <div id="view-history" data-manager-view="history" hidden>
+        <section class="card history-page">
+          <div class="section-heading"><div><p class="section-kicker">היסטוריה</p><h2>תקלות והחלפות מכלולים</h2></div></div>
+          <div class="review-tabs history-mode-tabs" role="group" aria-label="סוג חיפוש בהיסטוריה">
+            <button type="button" data-history-mode="aircraft" aria-pressed="true">לפי מטוס</button>
+            <button type="button" data-history-mode="component" aria-pressed="false">לפי מכלול</button>
+          </div>
+          <div class="history-search-fields" data-history-fields="aircraft">
+            <label class="input-field">טייסת<select id="history-squadron"><option value="">בחר טייסת</option></select></label>
+            <div class="input-field"><label for="history-aircraft">מספר מטוס</label><div class="search-picker"><input id="history-aircraft" type="search" inputmode="numeric" placeholder="חפש ובחר מטוס" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="history-aircraft-options"><div id="history-aircraft-options" class="picker-list" role="listbox" hidden></div></div></div>
+          </div>
+          <div class="history-search-fields" data-history-fields="component" hidden>
+            <div class="input-field"><label for="history-unit">שם מכלול</label><div class="search-picker"><input id="history-unit" type="search" placeholder="חפש ובחר מכלול" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="history-unit-options"><div id="history-unit-options" class="picker-list" role="listbox" hidden></div></div></div>
+          </div>
+          <p class="section-note" id="history-hint">בחר טייסת ומטוס להצגת כל התקלות והחלפות המכלולים שלו.</p>
+          <div id="history-results" class="history-results" aria-live="polite"></div>
+        </section>
+      </div>
       <div id="view-users" data-manager-view="users" hidden>
         <section class="card" aria-labelledby="users-title">
           <div class="section-heading"><div><p class="section-kicker">ניהול צוות</p><h2 id="users-title">משתמשים</h2></div></div>
@@ -299,6 +316,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.7.3"></script>
+  <script type="module" src="app.js?v=1.7.4"></script>
 </body>
 </html>

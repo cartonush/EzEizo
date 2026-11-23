@@ -1,9 +1,9 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft } from "../firebase-sync.js?v=1.7.3";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.7.3";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.7.3";
-import { attachTimeNow } from "../time-now.js?v=1.7.3";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.7.3";
-import { createEditLock } from "../edit-lock.js?v=1.7.3";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.7.4";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.7.4";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.7.4";
+import { attachTimeNow } from "../time-now.js?v=1.7.4";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.7.4";
+import { createEditLock } from "../edit-lock.js?v=1.7.4";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -212,20 +212,31 @@ function renderOpen() {
       });
       editor.append(make("summary", "הערות מנהל"), make("p", load.managerNotes || "עדיין אין הערות.", "manager-note-text"), note, send, feedback);
       card.append(editor);
+      const cancel = make("details", undefined, "manager-note-editor");
+      const reason = document.createElement("textarea"); reason.rows = 2; reason.maxLength = 500; reason.placeholder = "סיבת הביטול (חובה)"; reason.setAttribute("aria-label", `סיבת ביטול הטענה ${load.serial || load.id}`);
+      const confirm = make("button", "אשר ביטול שילוח", "secondary-button"); confirm.type = "button";
+      const cancelStatus = make("p", "", "copy-status"); cancelStatus.setAttribute("role", "status");
+      confirm.addEventListener("click", async () => {
+        if (!reason.value.trim()) return setMessageOnNode(cancelStatus, "יש להזין סיבה לביטול השילוח.", true);
+        confirm.disabled = true;
+        try { await cancelKeyDispatch(load.id, user.uid, reason.value); setMessageOnNode(cancelStatus, "השילוח בוטל ונשמר בארכיון."); }
+        catch (error) { setMessageOnNode(cancelStatus, `הביטול נכשל: ${error.message}`, true); confirm.disabled = false; }
+      });
+      cancel.append(make("summary", "ביטול שילוח משימה"), reason, confirm, cancelStatus); card.append(cancel);
     }
   });
 }
 function renderClosed() {
   const container = $("#closed-key-loads"); container.replaceChildren();
   const search = $("#closed-key-search")?.value || "";
-  const list = loads.filter((load) => load.status === "closed" && matchesKeyNumber(load, search));
+  const list = loads.filter((load) => ["closed", "cancelled"].includes(load.status) && matchesKeyNumber(load, search));
   if (!list.length) { container.textContent = search ? "לא נמצאו הטענות סגורות התואמות למזהה." : "אין הטענות סגורות כרגע."; return; }
   list.sort((a, b) => (b.completedAt || "").localeCompare(a.completedAt || "")).forEach((load) => {
     const card = make("div", undefined, "issue-item");
     card.append(make("strong", `${load.serial || "מספר ההטענה נטען…"} · טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`),
       make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`),
-      make("span", `נסגר: ${load.completedAt ? new Date(load.completedAt).toLocaleString("he-IL") : "—"}`));
-    const open = make("button", "צפה בטופס הסגור", "secondary-button"); open.type = "button";
+      make("span", load.status === "cancelled" ? `שילוח בוטל: ${load.cancellationReason || "—"}` : `נסגר: ${load.reviewedAt ? new Date(load.reviewedAt).toLocaleString("he-IL") : "—"}`));
+    const open = make("button", load.status === "cancelled" ? "צפה בשילוח שבוטל" : "צפה בטופס הסגור", "secondary-button"); open.type = "button";
     open.addEventListener("click", () => { location.hash = route(`work/${load.id}`); if (!embedded) showView(); });
     card.append(open); container.append(card);
   });
@@ -248,7 +259,7 @@ function defaultWork(load) {
 }
 function readWork(load) {
   const saved = { ...defaultWork(load), ...(load.work || {}), ...(load.workDraft || {}) };
-  if (load.status === "closed") return saved;
+  if (["closed", "cancelled"].includes(load.status)) return saved;
   if (load.workDraft) return saved;
   try { return { ...saved, ...JSON.parse(localStorage.getItem(`ezeizo-key-work:${load.id}`) || "{}") }; }
   catch { return saved; }
@@ -309,7 +320,7 @@ function renderWork() {
   const load = activeLoad, closed = load.status !== "open" || manager || !editLock?.held;
   const lockNotice = $("#key-edit-lock-notice");
   if (lockNotice) lockNotice.hidden = manager || load.status !== "open" || Boolean(editLock?.held);
-  $("#work-summary").textContent = `${load.serial ? `${load.serial} · ` : ""}${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${load.status === "closed" ? " · נסגר" : load.status === "pendingReview" ? " · ממתין לבדיקת מנהל" : ""}`;
+  $("#work-summary").textContent = `${load.serial ? `${load.serial} · ` : ""}${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${load.status === "closed" ? " · נסגר" : load.status === "cancelled" ? ` · השילוח בוטל: ${load.cancellationReason || "—"}` : load.status === "pendingReview" ? " · ממתין לבדיקת מנהל" : ""}`;
   $("#work-manager-notes").textContent = load.managerNotes || "";
   $("#work-manager-notes").hidden = !load.managerNotes;
   const table = document.createElement("table"); table.className = "work-aircraft-table";
@@ -369,7 +380,7 @@ function renderWork() {
     $("#key-reopen-history").open = true;
     $("#key-reopen-events").replaceChildren(...keyLoadTimeline(load).map(({ label, at }) => make("li", `${label} · ${new Date(at).toLocaleString("he-IL")}`)));
   }
-  setMessage("#work-status", load.status === "closed" ? "ההטענה נסגרה לאחר בדיקת מנהל וההיסטוריה עודכנה." : load.status === "pendingReview" ? "ההטענה ממתינה לבדיקת מנהל; הטכנאים אינם יכולים לערוך אותה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול להגיש את ההטענה לבדיקה." : !editLock?.held ? "העריכה ממתינה לנעילת הטופס. בדוק את ההודעה שמעליו." : "ההתקדמות נשמרת במכשיר ובשרת עד להגשה לבדיקה.");
+  setMessage("#work-status", load.status === "cancelled" ? "השילוח בוטל ונשמר בארכיון. לא ניתן לערוך אותו." : load.status === "closed" ? "ההטענה נסגרה לאחר בדיקת מנהל וההיסטוריה עודכנה." : load.status === "pendingReview" ? "ההטענה ממתינה לבדיקת מנהל; הטכנאים אינם יכולים לערוך אותה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול להגיש את ההטענה לבדיקה." : !editLock?.held ? "העריכה ממתינה לנעילת הטופס. בדוק את ההודעה שמעליו." : "ההתקדמות נשמרת במכשיר ובשרת עד להגשה לבדיקה.");
 }
 const signatures = new Map();
 let signatureLoadId = "";
@@ -497,9 +508,9 @@ function showView() {
   if (manager && !embedded) $("#keys-manager-nav").hidden = false;
   $("#keys-nav").hidden = !manager || view === "work";
   $(backSelector).hidden = manager && view !== "work";
-  $(backSelector).href = manager ? view === "work" ? `#${route(activeLoad?.status === "closed" ? "closed" : activeLoad?.status === "pendingReview" ? "pending" : "open")}` : embedded ? "#home" : "../Metis/#home" : "./";
+  $(backSelector).href = manager ? view === "work" ? `#${route(["closed", "cancelled"].includes(activeLoad?.status) ? "closed" : activeLoad?.status === "pendingReview" ? "pending" : "open")}` : embedded ? "#home" : "../Metis/#home" : "./";
   $(backSelector).textContent = "→ חזרה";
-  $(backSelector).setAttribute("aria-label", view === "work" ? `חזרה להטענות ${activeLoad?.status === "closed" ? "סגורות" : "פתוחות"}` : "חזרה");
+  $(backSelector).setAttribute("aria-label", view === "work" ? `חזרה להטענות ${["closed", "cancelled"].includes(activeLoad?.status) ? "שבארכיון" : "פתוחות"}` : "חזרה");
   $("#keys-nav").querySelectorAll("button").forEach((button) => { if (button.dataset.view === view) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
   if (view === "history") renderHistory();
   if (view === "create" && !dispatchPadReady) { clearDispatch = attachSignaturePad($("#key-dispatch-signature"), { onChange: (value) => { dispatchSignature = value; } }); dispatchPadReady = true; }
@@ -536,7 +547,7 @@ async function numberLegacyLoads(items) {
     status(error.code === "permission-denied" ? "כדי למספר הטענות קיימות יש לפרסם את כללי Firestore המעודכנים." : `מספור הטענות נכשל: ${error.message}`, true);
   } finally { numberingLegacyLoads = false; }
 }
-watchKeyLoads((items) => { loads = items; if (manager) history = keyHistoryByAircraft(loads); loadsReady = true; if (embedded) { $("#keys-loading").hidden = true; $("#keys-content").hidden = false; } if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); if (!manager && editLock?.held && activeLoad?.status === "open") { $("#work-manager-notes").textContent = activeLoad.managerNotes || ""; $("#work-manager-notes").hidden = !activeLoad.managerNotes; } else showView(); if (manager) void numberLegacyLoads(items); if (!embedded) revealApp(); }, (error) => {
+watchKeyLoads((items) => { loads = items; if (manager) history = keyHistoryByAircraft(loads); loadsReady = true; if (embedded) { $("#keys-loading").hidden = true; $("#keys-content").hidden = false; } if (activeLoad) activeLoad = loads.find((item) => item.id === activeLoad.id); if (!manager && activeLoad?.status === "cancelled") { editLock?.dispose(); location.replace("./"); return; } if (!manager && editLock?.held && activeLoad?.status === "open") { $("#work-manager-notes").textContent = activeLoad.managerNotes || ""; $("#work-manager-notes").hidden = !activeLoad.managerNotes; } else showView(); if (manager) void numberLegacyLoads(items); if (!embedded) revealApp(); }, (error) => {
   if (error.code === "unavailable") document.dispatchEvent(new Event("ezeizo:connection-lost"));
   $("#open-key-loads").textContent = `טעינת ההטענות נכשלה: ${error.message}`;
   $("#open-key-loads").style.color = "#d40000";

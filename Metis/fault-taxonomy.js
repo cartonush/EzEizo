@@ -15,6 +15,7 @@ export const FAULT_FILTERS = [
   ["open-squadron", "פתוחות לפי טייסת / יא״א"],
   ["serial", "סינון לפי מספר תקלה"],
   ["closed", "תקלות סגורות"],
+  ["cancelled", "שילוחים שבוטלו"],
   ["pending", "תקלות לסגירה"]
 ];
 
@@ -22,7 +23,7 @@ export const ORIGINS = ["תקלת טייס", "תקלת טכנאי", "פג תוק
 export const REVIEW_CATEGORIES = ["בקרי", "קשר", "ל״א", "אישורים והיתרים", "פירוקים והרכבות"];
 
 export const aircraftKey = (issue) => `${issue.sheet?.squadron || ""}|${issue.sheet?.aircraft || ""}`;
-export const issueDate = (issue) => issue.reviewedAt || issue.closed?.state?.closedAt || issue.createdAt || "";
+export const issueDate = (issue) => issue.cancelledAt || issue.reviewedAt || issue.closed?.state?.closedAt || issue.createdAt || "";
 export const permitFlags = (issue) => {
   const review = issue.managerReview || {};
   return {
@@ -64,6 +65,7 @@ export function filterIssues(issues, { mode = "open-default", serial = "", squad
       case "sortie-cancelled": return Boolean(review.sortieCancelled);
       case "repeat": return review.recurrentAnswer === "yes" || Boolean(review.recurrent);
       case "closed": return issue.status === "closed";
+      case "cancelled": return issue.status === "cancelled";
       case "pending": return issue.status === "pendingReview";
       default: return true;
     }

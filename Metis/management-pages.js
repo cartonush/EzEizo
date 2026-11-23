@@ -1,9 +1,9 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.7.3";
-import { SQUADRONS, SYSTEMS } from "./catalog.js?v=1.7.3";
-import { downloadReportPdf } from "./report-pdf.js?v=1.7.3";
-import { downloadFile } from "./report-pdf.js?v=1.7.3";
-import { createFormPdf } from "./form-pdf.js?v=1.7.3";
-import { zipFiles } from "./zip.js?v=1.7.3";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.7.4";
+import { SQUADRONS, SYSTEMS } from "./catalog.js?v=1.7.4";
+import { downloadReportPdf } from "./report-pdf.js?v=1.7.4";
+import { downloadFile } from "./report-pdf.js?v=1.7.4";
+import { createFormPdf } from "./form-pdf.js?v=1.7.4";
+import { zipFiles } from "./zip.js?v=1.7.4";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -126,17 +126,17 @@ export function closeConstantsEditor() {
   return true;
 }
 
-function statusLabel(status) { return ({ open: "פתוח", pendingReview: "ממתין לסגירה", closed: "סגור" })[status] || status; }
+function statusLabel(status) { return ({ open: "פתוח", pendingReview: "ממתין לסגירה", closed: "סגור", cancelled: "שילוח בוטל" })[status] || status; }
 function aircraftNumber(squadron, value) {
   const number = String(value ?? "").trim();
   return String(squadron) === "109" && /^\d{1,2}$/.test(number) ? number.padStart(3, "0") : number;
 }
 function reportRecords() {
   const faults = reportIssues.map((issue) => ({
-    id: issue.id, type: "issue", kind: "תקלה", serial: issue.sheet?.serial || "—", squadron: issue.sheet?.squadron || "", aircraft: aircraftNumber(issue.sheet?.squadron, issue.sheet?.aircraft), technician: issue.assigneeName || "—", technicianUids: [issue.assigneeUid], status: issue.status, title: issue.sheet?.fault || "—", openedAt: issue.createdAt, closedAt: issue.closed?.state?.closedAt || "", eventAt: issue.status === "closed" ? (issue.reviewedAt || issue.closed?.state?.closedAt || issue.createdAt) : issue.status === "pendingReview" ? (issue.closed?.state?.closedAt || issue.createdAt) : (issue.reopenedAt || issue.createdAt)
+    id: issue.id, type: "issue", kind: "תקלה", serial: issue.sheet?.serial || "—", squadron: issue.sheet?.squadron || "", aircraft: aircraftNumber(issue.sheet?.squadron, issue.sheet?.aircraft), technician: (issue.teamNames || [issue.assigneeName || "—"]).join(" · "), technicianUids: issue.teamUids || [issue.assigneeUid], status: issue.status, title: issue.status === "cancelled" ? `שילוח בוטל: ${issue.cancellationReason || "—"}` : issue.sheet?.fault || "—", openedAt: issue.createdAt, closedAt: issue.closed?.state?.closedAt || "", eventAt: issue.status === "cancelled" ? issue.cancelledAt : issue.status === "closed" ? (issue.reviewedAt || issue.closed?.state?.closedAt || issue.createdAt) : issue.status === "pendingReview" ? (issue.closed?.state?.closedAt || issue.createdAt) : (issue.reopenedAt || issue.createdAt)
   }));
   const keys = reportLoads.flatMap((load) => (load.aircraftIds?.length ? load.aircraftIds : load.rows?.map((row) => row.aircraft) || []).map((aircraft) => ({
-    id: load.id, type: "key", kind: "מפתחות", serial: load.serial || "—", squadron: load.squadron, aircraft: aircraftNumber(load.squadron, aircraft), technician: (load.teamNames || []).join(" · ") || "—", technicianUids: load.teamUids || [], status: load.status, title: `הטענת מפתחות ${load.period || ""}`.trim(), openedAt: load.createdAt, closedAt: load.reviewedAt || (load.status === "closed" ? load.completedAt : ""), eventAt: load.status === "closed" ? (load.reviewedAt || load.completedAt || load.createdAt || load.date) : (load.reopenedAt || load.createdAt || load.date)
+    id: load.id, type: "key", kind: "מפתחות", serial: load.serial || "—", squadron: load.squadron, aircraft: aircraftNumber(load.squadron, aircraft), technician: (load.teamNames || []).join(" · ") || "—", technicianUids: load.teamUids || [], status: load.status, title: load.status === "cancelled" ? `שילוח בוטל: ${load.cancellationReason || "—"}` : `הטענת מפתחות ${load.period || ""}`.trim(), openedAt: load.createdAt, closedAt: load.reviewedAt || (load.status === "closed" ? load.completedAt : ""), eventAt: load.status === "cancelled" ? load.cancelledAt : load.status === "closed" ? (load.reviewedAt || load.completedAt || load.createdAt || load.date) : (load.reopenedAt || load.createdAt || load.date)
   })));
   return [...faults, ...keys];
 }
@@ -196,7 +196,7 @@ function renderReport() {
   $("#report-download-all").disabled = Boolean(state.error || !reportRows.length || reportBusy || state.kind === "system-codes");
   const summary = $("#report-summary"); summary.replaceChildren();
   if (!state.error) {
-    const counts = [["תקלות", reportRows.filter((r) => r.type === "issue").length], ["מטוסים בהטענות", reportRows.filter((r) => r.type === "key").length], ["פתוח", reportRows.filter((r) => r.status === "open").length], ["ממתין לסגירה", reportRows.filter((r) => r.status === "pendingReview").length], ["סגור", reportRows.filter((r) => r.status === "closed").length]];
+    const counts = [["שילוחים שבוטלו", reportRows.filter((r) => r.status === "cancelled").length], ["תקלות", reportRows.filter((r) => r.type === "issue").length], ["מטוסים בהטענות", reportRows.filter((r) => r.type === "key").length], ["פתוח", reportRows.filter((r) => r.status === "open").length], ["ממתין לסגירה", reportRows.filter((r) => r.status === "pendingReview").length], ["סגור", reportRows.filter((r) => r.status === "closed").length]];
     counts.forEach(([label, amount]) => { const item = element("div", null, "report-stat"); item.append(element("strong", String(amount)), element("span", label)); summary.append(item); });
   }
   const results = $("#report-results"); results.replaceChildren();
