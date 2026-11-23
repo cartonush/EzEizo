@@ -22,7 +22,7 @@ function syncCatalog() {
   }
   for (const id of ["history-aircraft-system", "history-component-system"]) {
     const select = document.getElementById(id);
-    if (!select?.options.length) continue;
+    if (!select?.options.length || select.options.length === 1) continue;
     const old = select.value;
     select.replaceChildren(new Option("בחר מערכת", ""), ...systems().map((item) => new Option(item.name, item.name)));
     select.value = old;
