@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.6.3">
-  <link rel="stylesheet" href="styles.css?v=1.6.3">
+  <link rel="stylesheet" href="../styles.css?v=1.7.0">
+  <link rel="stylesheet" href="styles.css?v=1.7.0">
 </head>
 <body>
   <div class="app-shell">
@@ -23,7 +23,7 @@
         <h1>Metis · דף תקלה סגורה</h1>
         <p class="header-subtitle">צפייה ותיעוד תיקוני מנהל</p>
       </div>
-      <span class="version-pill">v1.6.3</span>
+      <span class="version-pill">v1.7.0</span>
       <div id="manager-controls" class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./#closed" aria-label="חזרה לתקלות סגורות" hidden>→ חזרה</a></div>
     </header>
 
@@ -60,6 +60,7 @@
           <div class="detail-item"><span>קוד מערכת</span><strong data-sheet-field="systemCode">74A</strong></div>
           <div class="detail-item"><span>שם מערכת</span><strong data-sheet-field="systemName">מכם</strong></div>
           <div class="detail-item wide"><span>חליפת ל״א</span><strong data-sheet-field="ewSystem">גרניט</strong></div>
+          <div class="detail-item"><span>מקור התקלה</span><strong data-sheet-field="faultOrigin">—</strong></div><div class="detail-item"><span>תחום לסגירה</span><strong data-sheet-field="reviewCategory">—</strong></div>
         </div>
       </section>
 
@@ -250,6 +251,8 @@
       </section>
       <section id="review-panel" class="card review-card" hidden>
         <div class="section-heading"><div><p class="section-kicker">תקלות לסגירה</p><h2>בדיקת הדף</h2></div></div>
+        <div class="manager-grid"><label class="replaced-toggle"><input type="checkbox" data-review="verified"><span class="custom-check" aria-hidden="true"></span><span>התקלה אומתה</span></label><label class="replaced-toggle"><input type="checkbox" data-review="unitsReplaced"><span class="custom-check" aria-hidden="true"></span><span>הוחלפו יחידות</span></label><label class="replaced-toggle"><input type="checkbox" data-review="repairPerformed"><span class="custom-check" aria-hidden="true"></span><span>בוצע תיקון</span></label><label class="replaced-toggle"><input type="checkbox" data-review="recurrent"><span class="custom-check" aria-hidden="true"></span><span>תקלה חוזרת</span></label><label class="replaced-toggle"><input type="checkbox" data-review="missionCancelled"><span class="custom-check" aria-hidden="true"></span><span>ביטול משימה</span></label><label class="replaced-toggle"><input type="checkbox" data-review="sortieCancelled"><span class="custom-check" aria-hidden="true"></span><span>ביטול גיחה</span></label></div>
+        <div class="manager-grid"><label class="input-field">היתר לבדיקה עד תאריך<input type="date" data-review="inspectionPermitUntil"></label><label class="input-field">היתר לטיסה עד תאריך<input type="date" data-review="flightPermitUntil"></label><label class="replaced-toggle"><input type="checkbox" data-review="trackingPermit"><span class="custom-check" aria-hidden="true"></span><span>היתר למעקב</span></label><label class="input-field">אישור עד תאריך<input type="date" data-review="approvalUntil"></label></div>
         <div class="signature-field"><span class="field-label">חתימת בודק הדף</span><canvas id="reviewer-signature" class="signature-pad" aria-label="חתימת בודק הדף"></canvas><button id="clear-reviewer-signature" type="button" class="clear-signature">נקה חתימה</button></div>
         <button id="approve-sheet" type="button" class="primary-button">חתום וסגור את הדף</button>
         <p id="review-status" class="copy-status" role="status" aria-live="polite"></p>
@@ -258,6 +261,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.6.3"></script>
+  <script type="module" src="../app.js?v=1.7.0"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
-import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.6.3";
-import { KEY_TASKS, KEY_TABLES } from "../keys/data.js?v=1.6.3";
+import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.7.0";
+import { KEY_TASKS, KEY_TABLES } from "../keys/data.js?v=1.7.0";
 
 const left = MARGIN, right = PAGE_WIDTH - MARGIN;
 const dateTime = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -178,7 +178,7 @@ async function issuePdf(issue) {
   const sheet = issue.sheet || {}, state = issue.closed?.state || {};
   const pdf = pdfPages(`טופס תקלה ${show(sheet.serial)}`, `${issue.status === "closed" ? "סגור" : issue.status === "pendingReview" ? "ממתין לסגירה" : "פתוח"} · מטוס ${show(sheet.aircraft)}`);
   pdf.heading("פרטי התקלה");
-  for (const [label, value] of [["מספר תקלה", sheet.serial], ["טייסת", sheet.squadron], ["דת״ק", sheet.shelter], ["מוסך", sheet.workshop], ["מספר מטוס", sheet.aircraft], ["שם מערכת", sheet.systemName], ["קוד מערכת", sheet.systemCode], ["חליפת ל״א", sheet.ewSystem], ["מוביל התקלה", issue.assigneeName], ["שעת פתיחה", dateTime(issue.createdAt)], ["שעת סגירה", dateTime(state.closedAt || issue.reviewedAt)]]) if (value) pdf.text(label, value);
+  for (const [label, value] of [["מספר תקלה", sheet.serial], ["טייסת", sheet.squadron], ["דת״ק", sheet.shelter], ["מוסך", sheet.workshop], ["מספר מטוס", sheet.aircraft], ["שם מערכת", sheet.systemName], ["קוד מערכת", sheet.systemCode], ["חליפת ל״א", sheet.ewSystem], ["מקור התקלה", sheet.faultOrigin], ["תחום לסגירה", sheet.reviewCategory], ["מוביל התקלה", issue.assigneeName], ["שעת פתיחה", dateTime(issue.createdAt)], ["שעת סגירה", dateTime(state.closedAt || issue.reviewedAt)]]) if (value) pdf.text(label, value);
   pdf.heading("תדריך ובדיקת בטיחות");
   pdf.paragraph('תדריך בטיחות וניהול סיכונים: יועבר ע״י מ״ע התקלה / משלח המשימה וייחתם על ידו.');
   await pdf.signature("חתימת משלח המשימה", sheet.dispatcherSignature);
@@ -200,7 +200,13 @@ async function issuePdf(issue) {
   pdf.heading("אישור סיום");
   pdf.paragraph("הנני מאשר שכל הפרטים הרשומים שלמים נכונים ומדויקים. הנני מאשר שעדכנתי במערכות ממוכנות / בספר המטוס את מספרי המכשירים שפורקו והורכבו. הנני מאשר שהעברתי את המכשירים התקולים בצירוף תגי בר תיקון ממולאים בצורה מושלמת. הדף הוא בלשון זכר אך מתייחס לשני המינים.");
   await pdf.signature("חתימת הטכנאי", state.technicianDeclarationSignature);
-  if (issue.status === "closed") await pdf.signature("חתימת בודק הדף", issue.reviewerSignature);
+  if (issue.status === "closed") {
+    const review = issue.managerReview || {};
+    pdf.heading("בקרה וניהול");
+    for (const [label, key] of [["התקלה אומתה", "verified"], ["הוחלפו יחידות", "unitsReplaced"], ["בוצע תיקון", "repairPerformed"], ["תקלה חוזרת", "recurrent"], ["ביטול משימה", "missionCancelled"], ["ביטול גיחה", "sortieCancelled"], ["היתר למעקב", "trackingPermit"]]) pdf.text(label, checked(review[key]));
+    for (const [label, key] of [["היתר לבדיקה עד", "inspectionPermitUntil"], ["היתר לטיסה עד", "flightPermitUntil"], ["אישור עד", "approvalUntil"]]) if (review[key]) pdf.text(label, review[key]);
+    await pdf.signature("חתימת בודק הדף", issue.reviewerSignature);
+  }
   return pdf.blob();
 }
 

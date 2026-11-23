@@ -13,6 +13,8 @@
     technicians: "רועי סויסה · צוק עינב",
     fault: "פירוק והרכבה אנטנת מכם",
     managerNotes: "",
+    faultOrigin: "",
+    reviewCategory: "",
     dispatcherSignature: "",
     constants: {
       HUD: [["k1", "0"], ["K2", "74"], ["K3", "829"], ["K4", "-949"], ["K5", "90"], ["K6", "-719"], ["K7", "0"], ["K8", "7"], ["K9", "-88890"]],
@@ -37,7 +39,7 @@
     ]
   };
 
-  const scalarKeys = ["serial", "location", "shelter", "workshop", "squadron", "aircraft", "systemCode", "systemName", "ewSystem", "technicians", "fault", "managerNotes"];
+  const scalarKeys = ["serial", "location", "shelter", "workshop", "squadron", "aircraft", "systemCode", "systemName", "ewSystem", "technicians", "fault", "managerNotes", "faultOrigin", "reviewCategory"];
   function normalizeSheet(input) {
     if (!input || typeof input !== "object") return null;
     const sheet = structuredClone(defaultSheet);

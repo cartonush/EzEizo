@@ -11,9 +11,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.6.3">
-  <link rel="stylesheet" href="styles.css?v=1.6.3">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.6.3">
+  <link rel="stylesheet" href="../styles.css?v=1.7.0">
+  <link rel="stylesheet" href="styles.css?v=1.7.0">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.7.0">
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.6.3</span>
+      <span class="version-pill">v1.7.0</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -56,7 +56,7 @@
         </div>
       </div>
       <nav id="fault-nav" class="review-tabs fault-nav" aria-label="דפי תקלות" hidden>
-        <a href="#new" data-fault-link="new">פתיחת תקלה</a><a href="#open" data-fault-link="open">פתוחות</a><a href="#closed" data-fault-link="closed">סגורות</a>
+        <a href="#new" data-fault-link="new">פתיחת תקלה</a><a href="#open" data-fault-link="open">כל התקלות</a><a href="#pending" data-fault-link="pending">לסגירה</a><a href="#history" data-fault-link="history">היסטוריה</a>
       </nav>
       <div id="view-management" data-manager-view="management" hidden>
         <section class="card"><div class="section-heading"><div><p class="section-kicker">דף ראשי</p><h2>ניהול</h2></div></div><div class="manager-home-grid"><a href="#users" class="manager-home-tile"><strong>ניהול משתמשים</strong><span>יצירה, הסרה וצפייה בתקלות לפי טכנאי</span></a><a href="#reports" class="manager-home-tile"><strong>הפקת דוחות</strong><span>סינון, תצוגה מקדימה והפקת PDF או CSV</span></a><a href="#aircraft-constants" class="manager-home-tile"><strong>עדכון קבועים לפי מטוס</strong><span>דף קבועים למטוסים</span></a></div></section>
@@ -183,7 +183,7 @@
       </div></div>
       <div id="view-reports" data-manager-view="reports" hidden>
         <section class="card report-filters"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>הפקת דוחות</h2></div></div>
-          <label class="input-field report-kind-field">סוג דוח<select id="report-kind"><option value="" selected>בחר סוג דוח</option><option value="journal">יומן פעילות</option><option value="squadron-journal">יומן טייסת</option><option value="aircraft">היסטוריית מטוס</option><option value="technician">היסטוריית טכנאי</option><option value="issue-open">תקלות פתוחות</option><option value="issue-closed">תקלות סגורות</option><option value="pending">דפים הממתינים לסגירה</option></select></label>
+          <label class="input-field report-kind-field">סוג דוח<select id="report-kind"><option value="" selected>בחר סוג דוח</option><option value="journal">יומן פעילות</option><option value="squadron-journal">יומן טייסת</option><option value="aircraft">היסטוריית מטוס</option><option value="technician">היסטוריית טכנאי</option><option value="issue-open">תקלות פתוחות</option><option value="issue-closed">תקלות סגורות</option><option value="pending">דפים הממתינים לסגירה</option><option value="daily-serviceability">דוח שמישות יומי · מצב תקלות מתועד</option><option value="unit-serviceability">שמישות מכלולים · תיעוד החלפות</option><option value="system-codes">קודי מערכות</option></select></label>
           <div id="report-after-kind" hidden>
           <div id="report-aircraft-fields" class="report-subject-fields"><label class="input-field">טייסת<select id="report-squadron"></select></label><button type="button" id="report-squadron-summary" class="secondary-button" hidden>סיכום טייסת</button><div id="report-aircraft-fields-picker" class="report-multi-aircraft" hidden><span class="field-label">מטוסים</span><details id="report-aircraft-picker"><summary id="report-aircraft-summary">בחר מטוסים</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-squadron-aircraft" class="secondary-button">בחר את כל המטוסים</button><button type="button" id="report-clear-squadron-aircraft" class="secondary-button">נקה בחירה</button></div><div id="report-aircraft-options" class="report-aircraft-options"></div></div></details></div></div>
           <div id="report-technician-field" class="report-subject-fields" hidden><div id="report-technician-header" class="report-technician-header"><div class="report-multi-aircraft report-technician-picker"><span class="field-label">טכנאים</span><details id="report-technician-picker"><summary id="report-technician-summary">בחר טכנאים</summary><div class="report-multi-aircraft-panel"><label class="input-field">חיפוש טכנאי<input id="report-technician-search" type="search" placeholder="חפש לפי שם טכנאי" autocomplete="off"></label><div id="report-technician-options" class="report-aircraft-options"></div></div></details></div></div><button type="button" id="report-technician-all" class="secondary-button report-all-aircraft">בחר את כל המטוסים</button><div class="report-multi-aircraft report-technician-squadrons"><span class="field-label">טייסות</span><details id="report-technician-squadron-picker"><summary id="report-technician-squadron-summary">בחר טייסות</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-squadrons" class="secondary-button">בחר את כל הטייסות</button><button type="button" id="report-clear-squadrons" class="secondary-button">נקה בחירה</button></div><div id="report-technician-squadron-options" class="report-aircraft-options"></div></div></details></div><div id="report-technician-aircraft-fields" class="report-multi-aircraft" hidden><span class="field-label">מטוסים</span><details id="report-technician-aircraft-picker"><summary id="report-technician-aircraft-summary">בחר מטוסים</summary><div class="report-multi-aircraft-panel"><div class="report-multi-aircraft-actions"><button type="button" id="report-select-all-aircraft" class="secondary-button">בחר את כל המטוסים</button><button type="button" id="report-clear-aircraft" class="secondary-button">נקה בחירה</button></div><div id="report-technician-aircraft-options" class="report-aircraft-options"></div></div></details></div></div>
@@ -227,6 +227,7 @@
 
       <section class="card" aria-labelledby="manager-fault-title">
         <div class="section-heading"><div><p class="section-kicker">נשלח לטכנאי</p><h2 id="manager-fault-title">תיאור תקלה</h2></div><span class="step-badge">03</span></div>
+        <div class="manager-grid"><label class="input-field">מקור התקלה<select data-sheet-field="faultOrigin"><option value="">לא סווג</option><option>תקלת טייס</option><option>תקלת טכנאי</option><option>פג תוקף</option><option>שינוי</option><option>בדיקה</option><option>פירוק/הרכבה</option><option>פריקת ל״א</option></select></label><label class="input-field">תחום לסגירה<select data-sheet-field="reviewCategory"><option value="">לא סווג</option><option>בקרי</option><option>קשר</option><option>ל״א</option><option>אישורים והיתרים</option><option>פירוקים והרכבות</option></select></label></div>
         <textarea class="text-box" data-sheet-field="fault" rows="4" maxlength="2000" required placeholder="תאר את התקלה לטכנאי…"></textarea>
         <label class="field-label" for="manager-notes">הערות לטכנאי</label>
         <textarea id="manager-notes" class="text-box" data-sheet-field="managerNotes" rows="3" maxlength="2000" placeholder="הערות שיוצגו לטכנאים…"></textarea>
@@ -258,7 +259,8 @@
       </div>
       <div id="view-open" data-manager-view="open" hidden>
       <section class="card" aria-labelledby="issued-title">
-        <div class="section-heading"><div><p class="section-kicker">מעקב משותף</p><h2 id="issued-title">תקלות פתוחות</h2></div></div>
+        <div class="section-heading"><div><p class="section-kicker">מעקב משותף</p><h2 id="issued-title">כל התקלות</h2></div></div>
+        <div class="manager-grid"><label class="input-field">סינון תקלות<select id="fault-mode"></select></label><label class="input-field">טייסת<select id="fault-squadron"><option value="">כל הטייסות</option></select></label><label class="input-field">מספר מטוס<input id="fault-aircraft" type="search" inputmode="numeric" placeholder="כל המטוסים"></label><label class="input-field">מתאריך<input id="fault-from" type="date"></label><label class="input-field">עד תאריך<input id="fault-to" type="date"></label></div>
         <label class="input-field list-search">חיפוש לפי מספר תקלה<input id="open-issue-search" type="search" inputmode="numeric" placeholder="לדוגמה: 000001" autocomplete="off"></label>
         <div id="issued-list" class="issue-list"></div>
       </section>
@@ -267,7 +269,7 @@
       <div class="review-tabs" role="navigation" aria-label="מצב סגירת תקלות"><a href="#pending" data-review-link="pending">תקלות לסגירה</a><a href="#closed" data-review-link="closed">תקלות סגורות</a></div>
       <section id="pending-section" class="card" aria-labelledby="pending-list-title" hidden>
         <div class="section-heading"><div><p class="section-kicker">ממתין לבדיקת הדף</p><h2 id="pending-list-title">תקלות לסגירה</h2></div></div>
-        <label class="input-field list-search">חיפוש לפי מספר תקלה<input id="pending-issue-search" type="search" inputmode="numeric" placeholder="לדוגמה: 000001" autocomplete="off"></label>
+        <div class="manager-grid"><label class="input-field">תחום לסגירה<select id="pending-category"><option value="">כל התחומים</option><option>בקרי</option><option>קשר</option><option>ל״א</option><option>אישורים והיתרים</option><option>פירוקים והרכבות</option></select></label><label class="input-field list-search">מספר תקלה<input id="pending-issue-search" type="search" inputmode="numeric" placeholder="לדוגמה: 000001" autocomplete="off"></label></div>
         <div id="pending-list" class="issue-list"></div>
       </section>
       <section id="closed-section" class="card" aria-labelledby="closed-list-title">
@@ -277,6 +279,7 @@
         <div id="closed-list" class="issue-list"></div>
       </section>
       </div>
+      <div id="view-history" data-manager-view="history" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">היסטוריה</p><h2>מטוס ומכלול</h2></div></div><div class="manager-grid"><label class="input-field">טייסת<select id="history-squadron"><option value="">בחר טייסת</option></select></label><label class="input-field">מספר מטוס<input id="history-aircraft" type="search" inputmode="numeric" placeholder="מספר מטוס"></label><label class="input-field">מספר סידורי למכלול<input id="history-unit" type="search" placeholder="מספר סידורי"></label></div><p class="section-note">בחר טייסת ומטוס להצגת כל התקלות והחלפות המכלולים, או הזן מספר סידורי לחיפוש מכלול בכל המטוסים.</p><div id="history-results" class="issue-list"></div></section></div>
       <div id="view-users" data-manager-view="users" hidden>
         <section class="card" aria-labelledby="users-title">
           <div class="section-heading"><div><p class="section-kicker">ניהול צוות</p><h2 id="users-title">משתמשים</h2></div></div>
@@ -294,6 +297,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.6.3"></script>
+  <script type="module" src="app.js?v=1.7.0"></script>
 </body>
 </html>

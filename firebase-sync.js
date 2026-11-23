@@ -87,7 +87,6 @@ export function gate(role) {
   panel.hidden = true;
   panel.innerHTML = '<h2>כניסה למערכת</h2><p>התחבר לחשבון שלך.</p><form><label class="input-field">דואר אלקטרוני<input type="email" required autocomplete="username"></label><label class="input-field">סיסמה<input type="password" required autocomplete="current-password"></label><button class="primary-button" type="submit">התחבר</button></form><p class="copy-status" role="status" aria-live="polite">בודק התחברות…</p>';
   main.before(panel);
-  if (role === "manager") panel.querySelector('[type="email"]').value = "roisuissa6@gmail.com";
   const status = panel.querySelector('[role="status"]');
   const help = document.createElement("div");
   help.className = "auth-help";
@@ -100,7 +99,7 @@ export function gate(role) {
     help.replaceChildren();
     if (role === "manager") {
       const instructions = document.createElement("p");
-      instructions.textContent = "ההזדהות ב־Firebase הצליחה. פרסם את כללי Firestore המעודכנים ב־Firebase Console ולחץ ״בדוק שוב״. הרשאת נימר תיווצר אוטומטית. ה־UID שלך:";
+      instructions.textContent = "ההזדהות ב־Firebase הצליחה. ודא שקיים מסמך הרשאת מנהל פעיל ב־Firestore עבור ה־UID הזה, פרסם את הכללים המעודכנים ולחץ ״בדוק שוב״. ה־UID שלך:";
       const uid = document.createElement("code"); uid.textContent = user.uid;
       const copy = document.createElement("button"); copy.type = "button"; copy.className = "secondary-button"; copy.textContent = "העתק UID";
       copy.addEventListener("click", async () => { await navigator.clipboard.writeText(user.uid); copy.textContent = "הועתק"; });
@@ -134,16 +133,11 @@ export function gate(role) {
       delete status.dataset.state;
       try {
         const roleRef = doc(db, "roles", user.uid);
-        let roleDoc = await Promise.race([
+        const roleDoc = await Promise.race([
           getDoc(roleRef),
           new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 15000))
         ]);
-        if (!roleDoc.exists() && role === "manager" && user.email === "roisuissa6@gmail.com") {
-          status.textContent = "יוצר הרשאת מנהל…";
-          await setDoc(roleRef, { role: "manager", name: "נימר", email: user.email, active: true, createdAt: new Date().toISOString() });
-          roleDoc = await getDoc(roleRef);
-        }
-        if (roleDoc.data()?.role !== role || roleDoc.data()?.active === false || (role === "manager" && user.email !== "roisuissa6@gmail.com")) {
+        if (roleDoc.data()?.role !== role || roleDoc.data()?.active === false) {
           panel.hidden = false;
           showSetup(user, `אין לחשבון הזה הרשאת ${role === "manager" ? "מנהל" : "טכנאי"} פעילה.`);
           return;
@@ -374,13 +368,13 @@ export async function submitForReview(id, record, state, session) {
   });
 }
 
-export async function approveIssue(id, reviewerUid, signature) {
+export async function approveIssue(id, reviewerUid, signature, managerReview = {}) {
   const issueRef = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(issueRef);
     if (!snapshot.exists() || snapshot.data().status !== "pendingReview") throw new Error("הדף אינו ממתין עוד לבדיקת בודק.");
     if (!signature.startsWith("data:image/png;base64,")) throw new Error("יש לחתום על בדיקת הדף.");
-    transaction.update(issueRef, { status: "closed", reviewedAt: new Date().toISOString(), reviewedBy: reviewerUid, reviewerSignature: signature });
+    transaction.update(issueRef, { status: "closed", reviewedAt: new Date().toISOString(), reviewedBy: reviewerUid, reviewerSignature: signature, managerReview });
   });
 }
 

@@ -1,10 +1,10 @@
-import "./sheet-data.js?v=1.6.3";
-import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.6.3";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.6.3";
-import { validateTreatment } from "./mechanic-validation.js?v=1.6.3";
-import { attachTimeNow } from "./time-now.js?v=1.6.3";
-import { issueTimeline } from "./lifecycle.js?v=1.6.3";
-import { createEditLock } from "./edit-lock.js?v=1.6.3";
+import "./sheet-data.js?v=1.7.0";
+import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue } from "./firebase-sync.js?v=1.7.0";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.7.0";
+import { validateTreatment } from "./mechanic-validation.js?v=1.7.0";
+import { attachTimeNow } from "./time-now.js?v=1.7.0";
+import { issueTimeline } from "./lifecycle.js?v=1.7.0";
+import { createEditLock } from "./edit-lock.js?v=1.7.0";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -347,6 +347,16 @@ if (managerClosedView && selectedSheet) {
     catch (error) { document.querySelector("#manager-edit-status").textContent = `ההחזרה נכשלה: ${error.message}`; button.disabled = false; }
   });
   const reviewPanel = document.querySelector("#review-panel");
+  const managerReview = remoteIssue.managerReview || {};
+  document.querySelectorAll("[data-review]").forEach((input) => { input[input.type === "checkbox" ? "checked" : "value"] = managerReview[input.dataset.review] || (input.type === "checkbox" ? false : ""); input.disabled = remoteIssue.status !== "pendingReview"; });
+  const firstTechnicianCard = document.querySelector(".safety-card") || document.querySelector(".parts-card");
+  if (firstTechnicianCard && firstTechnicianCard.parentElement === reviewPanel.parentElement) {
+    const details = document.createElement("details"); details.className = "card";
+    const heading = document.createElement("summary"); heading.textContent = "מידע הטכנאי והטיפול בתקלה · הצג/הסתר"; details.append(heading);
+    let node = firstTechnicianCard;
+    while (node && node !== reviewPanel) { const next = node.nextElementSibling; details.append(node); node = next; }
+    reviewPanel.before(details);
+  }
   reviewPanel.hidden = remoteIssue.status !== "pendingReview" && !remoteIssue.reviewerSignature;
   if (!reviewPanel.hidden) {
     const isPending = remoteIssue.status === "pendingReview";
@@ -363,7 +373,7 @@ if (managerClosedView && selectedSheet) {
     document.querySelector("#approve-sheet").addEventListener("click", async (event) => {
       if (!signature) { document.querySelector("#review-status").textContent = "יש לחתום כבודק הדף לפני הסגירה."; return; }
       const button = event.currentTarget; button.disabled = true;
-      try { await approveIssue(sheet.id, currentUser.uid, signature); location.replace("./#closed"); }
+      try { const review = Object.fromEntries([...document.querySelectorAll("[data-review]")].map((input) => [input.dataset.review, input.type === "checkbox" ? input.checked : input.value])); await approveIssue(sheet.id, currentUser.uid, signature, review); location.replace("./#closed"); }
       catch (error) { document.querySelector("#review-status").textContent = `הסגירה נכשלה: ${error.message}`; button.disabled = false; }
     });
   }
