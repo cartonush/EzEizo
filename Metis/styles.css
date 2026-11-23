@@ -89,7 +89,7 @@
 .directory-table:has(#systems-table) th:last-child, .directory-table:has(#components-table) th:last-child { width: 110px; }
 .directory-table:has(#systems-table) input, .directory-table:has(#components-table) input, .directory-table:has(#components-table) select { min-width: 0; max-width: 100%; }
 .directory-form { margin: 16px 0; align-items: end; }
-@media (max-width: 1150px) {
+@media (max-width: 1500px) {
   .technician-directory-table { min-width: 0; table-layout: auto; }
   .technician-directory-table thead { display: none; }
   .technician-directory-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; padding: 15px; border: 1px solid #dce6eb; border-radius: 12px; }

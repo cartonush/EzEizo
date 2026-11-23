@@ -5,7 +5,7 @@ import { validateTreatment } from "./mechanic-validation.js?v=1.7.6";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.7.6";
 import { createEditLock } from "./edit-lock.js?v=1.9.0";
-import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.2";
+import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.3";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
