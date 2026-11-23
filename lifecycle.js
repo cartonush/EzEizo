@@ -17,6 +17,7 @@ export function keyLoadTimeline(load) {
     events.push({ label: "נסגר", at: reopen.priorCompletedAt });
     events.push({ label: "נפתח לעריכה", at: reopen.at });
   }
-  if (load.status === "closed") events.push({ label: (load.reopenEvents || []).length ? "נסגר לאחר עריכה" : "נסגר", at: load.completedAt });
+  if (["pendingReview", "closed"].includes(load.status)) events.push({ label: "הוגש לבדיקת מנהל", at: load.completedAt });
+  if (load.status === "closed") events.push({ label: "נסגר בחתימת מנהל", at: load.reviewedAt || load.completedAt });
   return events.filter((event) => event.at);
 }

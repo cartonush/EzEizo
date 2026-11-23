@@ -11,9 +11,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.7.1">
-  <link rel="stylesheet" href="styles.css?v=1.7.1">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.7.1">
+  <link rel="stylesheet" href="../styles.css?v=1.7.2">
+  <link rel="stylesheet" href="styles.css?v=1.7.2">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.7.2">
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.7.1</span>
+      <span class="version-pill">v1.7.2</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -64,7 +64,7 @@
       <div id="view-keys" data-manager-view="keys" hidden>
 <div id="keys-loading" class="app-skeleton" role="status" aria-label="דף המפתחות נטען"><div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-input"></span></div></div>
 <div id="keys-content" hidden>
-<nav id="keys-nav" class="keys-nav" aria-label="דפי מפתחות"><button type="button" data-view="history">היסטוריית מפתחות</button><button type="button" data-view="create">הטענת מפתחות</button><button type="button" data-view="open">הטענות פתוחות</button><button type="button" data-view="closed">הטענות סגורות</button></nav>
+<nav id="keys-nav" class="keys-nav" aria-label="דפי מפתחות"><button type="button" data-view="history">היסטוריית מפתחות</button><button type="button" data-view="create">הטענת מפתחות</button><button type="button" data-view="open">הטענות פתוחות</button><button type="button" data-view="pending">לסגירה</button><button type="button" data-view="closed">הטענות סגורות</button></nav>
 <section id="history-view" class="card"><div class="section-heading"><div><p class="section-kicker">שלוש טייסות</p><h2>היסטוריית מפתחות</h2></div></div><p class="section-note">ארז כחול ושחק מתעדכנים בנפרד לאחר הטענה שהושלמה. סוג מפתח שלא נטען עדיין מסומן ״טרם הוטען״.</p><div class="review-tabs squad-tabs" id="history-tabs"></div><div id="history-table" class="table-wrap"></div><p id="history-status" class="copy-status" role="status"></p></section>
 <section id="create-view" hidden>
 <section class="card"><div class="section-heading"><div><p class="section-kicker">דף חדש</p><h2>הטענת מפתחות</h2></div></div><div class="manager-grid">
@@ -76,6 +76,7 @@
 <section class="card"><div class="section-heading"><div><p class="section-kicker">תדריך</p><h2>משימות לביצוע</h2></div></div><p>המשימה הראשונה תאושר ותיחתם בידי משלח המשימה בעת פתיחת הדף.</p><label class="replaced-toggle"><input id="key-briefed" type="checkbox"><span class="custom-check" aria-hidden="true"></span><span>תדריך בטיחות וניהול סיכונים ע״י מ״ע המחלקה / משלח המשימה</span></label><div class="signature-field"><span class="field-label">חתימת משלח המשימה</span><canvas id="key-dispatch-signature" class="signature-pad" aria-label="חתימת משלח המשימה"></canvas><button id="key-clear-signature" class="clear-signature" type="button">נקה חתימה</button></div><details class="key-tasks-details"><summary>הצג את 12 המשימות לביצוע</summary><ol id="manager-key-tasks" class="key-task-list"></ol></details></section>
 <button id="create-key-load" class="primary-button" type="button">פתח הטענת מפתחות</button><div id="key-create-loading" class="key-create-loading" role="status" aria-live="polite" hidden><p>הטענת המפתחות נפתחת…</p><div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-line short"></span></div><div class="skeleton-card"><span class="skeleton-line"></span><span class="skeleton-input"></span></div></div><p id="create-status" class="copy-status" role="status" aria-live="polite"></p></section>
 <section id="open-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">מעקב צוות</p><h2>הטענות פתוחות</h2></div></div><label class="input-field list-search">חיפוש לפי מספר הטענה<input id="open-key-search" type="search" inputmode="numeric" placeholder="לדוגמה: 1" autocomplete="off"></label><p class="key-numbering-status copy-status" role="status"></p><div id="open-key-loads" class="issue-list"></div></section>
+<section id="pending-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">בדיקת מנהל</p><h2>הטענות מפתחות לסגירה</h2></div></div><div id="pending-key-loads" class="issue-list"></div></section>
 <section id="closed-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">ארכיון הטענות</p><h2>הטענות סגורות</h2></div></div><label class="input-field list-search">חיפוש לפי מספר הטענה<input id="closed-key-search" type="search" inputmode="numeric" placeholder="לדוגמה: 1" autocomplete="off"></label><p class="key-numbering-status copy-status" role="status"></p><div id="closed-key-loads" class="issue-list"></div></section>
 <section id="work-view" hidden>
 <section id="key-edit-lock-notice" class="card edit-lock-notice" role="status" aria-live="polite" hidden><strong>בודק אם הטופס פנוי לעריכה…</strong><button id="retry-key-edit-lock" type="button" class="secondary-button">בדוק שוב</button></section>
@@ -177,7 +178,7 @@
         </div>
       </section>
 
-</div><section class="card"><button id="complete-key-load" type="button" class="primary-button">שמור וסגור הטענה</button><p id="work-status" class="copy-status" role="status" aria-live="polite"></p><button id="reopen-key-load" type="button" class="secondary-button" hidden>החזר את ההטענה לטכנאים לעריכה</button><p id="reopen-key-status" class="copy-status" role="status" aria-live="polite"></p><details id="key-reopen-history" class="key-reopen-history" hidden><summary>היסטוריית הטופס</summary><ol id="key-reopen-events"></ol></details></section>
+</div><section class="card"><button id="save-key-work" type="button" class="secondary-button">שמור וחזור לרשימה</button> <button id="complete-key-load" type="button" class="primary-button">העבר הטענה לבדיקת מנהל</button><p id="work-status" class="copy-status" role="status" aria-live="polite"></p><div id="key-review-panel" class="key-review-panel" hidden></div><button id="reopen-key-load" type="button" class="secondary-button" hidden>החזר את ההטענה לטכנאים לעריכה</button><p id="reopen-key-status" class="copy-status" role="status" aria-live="polite"></p><details id="key-reopen-history" class="key-reopen-history" hidden><summary>היסטוריית הטופס</summary><ol id="key-reopen-events"></ol></details></section>
 </section>
 
       </div></div>
@@ -249,7 +250,7 @@
         <div class="section-heading"><div><p class="section-kicker">סיום יצירה</p><h2 id="send-title">פתיחת התקלה</h2></div><span class="step-badge">06</span></div>
         <label class="replaced-toggle" for="creation-ack"><input id="creation-ack" type="checkbox"><span class="custom-check" aria-hidden="true"></span><span><strong>תדריך בטיחות וניהול סיכונים</strong><small>יועבר ע"י מ"ע התקלה / משלח המשימה וייחתם על ידו.</small></span></label>
         <div class="signature-field"><span class="field-label">חתימת משלח המשימה</span><canvas id="dispatcher-signature" class="signature-pad" aria-label="חתימת משלח המשימה"></canvas><button id="clear-dispatcher-signature" type="button" class="clear-signature">נקה חתימה</button></div>
-        <fieldset class="assignee-fieldset"><legend>הקצאה לטכנאים (לפחות טכנאי אחד)</legend><div id="new-assignees" class="assignee-options"></div><button id="add-assignee" class="secondary-button" type="button">+ הוסף טכנאי</button><p id="assignee-feedback" class="copy-status" role="status" aria-live="polite"></p></fieldset>
+        <fieldset class="assignee-fieldset"><legend>הקצאה לטכנאים (לפחות שני טכנאים)</legend><div id="new-assignees" class="assignee-options"></div><button id="add-assignee" class="secondary-button" type="button">+ הוסף טכנאי</button><p id="assignee-feedback" class="copy-status" role="status" aria-live="polite"></p></fieldset>
         <button id="create-link" class="primary-button" type="button">פתח תקלה</button>
         <p id="created-status" class="copy-status" role="status" aria-live="polite"></p>
         <p class="demo-note">התקלה נשלחת אוטומטית לטכנאי ונשמרת ב־Firestore.</p>
@@ -280,7 +281,7 @@
         <div id="closed-list" class="issue-list"></div>
       </section>
       </div>
-      <div id="view-history" data-manager-view="history" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">היסטוריה</p><h2>מטוס ומכלול</h2></div></div><div class="manager-grid"><label class="input-field">טייסת<select id="history-squadron"><option value="">בחר טייסת</option></select></label><label class="input-field">מספר מטוס<input id="history-aircraft" type="search" inputmode="numeric" placeholder="מספר מטוס"></label><label class="input-field">מספר סידורי למכלול<input id="history-unit" type="search" placeholder="מספר סידורי"></label></div><p class="section-note">בחר טייסת ומטוס להצגת כל התקלות והחלפות המכלולים, או הזן מספר סידורי לחיפוש מכלול בכל המטוסים.</p><div id="history-results" class="issue-list"></div></section></div>
+      <div id="view-history" data-manager-view="history" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">היסטוריה</p><h2>מטוס ומכלול</h2></div></div><div class="manager-grid"><label class="input-field">טייסת<select id="history-squadron"><option value="">בחר טייסת</option></select></label><div class="input-field"><label for="history-aircraft">מספר מטוס</label><div class="search-picker"><input id="history-aircraft" type="search" inputmode="numeric" placeholder="חפש ובחר מטוס" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="history-aircraft-options"><div id="history-aircraft-options" class="picker-list" role="listbox" hidden></div></div></div><div class="input-field"><label for="history-unit">מכלול</label><div class="search-picker"><input id="history-unit" type="search" placeholder="חפש ובחר מכלול" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="history-unit-options"><div id="history-unit-options" class="picker-list" role="listbox" hidden></div></div></div></div><p class="section-note">בחר טייסת ומטוס להצגת כל התקלות והחלפות המכלולים, או בחר מכלול להצגת פירוקים והרכבות בכל המטוסים. חיפוש לפי מספר סידורי יתווסף בהמשך.</p><div id="history-results" class="issue-list"></div></section></div>
       <div id="view-users" data-manager-view="users" hidden>
         <section class="card" aria-labelledby="users-title">
           <div class="section-heading"><div><p class="section-kicker">ניהול צוות</p><h2 id="users-title">משתמשים</h2></div></div>
@@ -298,6 +299,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.7.1"></script>
+  <script type="module" src="app.js?v=1.7.2"></script>
 </body>
 </html>

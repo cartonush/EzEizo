@@ -1,4 +1,4 @@
-import { SQUADRONS } from "../Metis/catalog.js?v=1.7.1";
+import { SQUADRONS } from "../Metis/catalog.js?v=1.7.2";
 
 export const KEY_SQUADRONS = ["101", "105", "109"];
 export const KEY_TASKS = [
@@ -37,7 +37,7 @@ export function compactRows(rows, columns) {
 export function keyHistoryByAircraft(loads) {
   const history = new Map();
   for (const load of loads || []) {
-    if (load.status !== "closed" || !load.completedAt || !Array.isArray(load.rows)) continue;
+    if (load.status !== "closed" || !load.reviewedAt && !load.completedAt || !Array.isArray(load.rows)) continue;
     load.rows.forEach((row, index) => {
       const id = `${load.squadron}_${row.aircraft}`;
       const entry = history.get(id) || { blue: null, shach: null };

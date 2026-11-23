@@ -180,6 +180,11 @@ td input:focus { border-color: #5da8c5; }
 .issue-item a, .issue-item summary { color: #17668f; font-size: 12px; font-weight: 700; cursor: pointer; }
 .issue-item details p { margin: 8px 0 0; line-height: 1.5; }
 .issue-item:hover { border-color: #91bdcd; }
+.card, .table-wrap, .issue-item, .details-grid > *, .signature-grid > * { min-width: 0; max-width: 100%; }
+.card h2, .section-heading > div { overflow-wrap: anywhere; }
+.table-wrap { overflow-x: auto; overscroll-behavior-inline: contain; }
+.sheet-save-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.sheet-save-toolbar span { min-width: 0; flex: 1 1 180px; color: var(--muted); font-size: 12px; }
 .transfer-panel { display: grid; justify-items: start; gap: 8px; margin-top: 18px; }
 .transfer-panel .section-note { margin: 0; }
 .file-button { cursor: pointer; }

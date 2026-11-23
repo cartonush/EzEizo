@@ -1,9 +1,9 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.7.1";
-import { SQUADRONS, SYSTEMS } from "./catalog.js?v=1.7.1";
-import { downloadReportPdf } from "./report-pdf.js?v=1.7.1";
-import { downloadFile } from "./report-pdf.js?v=1.7.1";
-import { createFormPdf } from "./form-pdf.js?v=1.7.1";
-import { zipFiles } from "./zip.js?v=1.7.1";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.7.2";
+import { SQUADRONS, SYSTEMS } from "./catalog.js?v=1.7.2";
+import { downloadReportPdf } from "./report-pdf.js?v=1.7.2";
+import { downloadFile } from "./report-pdf.js?v=1.7.2";
+import { createFormPdf } from "./form-pdf.js?v=1.7.2";
+import { zipFiles } from "./zip.js?v=1.7.2";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -136,7 +136,7 @@ function reportRecords() {
     id: issue.id, type: "issue", kind: "תקלה", serial: issue.sheet?.serial || "—", squadron: issue.sheet?.squadron || "", aircraft: aircraftNumber(issue.sheet?.squadron, issue.sheet?.aircraft), technician: issue.assigneeName || "—", technicianUids: [issue.assigneeUid], status: issue.status, title: issue.sheet?.fault || "—", openedAt: issue.createdAt, closedAt: issue.closed?.state?.closedAt || "", eventAt: issue.status === "closed" ? (issue.reviewedAt || issue.closed?.state?.closedAt || issue.createdAt) : issue.status === "pendingReview" ? (issue.closed?.state?.closedAt || issue.createdAt) : (issue.reopenedAt || issue.createdAt)
   }));
   const keys = reportLoads.flatMap((load) => (load.aircraftIds?.length ? load.aircraftIds : load.rows?.map((row) => row.aircraft) || []).map((aircraft) => ({
-    id: load.id, type: "key", kind: "מפתחות", serial: load.serial || "—", squadron: load.squadron, aircraft: aircraftNumber(load.squadron, aircraft), technician: (load.teamNames || []).join(" · ") || "—", technicianUids: load.teamUids || [], status: load.status, title: `הטענת מפתחות ${load.period || ""}`.trim(), openedAt: load.createdAt, closedAt: load.completedAt || "", eventAt: load.status === "closed" ? (load.completedAt || load.createdAt || load.date) : (load.reopenedAt || load.createdAt || load.date)
+    id: load.id, type: "key", kind: "מפתחות", serial: load.serial || "—", squadron: load.squadron, aircraft: aircraftNumber(load.squadron, aircraft), technician: (load.teamNames || []).join(" · ") || "—", technicianUids: load.teamUids || [], status: load.status, title: `הטענת מפתחות ${load.period || ""}`.trim(), openedAt: load.createdAt, closedAt: load.reviewedAt || (load.status === "closed" ? load.completedAt : ""), eventAt: load.status === "closed" ? (load.reviewedAt || load.completedAt || load.createdAt || load.date) : (load.reopenedAt || load.createdAt || load.date)
   })));
   return [...faults, ...keys];
 }
@@ -172,7 +172,8 @@ function makeReportRows(state) {
     .map((row) => state.kind !== "unit-serviceability" ? row : { ...row, title: [row.title, ...["removed", "installed"].flatMap((kind) => (reportIssues.find((issue) => issue.id === row.id)?.closed?.state?.[kind] || []).map((unit) => `${kind === "removed" ? "פורק" : "הורכב"} ${unit.name || "מכלול"} · ${unit.serial || "ללא מספר"}`))].join(" · ") })
     .sort((a, b) => state.kind === "aircraft"
       ? a.squadron.localeCompare(b.squadron, "he", { numeric: true }) || a.aircraft.localeCompare(b.aircraft, "he", { numeric: true }) || new Date(b.eventAt) - new Date(a.eventAt)
-      : new Date(b.eventAt) - new Date(a.eventAt));
+      : new Date(b.eventAt) - new Date(a.eventAt))
+    .filter((row, index, rows) => rows.findIndex((candidate) => candidate.type === row.type && candidate.serial === row.serial && candidate.aircraft === row.aircraft) === index);
 }
 
 function reportFilename(state = reportState(), producedAt = new Date()) {

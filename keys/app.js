@@ -1,9 +1,9 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft } from "../firebase-sync.js?v=1.7.1";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.7.1";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.7.1";
-import { attachTimeNow } from "../time-now.js?v=1.7.1";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.7.1";
-import { createEditLock } from "../edit-lock.js?v=1.7.1";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft } from "../firebase-sync.js?v=1.7.2";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.7.2";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.7.2";
+import { attachTimeNow } from "../time-now.js?v=1.7.2";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.7.2";
+import { createEditLock } from "../edit-lock.js?v=1.7.2";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -230,6 +230,19 @@ function renderClosed() {
     card.append(open); container.append(card);
   });
 }
+function renderPending() {
+  const container = $("#pending-key-loads"); if (!container) return;
+  container.replaceChildren();
+  const pending = loads.filter((load) => load.status === "pendingReview").sort((a, b) => (b.completedAt || "").localeCompare(a.completedAt || ""));
+  pending.forEach((load) => {
+    const card = make("article", undefined, "issue-item");
+    card.append(make("strong", `${load.serial || "—"} · טייסת ${load.squadron} · ${(load.aircraftIds || []).join(", ")}`), make("span", `צוות: ${(load.teamNames || []).join(" · ")}`));
+    const open = make("button", "בדוק וסגור", "secondary-button"); open.type = "button";
+    open.addEventListener("click", () => { location.hash = route(`work/${load.id}`); if (!embedded) showView(); });
+    card.append(open); container.append(card);
+  });
+  if (!pending.length) container.textContent = "אין הטענות מפתחות שממתינות לסגירה.";
+}
 function defaultWork(load) {
   return { actions: [true, ...Array(KEY_TASKS.length - 1).fill(false)], aircraft: load.rows.map((row) => ({ aircraft: row.aircraft, blueDone: false, shachDone: false, technicianNote: "" })), toolsEnabled: false, takenEnabled: false, rejectedEnabled: false, entryEnabled: false, interimEnabled: false, finalEnabled: false, tools: [], taken: [], rejected: [] };
 }
@@ -240,12 +253,63 @@ function readWork(load) {
   try { return { ...saved, ...JSON.parse(localStorage.getItem(`ezeizo-key-work:${load.id}`) || "{}") }; }
   catch { return saved; }
 }
+function renderKeyReview(load) {
+  const panel = $("#key-review-panel"); if (!panel) return;
+  panel.hidden = !manager || !["pendingReview", "closed"].includes(load.status);
+  if (panel.hidden) return;
+  const review = load.managerReview || {};
+  panel.innerHTML = `<div class="section-heading"><div><p class="section-kicker">בדיקת מנהל</p><h2>בקרה וסגירת הטענה</h2></div></div>
+    <div class="review-columns"><fieldset class="review-column"><legend>טיפול בתקלה</legend><label class="replaced-toggle"><input type="checkbox" data-key-review="verified"><span class="custom-check"></span><span>אומת</span></label><label class="replaced-toggle"><input type="checkbox" data-key-review="unitsReplaced"><span class="custom-check"></span><span>הוחלפו יחידות</span></label><label class="replaced-toggle"><input type="checkbox" data-key-review="repairPerformed"><span class="custom-check"></span><span>בוצע תיקון</span></label></fieldset>
+    <fieldset class="review-column"><legend>חוזרת</legend><label class="replaced-toggle"><input type="checkbox" data-key-review="missionCancelled"><span class="custom-check"></span><span>ביטול משימה</span></label><label class="replaced-toggle"><input type="checkbox" data-key-review="sortieCancelled"><span class="custom-check"></span><span>ביטול גיחה</span></label><label class="replaced-toggle"><input type="checkbox" data-key-repeat="yes"><span class="custom-check"></span><span>חוזרת: כן</span></label><label class="replaced-toggle"><input type="checkbox" data-key-repeat="no"><span class="custom-check"></span><span>חוזרת: לא</span></label></fieldset>
+    <fieldset class="review-column"><legend>היתרים / אישורים</legend><label class="replaced-toggle"><input type="checkbox" data-key-date-toggle="flightPermitUntil"><span class="custom-check"></span><span>היתר לטיסה עד תאריך</span></label><div class="review-date-field" data-key-date-wrap="flightPermitUntil" hidden><label class="input-field">תוקף ההיתר<input type="date" data-key-date="flightPermitUntil"></label><button type="button" class="secondary-button" data-key-today="flightPermitUntil">היום</button></div><label class="replaced-toggle"><input type="checkbox" data-key-review="trackingPermit"><span class="custom-check"></span><span>היתר למעקב</span></label><label class="replaced-toggle"><input type="checkbox" data-key-date-toggle="approvalUntil"><span class="custom-check"></span><span>אישור עד תאריך</span></label><div class="review-date-field" data-key-date-wrap="approvalUntil" hidden><label class="input-field">תוקף האישור<input type="date" data-key-date="approvalUntil"></label><button type="button" class="secondary-button" data-key-today="approvalUntil">היום</button></div></fieldset></div>
+    <div class="signature-field"><span class="field-label">חתימת בודק הדף</span><canvas id="key-review-signature" class="signature-pad" aria-label="חתימת בודק ההטענה"></canvas><button id="clear-key-review-signature" class="clear-signature" type="button">נקה חתימה</button></div>
+    <button id="save-key-review" type="button" class="secondary-button">שמור בקרה להמשך</button> <button id="approve-key-load" type="button" class="primary-button">חתום וסגור הטענה</button><p id="key-review-status" class="copy-status" role="status"></p>`;
+  panel.querySelectorAll("[data-key-review]").forEach((input) => { input.checked = Boolean(review[input.dataset.keyReview]); });
+  panel.querySelectorAll("[data-key-repeat]").forEach((input) => {
+    input.checked = input.dataset.keyRepeat === (review.recurrentAnswer || (review.recurrent ? "yes" : ""));
+    input.addEventListener("change", () => { if (input.checked) panel.querySelectorAll("[data-key-repeat]").forEach((other) => { if (other !== input) other.checked = false; }); });
+  });
+  panel.querySelectorAll("[data-key-date-toggle]").forEach((toggle) => {
+    const key = toggle.dataset.keyDateToggle, field = panel.querySelector(`[data-key-date="${key}"]`), wrap = panel.querySelector(`[data-key-date-wrap="${key}"]`);
+    field.value = review[key] || ""; toggle.checked = Boolean(field.value); wrap.hidden = !toggle.checked;
+    toggle.addEventListener("change", () => { wrap.hidden = !toggle.checked; if (!toggle.checked) field.value = ""; });
+  });
+  panel.querySelectorAll("[data-key-today]").forEach((button) => button.addEventListener("click", () => { panel.querySelector(`[data-key-date="${button.dataset.keyToday}"]`).value = currentDate(); }));
+  const closed = load.status === "closed";
+  let signature = "";
+  const clear = attachSignaturePad(panel.querySelector("#key-review-signature"), { initial: closed ? load.reviewerSignature || "" : "", onChange: (value) => { signature = value; } });
+  panel.querySelector("#clear-key-review-signature").hidden = closed;
+  panel.querySelector("#key-review-signature").style.pointerEvents = closed ? "none" : "auto";
+  panel.querySelector("#clear-key-review-signature").addEventListener("click", clear);
+  panel.querySelector("#approve-key-load").hidden = closed;
+  panel.querySelector("#save-key-review").textContent = closed ? "שמור עדכון בקרה" : "שמור בקרה להמשך";
+  const collect = () => {
+    const result = { verified: false, unitsReplaced: false, repairPerformed: false, missionCancelled: false, sortieCancelled: false, trackingPermit: false, inspectionPermitUntil: "", flightPermitUntil: "", approvalUntil: "", recurrent: false, recurrentAnswer: "" };
+    panel.querySelectorAll("[data-key-review]").forEach((input) => { result[input.dataset.keyReview] = input.checked; });
+    result.recurrentAnswer = panel.querySelector("[data-key-repeat]:checked")?.dataset.keyRepeat || "";
+    result.recurrent = result.recurrentAnswer === "yes";
+    panel.querySelectorAll("[data-key-date]").forEach((input) => { result[input.dataset.keyDate] = input.value; });
+    for (const toggle of panel.querySelectorAll("[data-key-date-toggle]:checked")) if (!result[toggle.dataset.keyDateToggle]) throw new Error("יש לבחור תאריך להיתר או לאישור שסומנו.");
+    return result;
+  };
+  panel.querySelector("#save-key-review").addEventListener("click", async (event) => {
+    const button = event.currentTarget; button.disabled = true;
+    try { await saveKeyManagerReview(load.id, user.uid, collect()); setMessage("#key-review-status", "הבקרה נשמרה."); }
+    catch (error) { setMessage("#key-review-status", `שמירת הבקרה נכשלה: ${error.message}`, true); }
+    finally { button.disabled = false; }
+  });
+  panel.querySelector("#approve-key-load").addEventListener("click", async (event) => {
+    const button = event.currentTarget; button.disabled = true;
+    try { if (!signature) throw new Error("יש לחתום כבודק הדף."); await approveKeyLoad(load.id, user.uid, signature, collect()); location.hash = route("closed"); }
+    catch (error) { setMessage("#key-review-status", `סגירת ההטענה נכשלה: ${error.message}`, true); button.disabled = false; }
+  });
+}
 function renderWork() {
   if (!activeLoad) return;
-  const load = activeLoad, closed = load.status === "closed" || manager || !editLock?.held;
+  const load = activeLoad, closed = load.status !== "open" || manager || !editLock?.held;
   const lockNotice = $("#key-edit-lock-notice");
   if (lockNotice) lockNotice.hidden = manager || load.status !== "open" || Boolean(editLock?.held);
-  $("#work-summary").textContent = `${load.serial ? `${load.serial} · ` : ""}${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${load.status === "closed" ? " · נסגר" : ""}`;
+  $("#work-summary").textContent = `${load.serial ? `${load.serial} · ` : ""}${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${load.status === "closed" ? " · נסגר" : load.status === "pendingReview" ? " · ממתין לבדיקת מנהל" : ""}`;
   $("#work-manager-notes").textContent = load.managerNotes || "";
   $("#work-manager-notes").hidden = !load.managerNotes;
   const table = document.createElement("table"); table.className = "work-aircraft-table";
@@ -296,14 +360,16 @@ function renderWork() {
   $("#reference-table").replaceChildren(reference);
   bindExtraTables(closed);
   $("#complete-key-load").hidden = closed;
-  $("#reopen-key-load").hidden = !manager || load.status !== "closed";
+  $("#save-key-work")?.toggleAttribute("hidden", closed);
+  $("#reopen-key-load").hidden = !manager || !["closed", "pendingReview"].includes(load.status);
+  renderKeyReview(load);
   setMessage("#reopen-key-status", "");
   $("#key-reopen-history").hidden = !manager;
   if (manager) {
     $("#key-reopen-history").open = true;
     $("#key-reopen-events").replaceChildren(...keyLoadTimeline(load).map(({ label, at }) => make("li", `${label} · ${new Date(at).toLocaleString("he-IL")}`)));
   }
-  setMessage("#work-status", load.status === "closed" ? "ההטענה נסגרה וההיסטוריה עודכנה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול לסגור את ההטענה." : !editLock?.held ? "העריכה ממתינה לנעילת הטופס. בדוק את ההודעה שמעליו." : "ההתקדמות נשמרת במכשיר ובשרת עד לסגירת הטופס.");
+  setMessage("#work-status", load.status === "closed" ? "ההטענה נסגרה לאחר בדיקת מנהל וההיסטוריה עודכנה." : load.status === "pendingReview" ? "ההטענה ממתינה לבדיקת מנהל; הטכנאים אינם יכולים לערוך אותה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול להגיש את ההטענה לבדיקה." : !editLock?.held ? "העריכה ממתינה לנעילת הטופס. בדוק את ההודעה שמעליו." : "ההתקדמות נשמרת במכשיר ובשרת עד להגשה לבדיקה.");
 }
 const signatures = new Map();
 let signatureLoadId = "";
@@ -377,12 +443,18 @@ $("#complete-key-load").addEventListener("click", async () => {
   const error = validateWork(); if (error) return setMessage("#work-status", error, true);
   const button = $("#complete-key-load"); button.disabled = true;
   const clean = { ...work }; for (const [type, columns] of Object.entries(KEY_TABLES)) clean[type] = compactRows(work[type], columns);
-  try { clearTimeout(draftTimer); draftTimer = null; await pendingDraft.catch(() => {}); await closeKeyLoad(activeLoad.id, user.uid, clean, editLock.session); try { localStorage.removeItem(`ezeizo-key-work:${activeLoad.id}`); } catch { /* The server already saved the completed form. */ } editLock.dispose(); editLock = null; if (manager) { location.hash = route("open"); showView(); } else location.replace("./"); }
+  try { clearTimeout(draftTimer); draftTimer = null; await pendingDraft.catch(() => {}); await closeKeyLoad(activeLoad.id, user.uid, clean, editLock.session); try { localStorage.removeItem(`ezeizo-key-work:${activeLoad.id}`); } catch { /* The server already saved the completed form. */ } editLock.dispose(); editLock = null; location.replace("./"); }
   catch (failure) { setMessage("#work-status", `סגירת ההטענה נכשלה: ${failure.message}`, true); }
   finally { button.disabled = false; }
 });
+$("#save-key-work")?.addEventListener("click", async (event) => {
+  if (!activeLoad || !editLock?.held) return setMessage("#work-status", "אין נעילת עריכה פעילה. לחץ על בדוק שוב.", true);
+  const button = event.currentTarget; button.disabled = true;
+  try { clearTimeout(draftTimer); draftTimer = null; await queueDraft(activeLoad.id, structuredClone(work), editLock.session); await editLock.release(); location.replace("./"); }
+  catch (error) { setMessage("#work-status", `שמירת הטיוטה המשותפת נכשלה: ${error.message}`, true); button.disabled = false; }
+});
 $("#reopen-key-load").addEventListener("click", async () => {
-  if (!manager || activeLoad?.status !== "closed") return;
+  if (!manager || !["closed", "pendingReview"].includes(activeLoad?.status)) return;
   const button = $("#reopen-key-load"); button.disabled = true;
   setMessage("#reopen-key-status", "מחזיר את ההטענה לצוות…");
   try {
@@ -402,7 +474,7 @@ function showView() {
   activeLoad = workId ? loads.find((item) => item.id === workId) : null;
   if (activeLoad && !manager && !activeLoad.teamUids.includes(user.uid)) activeLoad = null;
   if (!manager && loadsReady && !activeLoad) { location.replace("./"); return; }
-  const view = activeLoad ? "work" : manager && ["history", "create", "open", "closed"].includes(hash) ? hash : "open";
+  const view = activeLoad ? "work" : manager && ["history", "create", "open", "pending", "closed"].includes(hash) ? hash : "open";
   const wantsLock = !manager && view === "work" && activeLoad?.status === "open";
   if (!wantsLock || lockedLoadId !== activeLoad.id) {
     const oldLock = editLock, oldId = lockedLoadId;
@@ -421,20 +493,21 @@ function showView() {
     });
     void editLock.acquire();
   }
-  ["history", "create", "open", "closed", "work"].forEach((name) => { $(`#${name}-view`).hidden = name !== view; });
+  ["history", "create", "open", "closed", "work", ...(manager ? ["pending"] : [])].forEach((name) => { $(`#${name}-view`).hidden = name !== view; });
   if (manager && !embedded) $("#keys-manager-nav").hidden = false;
   $("#keys-nav").hidden = !manager || view === "work";
   $(backSelector).hidden = manager && view !== "work";
-  $(backSelector).href = manager ? view === "work" ? `#${route(activeLoad?.status === "closed" ? "closed" : "open")}` : embedded ? "#home" : "../Metis/#home" : "./";
+  $(backSelector).href = manager ? view === "work" ? `#${route(activeLoad?.status === "closed" ? "closed" : activeLoad?.status === "pendingReview" ? "pending" : "open")}` : embedded ? "#home" : "../Metis/#home" : "./";
   $(backSelector).textContent = "→ חזרה";
   $(backSelector).setAttribute("aria-label", view === "work" ? `חזרה להטענות ${activeLoad?.status === "closed" ? "סגורות" : "פתוחות"}` : "חזרה");
   $("#keys-nav").querySelectorAll("button").forEach((button) => { if (button.dataset.view === view) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
   if (view === "history") renderHistory();
   if (view === "create" && !dispatchPadReady) { clearDispatch = attachSignaturePad($("#key-dispatch-signature"), { onChange: (value) => { dispatchSignature = value; } }); dispatchPadReady = true; }
   if (view === "open") renderOpen();
+  if (view === "pending") renderPending();
   if (view === "closed") renderClosed();
   if (view === "work") {
-    if (workLoadId !== activeLoad.id || !editLock?.held || activeLoad.status === "closed") work = readWork(activeLoad);
+    if (workLoadId !== activeLoad.id || !editLock?.held || activeLoad.status !== "open") work = readWork(activeLoad);
     workLoadId = activeLoad.id;
     renderWork();
   } else { workLoadId = ""; }

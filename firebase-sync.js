@@ -29,7 +29,7 @@ export async function acquireEditLock(kind, serialOrId, formId, user, session) {
   return runTransaction(db, async (transaction) => {
     const [current, form] = await Promise.all([transaction.get(ref), transaction.get(doc(db, kind === "key" ? "keyLoads" : "issues", formId))]);
     if (!form.exists() || form.data().status !== "open") throw new Error("הטופס אינו פתוח לעריכה.");
-    if (kind === "key" ? !form.data().teamUids.includes(user.uid) : form.data().assigneeUid !== user.uid || form.data().sheet.serial !== serialOrId) throw new Error("אינך משויך לטופס הזה.");
+    if (kind === "key" ? !form.data().teamUids.includes(user.uid) : !(form.data().teamUids || [form.data().assigneeUid]).includes(user.uid) || form.data().sheet.serial !== serialOrId) throw new Error("אינך משויך לטופס הזה.");
     const lock = current.data(), now = Date.now();
     if (lock && lock.expiresAt.toMillis() > now && lock.session !== session) return { held: false, ownerName: lock.ownerName, expiresAt: lock.expiresAt.toMillis() };
     transaction.set(ref, { kind, formId, serial: serialOrId, ownerUid: user.uid, ownerName: user.name || user.email || "טכנאי", session, expiresAt: Timestamp.fromMillis(now + leaseMillis) });
@@ -169,10 +169,14 @@ export function revealApp() {
 }
 
 export function watchIssues(onChange, onError, technicianUid = null) {
-  const source = technicianUid ? query(collection(db, "issues"), where("assigneeUid", "==", technicianUid)) : collection(db, "issues");
-  return onSnapshot(source, (snapshot) => {
-    onChange(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data(), sheet: restoredSheet(entry.data().sheet) })));
-  }, onError);
+  const source = collection(db, "issues");
+  const mapDocs = (snapshot) => snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data(), sheet: restoredSheet(entry.data().sheet) }));
+  if (!technicianUid) return onSnapshot(source, (snapshot) => onChange(mapDocs(snapshot)), onError);
+  const snapshots = [null, null];
+  const merge = () => onChange([...new Map(snapshots.flatMap((items) => items || []).map((item) => [item.id, item])).values()]);
+  const unsubs = [query(source, where("assigneeUid", "==", technicianUid)), query(source, where("teamUids", "array-contains", technicianUid))]
+    .map((queryRef, index) => onSnapshot(queryRef, (snapshot) => { snapshots[index] = mapDocs(snapshot); merge(); }, onError));
+  return () => unsubs.forEach((unsubscribe) => unsubscribe());
 }
 
 export function watchAircraftConstants(onChange, onError) {
@@ -208,22 +212,20 @@ export async function createIssue(sheet, assignee, preserveSerial = false) {
   });
 }
 
-// One serial represents the job; each technician gets a private form and closure.
+// One serial and one document represent the team's shared form.
 export async function createAssignedIssues(sheet, assignees) {
-  if (assignees.length < 1 || new Set(assignees.map(({ uid }) => uid)).size !== assignees.length) throw new Error("יש לבחור לפחות טכנאי אחד, ללא כפילויות.");
-  const refs = assignees.map(() => doc(collection(db, "issues")));
+  if (assignees.length < 2 || new Set(assignees.map(({ uid }) => uid)).size !== assignees.length) throw new Error("יש לבחור לפחות שני טכנאים, ללא כפילויות.");
+  const ref = doc(collection(db, "issues"));
   return runTransaction(db, async (transaction) => {
     const counter = await transaction.get(counterRef);
     const next = (Number(counter.data()?.last) || 0) + 1;
     if (next > 9999999999) throw new Error("מספרי התקלות אזלו.");
     const serial = String(next).padStart(10, "0");
     transaction.set(counterRef, { last: next });
-    refs.forEach((ref, index) => {
-      const assignee = assignees[index];
-      transaction.set(ref, {
-        sheet: storedSheet({ ...sheet, id: ref.id, serial, technicians: assignees.map(({ name }) => name).join(" · ") }),
-        status: "open", assigneeUid: assignee.uid, assigneeName: assignee.name, createdAt: new Date().toISOString()
-      });
+    transaction.set(ref, {
+      sheet: storedSheet({ ...sheet, id: ref.id, serial, technicians: assignees.map(({ name }) => name).join(" · ") }),
+      status: "open", assigneeUid: assignees[0].uid, assigneeName: assignees[0].name,
+      teamUids: assignees.map(({ uid }) => uid), teamNames: assignees.map(({ name }) => name), createdAt: new Date().toISOString()
     });
     return serial;
   });
@@ -282,7 +284,26 @@ export async function closeKeyLoad(id, completedBy, work, session) {
     const load = current.data();
     if (!load.teamUids.includes(completedBy)) throw new Error("אינך משויך לצוות ההטענה.");
     const completedAt = new Date().toISOString();
-    transaction.update(ref, { status: "closed", work, completedAt, completedBy, workDraft: deleteField() });
+    transaction.update(ref, { status: "pendingReview", work, completedAt, completedBy, workDraft: deleteField() });
+  });
+}
+
+export async function approveKeyLoad(id, managerUid, signature, managerReview) {
+  const ref = doc(db, "keyLoads", id);
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(ref);
+    if (!current.exists() || current.data().status !== "pendingReview") throw new Error("ההטענה אינה ממתינה עוד לבדיקת מנהל.");
+    if (!signature.startsWith("data:image/png;base64,")) throw new Error("יש לחתום לפני סגירת ההטענה.");
+    transaction.update(ref, { status: "closed", reviewedAt: new Date().toISOString(), reviewedBy: managerUid, reviewerSignature: signature, managerReview });
+  });
+}
+
+export async function saveKeyManagerReview(id, managerUid, managerReview) {
+  const ref = doc(db, "keyLoads", id);
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(ref);
+    if (!current.exists() || !["pendingReview", "closed"].includes(current.data().status)) throw new Error("ההטענה אינה ממתינה לבקרה או סגורה.");
+    transaction.update(ref, { managerReview, reviewUpdatedAt: new Date().toISOString(), reviewUpdatedBy: managerUid });
   });
 }
 
@@ -314,7 +335,7 @@ export async function reopenKeyLoad(id, managerUid) {
   const ref = doc(db, "keyLoads", id);
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(ref);
-    if (!snapshot.exists() || snapshot.data().status !== "closed") throw new Error("ההטענה כבר פתוחה או אינה קיימת.");
+    if (!snapshot.exists() || !["closed", "pendingReview"].includes(snapshot.data().status)) throw new Error("ההטענה כבר פתוחה או אינה קיימת.");
     const load = snapshot.data();
     const reopenedAt = new Date().toISOString();
     transaction.update(ref, {
@@ -363,8 +384,19 @@ export async function submitForReview(id, record, state, session) {
     const current = await transaction.get(issueRef);
     if (!current.exists() || current.data().status !== "open") throw new Error("התקלה כבר נשלחה לבדיקה או אינה קיימת. רענן את הדף.");
     if (current.data().sheet.serial !== record.serial) throw new Error("מספר התקלה אינו תואם.");
-    if (current.data().assigneeUid !== auth.currentUser?.uid) throw new Error("השיוך לטכנאי השתנה. לא ניתן לשמור את הדף הזה.");
-    transaction.update(issueRef, { status: "pendingReview", closed: { record, state } });
+    if (!(current.data().teamUids || [current.data().assigneeUid]).includes(auth.currentUser?.uid)) throw new Error("השיוך לטכנאי השתנה. לא ניתן לשמור את הדף הזה.");
+    transaction.update(issueRef, { status: "pendingReview", closed: { record, state }, workDraft: deleteField() });
+  });
+}
+
+export async function saveIssueWorkDraft(id, uid, state, session) {
+  const ref = doc(db, "issues", id);
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(ref);
+    if (!current.exists() || current.data().status !== "open") throw new Error("התקלה אינה פתוחה עוד.");
+    if (!(current.data().teamUids || [current.data().assigneeUid]).includes(uid)) throw new Error("אינך משויך לצוות התקלה.");
+    await requireEditLock(transaction, "issue", current.data().sheet.serial, session, uid);
+    transaction.update(ref, { workDraft: { state, savedAt: new Date().toISOString(), savedBy: uid } });
   });
 }
 
@@ -382,7 +414,7 @@ export async function updateClosedIssueReview(id, reviewerUid, managerReview) {
   const issueRef = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(issueRef);
-    if (!snapshot.exists() || snapshot.data().status !== "closed") throw new Error("התקלה אינה סגורה עוד. רענן את הדף.");
+    if (!snapshot.exists() || !["closed", "pendingReview"].includes(snapshot.data().status)) throw new Error("התקלה אינה ממתינה לבקרה או סגורה. רענן את הדף.");
     transaction.update(issueRef, { managerReview, reviewUpdatedAt: new Date().toISOString(), reviewUpdatedBy: reviewerUid });
   });
 }

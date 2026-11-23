@@ -1,5 +1,5 @@
-import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.7.1";
-import { KEY_TASKS, KEY_TABLES } from "../keys/data.js?v=1.7.1";
+import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.7.2";
+import { KEY_TASKS, KEY_TABLES } from "../keys/data.js?v=1.7.2";
 
 const left = MARGIN, right = PAGE_WIDTH - MARGIN;
 const dateTime = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -213,9 +213,9 @@ async function issuePdf(issue) {
 
 async function keyPdf(load) {
   const state = load.work || {};
-  const pdf = pdfPages(`הטענת מפתחות ${show(load.serial)}`, `${load.status === "closed" ? "סגור" : "פתוח"} · טייסת ${load.squadron}`);
+  const pdf = pdfPages(`הטענת מפתחות ${show(load.serial)}`, `${load.status === "closed" ? "סגור" : load.status === "pendingReview" ? "ממתין לבדיקת מנהל" : "פתוח"} · טייסת ${load.squadron}`);
   pdf.heading("פרטי הטענה");
-  for (const [label, value] of [["מספר הטענה", load.serial], ["תאריך", load.date], ["שעה", load.time], ["טייסת", load.squadron], ["דת״ק", load.shelter], ["צוות", (load.teamNames || []).join(" · ")], ["נפתחה", dateTime(load.createdAt)], ["נסגרה", dateTime(load.completedAt)]]) if (value) pdf.text(label, value);
+  for (const [label, value] of [["מספר הטענה", load.serial], ["תאריך", load.date], ["שעה", load.time], ["טייסת", load.squadron], ["דת״ק", load.shelter], ["צוות", (load.teamNames || []).join(" · ")], ["נפתחה", dateTime(load.createdAt)], ["הוגשה לבדיקה", dateTime(load.completedAt)], ["נסגרה", dateTime(load.reviewedAt)]]) if (value) pdf.text(label, value);
   if (load.status === "open") pdf.paragraph("ההטענה פתוחה. נתונים שהטכנאי הזין ונשמרו במכשירו בלבד יופיעו כאן לאחר סגירת הטופס.");
   pdf.rows("רשימת הטענה", (load.rows || []).map((entry, index) => {
     const done = state.aircraft?.[index] || {};
@@ -230,6 +230,13 @@ async function keyPdf(load) {
   KEY_TASKS.forEach((task, index) => pdf.row([`${String(index + 1).padStart(2, "0")}. ${task}`, checked(index === 0 || state.actions?.[index])]));
   await pdf.signature("חתימת משלח המשימה", load.dispatcherSignature);
   await materials(pdf, state);
+  if (load.status === "closed") {
+    const review = load.managerReview || {};
+    pdf.heading("בקרת מנהל");
+    for (const [label, key] of [["אומת", "verified"], ["הוחלפו יחידות", "unitsReplaced"], ["בוצע תיקון", "repairPerformed"], ["חוזרת", "recurrent"], ["ביטול משימה", "missionCancelled"], ["ביטול גיחה", "sortieCancelled"], ["היתר למעקב", "trackingPermit"]]) pdf.text(label, checked(review[key]));
+    for (const [label, key] of [["היתר לטיסה עד", "flightPermitUntil"], ["אישור עד", "approvalUntil"]]) if (review[key]) pdf.text(label, review[key]);
+    await pdf.signature("חתימת בודק הדף", load.reviewerSignature);
+  }
   return pdf.blob();
 }
 

@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.7.1">
+  <link rel="stylesheet" href="../styles.css?v=1.7.2">
 </head>
 <body>
   <div class="app-shell">
@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.7.1</span>
+      <span class="version-pill">v1.7.2</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
       <div class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./" aria-label="חזרה לרשימת המשימות" hidden>→ חזרה</a></div>
     </header>
@@ -40,6 +40,7 @@
         <div id="mechanic-issues" class="issue-list"></div>
       </section>
       <div id="sheet-form" hidden>
+      <div class="card sheet-save-toolbar"><button id="save-sheet" type="button" class="primary-button">שמור וחזור לרשימה</button><span id="shared-save-status" role="status" aria-live="polite">הטיוטה נשמרת גם במכשיר; לחץ לשמירה משותפת לצוות.</span></div>
       <div id="closed-times" class="closed-times" hidden><div><span>שעת פתיחה</span><strong id="opened-at">—</strong></div><div><span>שעת סגירה</span><strong id="closed-at">—</strong></div></div>
       <section class="card form-lifecycle" aria-labelledby="lifecycle-title" hidden><h2 id="lifecycle-title">היסטוריית הטופס</h2><ol id="lifecycle-events" class="lifecycle-list"></ol></section>
       <section class="card summary-card" aria-labelledby="details-title">
@@ -251,6 +252,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.7.1"></script>
+  <script type="module" src="../app.js?v=1.7.2"></script>
 </body>
 </html>

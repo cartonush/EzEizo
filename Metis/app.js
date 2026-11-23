@@ -1,15 +1,16 @@
-import "../sheet-data.js?v=1.7.1";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.7.1";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.7.1";
-import { resolveAssignees } from "./assignee-selection.js?v=1.7.1";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.7.1";
-import { initKeyPages } from "../keys/app.js?v=1.7.1";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.7.1";
-import { FAULT_FILTERS, ORIGINS, filterIssues, unitHistory } from "./fault-taxonomy.js?v=1.7.1";
+import "../sheet-data.js?v=1.7.2";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote } from "../firebase-sync.js?v=1.7.2";
+import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.7.2";
+import { resolveAssignees } from "./assignee-selection.js?v=1.7.2";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.7.2";
+import { initKeyPages } from "../keys/app.js?v=1.7.2";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.7.2";
+import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.7.2";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
 let cloudIssues = [];
+let cloudKeyLoads = [];
 let technicians = [];
 const DRAFT_KEY = "ezeizo-metis-draft-v1";
 const PICKER_KEY = "ezeizo-metis-picker-v1";
@@ -268,7 +269,7 @@ document.querySelector("#create-link").addEventListener("click", async () => {
     acknowledgment.checked = false;
     draft.dispatcherSignature = "";
     clearDispatcherSignature();
-    setStatus("#created-status", `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. לכל טכנאי דף מילוי משלו.`);
+    setStatus("#created-status", `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. לצוות דף משותף אחד.`);
     window.location.hash = "open";
   } catch (error) { setStatus("#created-status", `פתיחת התקלה נכשלה: ${error.message}`, true); }
   finally { button.disabled = false; }
@@ -281,7 +282,7 @@ function addIssueCard(container, item, mode) {
   title.textContent = `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
   const subtitle = document.createElement("span");
   const fullIssue = cloudIssues.find((issue) => issue.id === item.id);
-  subtitle.textContent = `${item.fault || "ללא תיאור"} · ${mode === "closed" ? "סגורה" : mode === "pendingReview" ? "ממתינה לבודק הדף" : "פתוחה"} · ${fullIssue?.assigneeName || "לא שובצה"}`;
+  subtitle.textContent = `${item.fault || "ללא תיאור"} · ${mode === "closed" ? "סגורה" : mode === "pendingReview" ? "ממתינה לבודק הדף" : "פתוחה"} · ${(fullIssue?.teamNames || [fullIssue?.assigneeName || "לא שובצה"]).join(" · ")}`;
   card.append(title, subtitle);
   if (mode !== "open") {
     const view = document.createElement("a");
@@ -289,6 +290,8 @@ function addIssueCard(container, item, mode) {
     view.href = `./closed.html?id=${encodeURIComponent(item.id)}`;
     view.textContent = mode === "pendingReview" ? "בדוק וחתום" : "פתח דף סגור";
     card.append(view);
+  } else if (fullIssue?.teamUids?.length) {
+    const team = document.createElement("span"); team.textContent = `צוות משויך: ${fullIssue.teamNames.join(" · ")}`; card.append(team);
   } else {
     const assignLabel = document.createElement("label");
     assignLabel.className = "input-field";
@@ -342,12 +345,20 @@ function renderIssueLists() {
   delete closed.dataset.state;
   const filter = document.querySelector("#closed-filter").value;
   const matches = (selector, serial) => String(serial || "").includes(document.querySelector(selector).value.trim());
-  const allClosed = cloudIssues.filter((item) => item.status === "closed" && item.closed?.record && (!filter || item.assigneeUid === filter) && matches("#closed-issue-search", item.closed.record.serial)).map((item) => item.closed.record);
-  const awaiting = cloudIssues.filter((item) => item.status === "pendingReview" && item.closed?.record && matches("#pending-issue-search", item.closed.record.serial)).map((item) => item.closed.record);
+  const uniqueSerials = (items) => [...new Map(items.map((item) => [item.serial, item])).values()];
+  const allClosed = uniqueSerials(cloudIssues.filter((item) => item.status === "closed" && item.closed?.record && (!filter || item.assigneeUid === filter) && matches("#closed-issue-search", item.closed.record.serial)).map((item) => item.closed.record));
+  const awaiting = uniqueSerials(cloudIssues.filter((item) => item.status === "pendingReview" && item.closed?.record && matches("#pending-issue-search", item.closed.record.serial)).map((item) => item.closed.record));
   const active = filterIssues(cloudIssues, { mode: document.querySelector("#fault-mode").value, serial: document.querySelector("#open-issue-search").value, squadron: document.querySelector("#fault-squadron").value, aircraft: document.querySelector("#fault-aircraft").value.trim(), from: document.querySelector("#fault-from").value, to: document.querySelector("#fault-to").value, reviewFilters: [...document.querySelectorAll("[data-closed-filter]:checked")].map((input) => input.dataset.closedFilter), originFilters: [...document.querySelectorAll("[data-closed-origin]:checked")].map((input) => input.dataset.closedOrigin) });
-  active.forEach((issue) => addIssueCard(opened, issue.closed?.record || issue.sheet, issue.status));
+  [...new Map(active.map((issue) => [issue.sheet.serial, issue])).values()].forEach((issue) => addIssueCard(opened, issue.closed?.record || issue.sheet, issue.status));
   const pendingCategory = document.querySelector("#pending-category").value;
   awaiting.filter((item) => !pendingCategory || cloudIssues.find((issue) => issue.id === item.id)?.sheet?.reviewCategory === pendingCategory).forEach((item) => addIssueCard(pending, item, "pendingReview"));
+  if (!pendingCategory) cloudKeyLoads.filter((load) => load.status === "pendingReview" && matches("#pending-issue-search", load.serial)).forEach((load) => {
+    const card = document.createElement("article"); card.className = "issue-item";
+    const title = document.createElement("strong"); title.textContent = `הטענת מפתחות ${load.serial || "—"} · טייסת ${load.squadron}`;
+    const subtitle = document.createElement("span"); subtitle.textContent = `מטוסים: ${(load.aircraftIds || []).join(", ")} · צוות: ${(load.teamNames || []).join(" · ")}`;
+    const link = document.createElement("a"); link.className = "secondary-button"; link.href = `#keys/work/${encodeURIComponent(load.id)}`; link.textContent = "בדוק וסגור הטענה";
+    card.append(title, subtitle, link); pending.append(card);
+  });
   allClosed.forEach((item) => addIssueCard(closed, item, "closed"));
   if (!active.length) opened.textContent = "לא נמצאו תקלות התואמות לסינון.";
   if (!pending.children.length) pending.textContent = "לא נמצאו תקלות לסגירה התואמות לסינון.";
@@ -360,15 +371,15 @@ function renderFaultHistory() {
   results.replaceChildren();
   const squadron = document.querySelector("#history-squadron").value;
   const aircraft = document.querySelector("#history-aircraft").value.trim();
-  const serial = document.querySelector("#history-unit").value.trim();
-  if (!serial && (!squadron || !aircraft)) { results.textContent = "בחר טייסת ומטוס, או הזן מספר סידורי למכלול."; return; }
-  const matching = serial ? unitHistory(cloudIssues, serial).map(({ issue, kind, unit }) => ({ issue, detail: `${kind === "removed" ? "פורק" : "הורכב"}: ${unit.name || "מכלול"} · ${unit.serial}` })) : filterIssues(cloudIssues, { mode: "date", squadron, aircraft }).map((issue) => ({ issue, detail: "" }));
+  const component = document.querySelector("#history-unit").value.trim();
+  if (!component && (!squadron || !aircraft)) { results.textContent = "בחר טייסת ומטוס, או בחר מכלול מהרשימה."; return; }
+  const matching = component ? componentHistory(cloudIssues, component).map(({ issue, kind, unit }) => ({ issue, detail: `${kind === "removed" ? "פורק" : "הורכב"}: ${unit.name || "מכלול"} · ${unit.serial || "ללא מספר סידורי"}` })) : filterIssues(cloudIssues, { mode: "date", squadron, aircraft }).map((issue) => ({ issue, detail: "" }));
   matching.forEach(({ issue, detail }) => {
     const card = document.createElement("article"); card.className = "issue-item";
     const title = document.createElement("strong"); title.textContent = `תקלה ${issue.sheet?.serial || "—"} · ${issue.sheet?.squadron || "—"}/${issue.sheet?.aircraft || "—"} · ${issue.status === "closed" ? "סגורה" : issue.status === "pendingReview" ? "לסגירה" : "פתוחה"}`;
     const description = document.createElement("span"); description.textContent = `${new Date(issue.createdAt).toLocaleDateString("he-IL")} · ${issue.sheet?.fault || ""}${detail ? ` · ${detail}` : ""}`;
     card.append(title, description);
-    if (!serial) ["removed", "installed"].forEach((kind) => (issue.closed?.state?.[kind] || []).forEach((unit) => { const note = document.createElement("span"); note.textContent = `${kind === "removed" ? "פורק" : "הורכב"}: ${unit.name || "מכלול"} · ${unit.serial || "ללא מספר סידורי"}`; card.append(note); }));
+    if (!component) ["removed", "installed"].forEach((kind) => (issue.closed?.state?.[kind] || []).forEach((unit) => { const note = document.createElement("span"); note.textContent = `${kind === "removed" ? "פורק" : "הורכב"}: ${unit.name || "מכלול"} · ${unit.serial || "ללא מספר סידורי"}`; card.append(note); }));
     if (issue.status !== "open") { const link = document.createElement("a"); link.className = "secondary-button"; link.href = `./closed.html?id=${encodeURIComponent(issue.id)}`; link.textContent = "פתח דף תקלה"; card.append(link); }
     results.append(card);
   });
@@ -496,6 +507,25 @@ for (const squadron of Object.keys(SQUADRONS)) {
   document.querySelector("#fault-squadron").append(new Option(squadron, squadron));
   document.querySelector("#history-squadron").append(new Option(squadron, squadron));
 }
+for (const [inputId, optionsId, values] of [["history-aircraft", "history-aircraft-options", () => SQUADRONS[document.querySelector("#history-squadron").value]?.aircraft || []], ["history-unit", "history-unit-options", () => ["MLPRF", "PSP", "DMT"]]]) {
+  const input = document.getElementById(inputId), list = document.getElementById(optionsId);
+  function showChoices() {
+    list.replaceChildren();
+    const query = input.value.trim().toLocaleLowerCase("he");
+    values().filter((value) => String(value).toLocaleLowerCase("he").includes(query)).forEach((value) => {
+      const choice = document.createElement("button"); choice.type = "button"; choice.className = "picker-option"; choice.setAttribute("role", "option"); choice.textContent = value;
+      choice.addEventListener("pointerdown", (event) => event.preventDefault());
+      choice.addEventListener("click", () => { input.value = value; list.hidden = true; input.setAttribute("aria-expanded", "false"); renderIssueLists(); });
+      list.append(choice);
+    });
+    list.hidden = !list.children.length; input.setAttribute("aria-expanded", String(!list.hidden));
+  }
+  input.addEventListener("focus", showChoices);
+  input.addEventListener("input", showChoices);
+  input.addEventListener("blur", () => setTimeout(() => { list.hidden = true; input.setAttribute("aria-expanded", "false"); }, 200));
+  input.addEventListener("keydown", (event) => { if (event.key === "Escape") { list.hidden = true; input.setAttribute("aria-expanded", "false"); } if (event.key === "Enter" && !list.hidden && list.firstElementChild) { event.preventDefault(); list.firstElementChild.click(); } });
+}
+document.querySelector("#history-squadron").addEventListener("change", () => { document.querySelector("#history-aircraft").value = ""; renderIssueLists(); });
 for (const id of ["fault-mode", "fault-squadron", "fault-aircraft", "fault-from", "fault-to", "pending-category", "history-squadron", "history-aircraft", "history-unit"]) document.getElementById(id).addEventListener("input", renderIssueLists);
 document.querySelector("#fault-mode").addEventListener("change", () => { document.querySelector("#closed-review-filters").hidden = document.querySelector("#fault-mode").value !== "closed"; });
 function renderUsers() {
@@ -582,7 +612,7 @@ initAircraftConstants({ user: managerUser, onProfilesLoaded: () => {
   }
   initialProfilesApplied = true;
 } });
-watchKeyLoads((loads) => updateReportData({ loads }), (error) => { setStatus("#report-error", `טעינת הטענות נכשלה: ${error.message}`, true); });
+watchKeyLoads((loads) => { cloudKeyLoads = loads; updateReportData({ loads }); renderIssueLists(); }, (error) => { setStatus("#report-error", `טעינת הטענות נכשלה: ${error.message}`, true); });
 renderConstants();
 renderActions();
 renderIssueLists();

@@ -1,10 +1,10 @@
-import "./sheet-data.js?v=1.7.1";
-import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.7.1";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.7.1";
-import { validateTreatment } from "./mechanic-validation.js?v=1.7.1";
-import { attachTimeNow } from "./time-now.js?v=1.7.1";
-import { issueTimeline } from "./lifecycle.js?v=1.7.1";
-import { createEditLock } from "./edit-lock.js?v=1.7.1";
+import "./sheet-data.js?v=1.7.2";
+import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.7.2";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.7.2";
+import { validateTreatment } from "./mechanic-validation.js?v=1.7.2";
+import { attachTimeNow } from "./time-now.js?v=1.7.2";
+import { issueTimeline } from "./lifecycle.js?v=1.7.2";
+import { createEditLock } from "./edit-lock.js?v=1.7.2";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -18,7 +18,7 @@ if (selectedId) {
   catch (error) { const list = document.querySelector("#mechanic-issues"); list.textContent = `טעינת התקלה נכשלה: ${error.message}`; list.dataset.state = "error"; }
 }
 const sheet = EzEizoData.normalizeSheet(remoteIssue?.sheet || EzEizoData.defaultSheet);
-const selectedSheet = Boolean(remoteIssue && (managerClosedView ? ["closed", "pendingReview"].includes(remoteIssue.status) : remoteIssue.assigneeUid === currentUser.uid));
+const selectedSheet = Boolean(remoteIssue && (managerClosedView ? ["closed", "pendingReview"].includes(remoteIssue.status) : (remoteIssue.teamUids || [remoteIssue.assigneeUid]).includes(currentUser.uid)));
 document.querySelector("#sheet-form").hidden = !selectedSheet || (!managerClosedView && remoteIssue?.status === "open");
 document.querySelector("#mechanic-back").hidden = !selectedSheet && !managerClosedView;
 document.querySelector(".queue-card").hidden = selectedSheet;
@@ -29,6 +29,7 @@ const repairField = document.querySelector("#repair-description");
 const unitsToggle = document.querySelector("#units-toggle");
 const unitsArea = document.querySelector("#units-area");
 let editLock = null;
+let loadedDraftAt = remoteIssue?.workDraft?.savedAt || "";
 if (selectedSheet && !managerClosedView && remoteIssue.status === "open") {
   const notice = document.createElement("section");
   notice.className = "card edit-lock-notice";
@@ -39,11 +40,16 @@ if (selectedSheet && !managerClosedView && remoteIssue.status === "open") {
   retry.addEventListener("click", () => editLock?.acquire());
   notice.append(message, retry);
   document.querySelector("#sheet-form").before(notice);
-  editLock = createEditLock({ kind: "issue", serialOrId: sheet.serial, formId: sheet.id, user: { uid: currentUser.uid, name: remoteIssue.assigneeName }, onChange: ({ held, message: info }) => {
+  editLock = createEditLock({ kind: "issue", serialOrId: sheet.serial, formId: sheet.id, user: { uid: currentUser.uid, name: currentUser.name || remoteIssue.assigneeName }, onChange: ({ held, message: info }) => {
     notice.hidden = held;
     message.textContent = info;
-    document.querySelector("#sheet-form").hidden = !held;
-    if (held) setupSignaturePads();
+    document.querySelector("#sheet-form").hidden = true;
+    if (held) void getIssue(sheet.id).then((latest) => {
+      if (!editLock?.held) return;
+      if ((latest.workDraft?.savedAt || "") !== loadedDraftAt) { location.reload(); return; }
+      document.querySelector("#sheet-form").hidden = false;
+      setupSignaturePads();
+    }).catch((error) => { message.textContent = `בדיקת הטיוטה המשותפת נכשלה: ${error.message}`; editLock?.dispose(); });
   } });
   window.addEventListener("pagehide", () => editLock?.dispose());
   void editLock.acquire();
@@ -87,7 +93,7 @@ const defaultState = {
   entryTechnicianSignature: "", entryInspectorSignature: "", interimTechnicianSignature: "", interimInspectorSignature: "", interimToolsSignature: "",
   finalTechnicianSignature: "", finalInspectorSignature: "", finalLeadSignature: "", takenSignature: ""
 };
-let state = loadState();
+let state = remoteIssue?.status === "open" && remoteIssue.workDraft?.state ? { ...defaultState, ...remoteIssue.workDraft.state } : loadState();
 if (["closed", "pendingReview"].includes(remoteIssue?.status) && remoteIssue.closed?.state) {
   state = { ...defaultState, ...remoteIssue.closed.state };
 } else if (remoteIssue?.status === "open" && remoteIssue.reopenedAt && state.reopenMarker !== remoteIssue.reopenedAt) {
@@ -357,6 +363,10 @@ if (managerClosedView && selectedSheet) {
     field.closest(".review-date-field").hidden = !toggle.checked;
     toggle.addEventListener("change", () => { field.closest(".review-date-field").hidden = !toggle.checked; if (!toggle.checked) field.value = ""; });
   });
+  document.querySelectorAll("[data-date-today]").forEach((button) => button.addEventListener("click", () => {
+    const input = document.querySelector(`[data-review="${button.dataset.dateToday}"]`);
+    input.value = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  }));
   const answer = managerReview.recurrentAnswer || (managerReview.recurrent ? "yes" : "");
   document.querySelectorAll("[data-recurrent-answer]").forEach((toggle) => {
     toggle.checked = toggle.dataset.recurrentAnswer === answer;
@@ -382,12 +392,13 @@ if (managerClosedView && selectedSheet) {
   }
   reviewPanel.hidden = false;
   const saveClosed = document.querySelector("#save-closed-review");
-  saveClosed.hidden = remoteIssue.status !== "closed";
-  if (!saveClosed.hidden) saveClosed.addEventListener("click", async () => {
+  saveClosed.hidden = false;
+  saveClosed.textContent = remoteIssue.status === "pendingReview" ? "שמור בקרה להמשך" : "שמור עדכון בקרה";
+  saveClosed.addEventListener("click", async () => {
     try {
       const review = collectManagerReview(); saveClosed.disabled = true;
       await updateClosedIssueReview(sheet.id, currentUser.uid, review);
-      document.querySelector("#review-status").textContent = "הבקרה נשמרה. הסינון ברשימת התקלות הסגורות עודכן.";
+      document.querySelector("#review-status").textContent = remoteIssue.status === "pendingReview" ? "הבקרה נשמרה. אפשר לחזור אליה ולסגור בהמשך." : "הבקרה נשמרה. הסינון ברשימת התקלות הסגורות עודכן.";
     } catch (error) { document.querySelector("#review-status").textContent = `שמירת הבקרה נכשלה: ${error.message}`; }
     finally { saveClosed.disabled = false; }
   });
@@ -447,6 +458,19 @@ async function submitTreatment() {
   }
 }
 document.querySelector("#close-sheet").addEventListener("click", submitTreatment);
+document.querySelector("#save-sheet")?.addEventListener("click", async (event) => {
+  const button = event.currentTarget, status = document.querySelector("#shared-save-status");
+  if (!editLock?.held || remoteIssue?.status !== "open") { status.textContent = "הטופס אינו נעול לעריכה עבורך. בדוק שוב את הנעילה."; status.dataset.state = "error"; return; }
+  button.disabled = true;
+  try {
+    saveState();
+    await saveIssueWorkDraft(sheet.id, currentUser.uid, structuredClone(state), editLock.session);
+    status.textContent = "הטיוטה נשמרה לצוות בשרת."; delete status.dataset.state;
+    await editLock.release();
+    location.replace("./");
+  } catch (error) { status.textContent = `השמירה המשותפת נכשלה: ${error.message}`; status.dataset.state = "error"; }
+  finally { button.disabled = false; }
+});
 
 watchIssues((issues) => {
   cloudIssues = issues;

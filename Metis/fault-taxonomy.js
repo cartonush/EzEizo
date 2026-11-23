@@ -77,3 +77,10 @@ export function unitHistory(issues, serial) {
     (issue.closed?.state?.[kind] || []).filter((unit) => String(unit.serial || "").trim().toLocaleLowerCase("he") === needle)
       .map((unit) => ({ issue, kind, unit, at: issueDate(issue) })))).sort((a, b) => new Date(b.at) - new Date(a.at));
 }
+export function componentHistory(issues, name) {
+  const needle = String(name || "").trim().toLocaleLowerCase("he");
+  if (!needle) return [];
+  return issues.flatMap((issue) => ["removed", "installed"].flatMap((kind) =>
+    (issue.closed?.state?.[kind] || []).filter((unit) => String(unit.name || "").trim().toLocaleLowerCase("he") === needle)
+      .map((unit) => ({ issue, kind, unit, at: issueDate(issue) })))).sort((a, b) => new Date(b.at) - new Date(a.at));
+}
