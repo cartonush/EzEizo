@@ -15,6 +15,7 @@ export const FAULT_FILTERS = [
   ["open-squadron", "פתוחות לפי טייסת / יא״א"],
   ["serial", "סינון לפי מספר תקלה"],
   ["closed", "תקלות סגורות"],
+  ["technician-history", "היסטוריית טכנאי · כולל סגורות"],
   ["cancelled", "שילוחים שבוטלו"],
   ["pending", "תקלות לסגירה"]
 ];
@@ -33,7 +34,7 @@ export const permitFlags = (issue) => {
   };
 };
 
-export function filterIssues(issues, { mode = "open-default", serial = "", squadron = "", aircraft = "", from = "", to = "", category = "", reviewFilters = [], originFilters = [] } = {}) {
+export function filterIssues(issues, { mode = "open-default", serial = "", squadron = "", aircraft = "", from = "", to = "", category = "", technicianUids = null, reviewFilters = [], originFilters = [] } = {}) {
   const start = from ? new Date(`${from}T00:00:00`).getTime() : -Infinity;
   const end = to ? new Date(`${to}T23:59:59.999`).getTime() : Infinity;
   return issues.filter((issue) => {
@@ -41,6 +42,7 @@ export function filterIssues(issues, { mode = "open-default", serial = "", squad
     if (serial && !String(sheet.serial || "").includes(serial.trim())) return false;
     if (squadron && sheet.squadron !== squadron) return false;
     if (aircraft && sheet.aircraft !== aircraft) return false;
+    if (technicianUids && !technicianUids.some((uid) => (issue.teamUids || [issue.assigneeUid]).includes(uid))) return false;
     if (category && (sheet.reviewCategory || review.category || "") !== category) return false;
     if (mode === "closed") {
       const origins = Array.isArray(sheet.faultOrigins) && sheet.faultOrigins.length ? sheet.faultOrigins : [sheet.faultOrigin].filter(Boolean);
@@ -65,6 +67,7 @@ export function filterIssues(issues, { mode = "open-default", serial = "", squad
       case "sortie-cancelled": return Boolean(review.sortieCancelled);
       case "repeat": return review.recurrentAnswer === "yes" || Boolean(review.recurrent);
       case "closed": return issue.status === "closed";
+      case "technician-history": return technicianUids !== null && technicianUids.length > 0;
       case "cancelled": return issue.status === "cancelled";
       case "pending": return issue.status === "pendingReview";
       default: return true;

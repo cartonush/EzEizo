@@ -71,16 +71,32 @@ service cloud.firestore {
     match /roles/{uid} {
       allow get: if (request.auth != null && request.auth.uid == uid) || isManager();
       allow list: if isManager();
-      allow create: if isManager() && request.resource.data.keys().hasOnly(['role', 'name', 'email', 'active', 'createdAt'])
+      allow create: if isManager() && request.resource.data.keys().hasOnly(['role', 'name', 'email', 'personalNumber', 'active', 'createdAt'])
         && request.resource.data.role == 'technician'
         && request.resource.data.active == true
         && request.resource.data.name is string
         && request.resource.data.email is string
+        && (!request.resource.data.keys().hasAny(['personalNumber']) || (request.resource.data.personalNumber is string && request.resource.data.personalNumber.matches('[0-9]{7}')))
         && request.resource.data.createdAt is string;
       allow update: if isManager() && resource.data.role == 'technician'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active'])
         && request.resource.data.active is bool;
+      allow update: if isManager() && resource.data.role == 'technician'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['personalNumber'])
+        && request.resource.data.personalNumber is string
+        && request.resource.data.personalNumber.matches('[0-9]{7}')
+        && getAfter(/databases/$(database)/documents/personalNumbers/$(request.resource.data.personalNumber)).data.uid == uid;
       allow delete: if false;
+    }
+
+    match /personalNumbers/{number} {
+      allow get, list: if isManager();
+      allow create: if isManager() && number.matches('[0-9]{7}')
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid is string
+        && getAfter(/databases/$(database)/documents/roles/$(request.resource.data.uid)).data.personalNumber == number;
+      allow delete: if isManager() && getAfter(/databases/$(database)/documents/roles/$(resource.data.uid)).data.personalNumber != number;
+      allow update: if false;
     }
 
     match /metadata/{id} {
@@ -234,6 +250,20 @@ service cloud.firestore {
         && request.resource.data.assigneeUid is string
         && request.resource.data.assigneeName is string
         && activeTechnician(request.resource.data.assigneeUid);
+      allow update: if isManager() && resource.data.status == 'open'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sheet', 'assigneeUid', 'assigneeName', 'teamUids', 'teamNames', 'definitionUpdatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['sheet', 'definitionUpdatedAt'])
+        && request.resource.data.sheet.id == id
+        && request.resource.data.sheet.serial == resource.data.sheet.serial
+        && request.resource.data.teamUids is list
+        && request.resource.data.teamUids.size() >= 2 && request.resource.data.teamUids.size() <= 10
+        && request.resource.data.teamNames is list
+        && request.resource.data.teamNames.size() == request.resource.data.teamUids.size()
+        && request.resource.data.assigneeUid == request.resource.data.teamUids[0]
+        && activeTechnician(request.resource.data.assigneeUid)
+        && request.resource.data.definitionUpdatedAt is string
+        && (!exists(/databases/$(database)/documents/editLocks/$("issue_" + resource.data.sheet.serial))
+          || get(/databases/$(database)/documents/editLocks/$("issue_" + resource.data.sheet.serial)).data.expiresAt <= request.time);
       allow update: if isManager()
         && resource.data.status == 'open'
         && request.resource.data.status == 'cancelled'

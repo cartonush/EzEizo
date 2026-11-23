@@ -1,5 +1,5 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, refreshTechnicianTasks, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.7.9";
+import { gate, revealApp, watchIssues, watchKeyLoads, refreshTechnicianTasks, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.8.0";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
 import { validateTreatment } from "./mechanic-validation.js?v=1.7.6";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
@@ -50,7 +50,7 @@ if (selectedSheet && !managerClosedView && remoteIssue.status === "open") {
     document.querySelector("#sheet-form").hidden = true;
     if (held) void getIssue(sheet.id).then((latest) => {
       if (!editLock?.held) return;
-      if ((latest.workDraft?.savedAt || "") !== loadedDraftAt) { location.reload(); return; }
+      if ((latest.workDraft?.savedAt || "") !== loadedDraftAt || (latest.definitionUpdatedAt || "") !== (remoteIssue.definitionUpdatedAt || "")) { location.reload(); return; }
       document.querySelector("#sheet-form").hidden = false;
       setupSignaturePads();
     }).catch((error) => { message.textContent = `בדיקת הטיוטה המשותפת נכשלה: ${error.message}`; editLock?.dispose(); });

@@ -1,11 +1,11 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.7.9";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.8.0";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.7.6";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
 import { initKeyPages } from "../keys/app.js?v=1.7.6";
 import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.7.6";
-import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.7.6";
+import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -273,6 +273,55 @@ document.querySelector("#create-link").addEventListener("click", async () => {
   finally { button.disabled = false; }
 });
 
+function addDefinitionEditor(card, issue) {
+  const editor = document.createElement("details"); editor.className = "manager-note-editor";
+  const summary = document.createElement("summary"); summary.textContent = "ערוך פרטי תקלה וצוות";
+  const form = document.createElement("form"); form.className = "definition-editor";
+  const fields = document.createElement("div"); fields.className = "manager-grid";
+  const makeField = (label, control) => { const wrapper = document.createElement("label"); wrapper.className = "input-field"; wrapper.append(label, control); fields.append(wrapper); return control; };
+  const makeSelect = (label, values, selected) => { const select = document.createElement("select"); values.forEach((value) => select.append(new Option(value, value))); select.value = selected || ""; return makeField(label, select); };
+  const squadron = makeSelect("טייסת", Object.keys(SQUADRONS), issue.sheet.squadron);
+  const shelter = makeSelect("דת״ק", [], issue.sheet.shelter);
+  const aircraft = makeSelect("מספר מטוס", [], issue.sheet.aircraft);
+  const workshop = makeSelect("מוסך", ["", ...WORKSHOPS], issue.sheet.workshop);
+  const system = makeSelect("מערכת", SYSTEMS.map((entry) => entry.name), issue.sheet.systemName);
+  const code = makeField("קוד מערכת", document.createElement("input")); code.value = issue.sheet.systemCode || "";
+  const category = makeSelect("סיווג תקלה", ["", "בקרי", "קשר", "ל״א", "אישורים והיתרים", "פירוקים והרכבות"], issue.sheet.reviewCategory);
+  const fault = makeField("תיאור תקלה", document.createElement("textarea")); fault.rows = 3; fault.value = issue.sheet.fault || "";
+  const notes = makeField("הערות מנהל", document.createElement("textarea")); notes.rows = 2; notes.maxLength = 2000; notes.value = issue.sheet.managerNotes || "";
+  const refreshLocations = () => {
+    const oldShelter = shelter.value, oldAircraft = aircraft.value;
+    shelter.replaceChildren(...(SQUADRONS[squadron.value]?.shelters || []).map((value) => new Option(value, value)));
+    aircraft.replaceChildren(...(SQUADRONS[squadron.value]?.aircraft || []).map((value) => new Option(value, value)));
+    if ([...shelter.options].some((option) => option.value === oldShelter)) shelter.value = oldShelter;
+    if ([...aircraft.options].some((option) => option.value === oldAircraft)) aircraft.value = oldAircraft;
+    workshop.parentElement.hidden = shelter.value !== "מוסך";
+  };
+  squadron.addEventListener("change", refreshLocations); shelter.addEventListener("change", refreshLocations); refreshLocations();
+  const origins = document.createElement("fieldset"); origins.className = "origin-options";
+  const legend = document.createElement("legend"); legend.textContent = "מקור התקלה"; origins.append(legend);
+  ORIGINS.forEach((value) => { const label = document.createElement("label"); const box = document.createElement("input"); box.type = "checkbox"; box.value = value; box.checked = (issue.sheet.faultOrigins || [issue.sheet.faultOrigin]).includes(value); label.append(box, ` ${value}`); origins.append(label); });
+  const team = document.createElement("fieldset"); team.className = "assignee-fieldset";
+  const teamLegend = document.createElement("legend"); teamLegend.textContent = "צוות טכנאים · לפחות שניים"; team.append(teamLegend);
+  const selected = issue.teamUids || [issue.assigneeUid];
+  technicians.filter((person) => person.active || selected.includes(person.uid)).forEach((person) => { const label = document.createElement("label"); const box = document.createElement("input"); box.type = "checkbox"; box.value = person.uid; box.checked = selected.includes(person.uid); box.disabled = !person.active; label.append(box, ` ${person.name}${person.personalNumber ? ` · ${person.personalNumber}` : ""}`); team.append(label); });
+  const save = document.createElement("button"); save.type = "submit"; save.className = "primary-button"; save.textContent = "שמור פרטי תקלה";
+  const status = document.createElement("p"); status.className = "copy-status"; status.setAttribute("role", "status");
+  form.append(fields, origins, team, save, status); editor.append(summary, form); card.append(editor);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const members = [...team.querySelectorAll("input:checked")].map((box) => technicians.find((person) => person.uid === box.value && person.active)).filter(Boolean);
+    if (!fault.value.trim() || members.length < 2 || !shelter.value || !aircraft.value) { status.textContent = "מלא תיאור, מיקום ומטוס ובחר לפחות שני טכנאים פעילים."; status.dataset.state = "error"; return; }
+    save.disabled = true; status.textContent = "בודק נעילה ושומר…"; delete status.dataset.state;
+    try {
+      const faultOrigins = [...origins.querySelectorAll("input:checked")].map((box) => box.value);
+      await updateOpenIssueDefinition(issue.id, { squadron: squadron.value, shelter: shelter.value, workshop: shelter.value === "מוסך" ? workshop.value : "", aircraft: aircraft.value, systemName: system.value, systemCode: code.value.trim(), reviewCategory: category.value, fault: fault.value.trim(), managerNotes: notes.value.trim(), faultOrigins, faultOrigin: faultOrigins[0] || "" }, members);
+      status.textContent = "פרטי התקלה עודכנו ונשלחו לצוות.";
+    } catch (error) { status.textContent = `השמירה נכשלה: ${error.message}`; status.dataset.state = "error"; }
+    finally { save.disabled = false; }
+  });
+}
+
 function addIssueCard(container, item, mode) {
   const card = document.createElement("div");
   card.className = "issue-item";
@@ -332,6 +381,7 @@ function addIssueCard(container, item, mode) {
     editor.append(summary, existing, note, send, feedback); card.append(editor);
   }
   if (mode === "open") {
+    if (fullIssue?.teamUids?.length) addDefinitionEditor(card, fullIssue);
     const cancel = document.createElement("details"); cancel.className = "manager-note-editor";
     const summary = document.createElement("summary"); summary.textContent = "ביטול שילוח משימה";
     const reason = document.createElement("textarea"); reason.rows = 2; reason.maxLength = 500; reason.placeholder = "סיבת הביטול (חובה)"; reason.setAttribute("aria-label", `סיבת ביטול שילוח תקלה ${item.serial}`);
@@ -357,7 +407,10 @@ function renderIssueLists() {
   const matches = (selector, serial) => String(serial || "").includes(document.querySelector(selector).value.trim());
   const uniqueSerials = (items) => [...new Map(items.map((item) => [item.serial, item])).values()];
   const awaiting = uniqueSerials(cloudIssues.filter((item) => item.status === "pendingReview" && item.closed?.record && matches("#pending-issue-search", item.closed.record.serial)).map((item) => item.closed.record));
-  const active = filterIssues(cloudIssues, { mode: document.querySelector("#fault-mode").value, serial: document.querySelector("#open-issue-search").value, squadron: document.querySelector("#fault-squadron").value, aircraft: document.querySelector("#fault-aircraft").value.trim(), from: document.querySelector("#fault-from").value, to: document.querySelector("#fault-to").value, reviewFilters: [...document.querySelectorAll("[data-closed-filter]:checked")].map((input) => input.dataset.closedFilter), originFilters: [...document.querySelectorAll("[data-closed-origin]:checked")].map((input) => input.dataset.closedOrigin) });
+  const technician = document.querySelector("#fault-technician").value;
+  const technicianSearch = document.querySelector("#fault-technician-search").value.trim().toLocaleLowerCase("he");
+  const technicianUids = technician || technicianSearch ? technicians.filter((person) => (!technician || person.uid === technician) && (!technicianSearch || `${person.name} ${person.personalNumber || ""}`.toLocaleLowerCase("he").includes(technicianSearch))).map((person) => person.uid) : document.querySelector("#fault-mode").value === "technician-history" ? [] : null;
+  const active = filterIssues(cloudIssues, { mode: document.querySelector("#fault-mode").value, technicianUids, serial: document.querySelector("#open-issue-search").value, squadron: document.querySelector("#fault-squadron").value, aircraft: document.querySelector("#fault-aircraft").value.trim(), from: document.querySelector("#fault-from").value, to: document.querySelector("#fault-to").value, reviewFilters: [...document.querySelectorAll("[data-closed-filter]:checked")].map((input) => input.dataset.closedFilter), originFilters: [...document.querySelectorAll("[data-closed-origin]:checked")].map((input) => input.dataset.closedOrigin) });
   [...new Map(active.map((issue) => [issue.sheet.serial, issue])).values()].forEach((issue) => addIssueCard(opened, issue.closed?.record || issue.sheet, issue.status));
   const pendingCategory = document.querySelector("#pending-category").value;
   awaiting.filter((item) => !pendingCategory || cloudIssues.find((issue) => issue.id === item.id)?.sheet?.reviewCategory === pendingCategory).forEach((item) => addIssueCard(pending, item, "pendingReview"));
@@ -528,7 +581,7 @@ document.querySelector('#add-assignee').addEventListener('click', () => renderAs
 function updateUserSelectors() {
   renderAssigneeSelectors();
 }
-for (const id of ["open-issue-search", "pending-issue-search"]) document.getElementById(id).addEventListener("input", renderIssueLists);
+for (const id of ["open-issue-search", "pending-issue-search", "fault-technician-search"]) document.getElementById(id).addEventListener("input", renderIssueLists);
 FAULT_FILTERS.forEach(([value, label]) => document.querySelector("#fault-mode").append(new Option(label, value)));
 ORIGINS.forEach((origin) => { const label = document.createElement("label"); const input = document.createElement("input"); input.type = "checkbox"; input.dataset.closedOrigin = origin; label.append(input, document.createTextNode(` ${origin}`)); document.querySelector("#closed-origin-filters").append(label); });
 document.querySelector("#clear-closed-filters").addEventListener("click", () => { document.querySelectorAll("[data-closed-filter], [data-closed-origin]").forEach((input) => { input.checked = false; }); renderIssueLists(); });
@@ -586,21 +639,24 @@ document.querySelector("#history-reset").addEventListener("click", () => {
   document.querySelector("#history-unit-serial").disabled = true;
   renderFaultHistory();
 });
-for (const id of ["fault-mode", "fault-squadron", "fault-aircraft", "fault-from", "fault-to", "pending-category", "history-squadron", "history-aircraft", "history-aircraft-unit", "history-unit-serial"]) document.getElementById(id).addEventListener("input", renderIssueLists);
+for (const id of ["fault-mode", "fault-technician", "fault-squadron", "fault-aircraft", "fault-from", "fault-to", "pending-category", "history-squadron", "history-aircraft", "history-aircraft-unit", "history-unit-serial"]) document.getElementById(id).addEventListener("input", renderIssueLists);
 document.querySelector("#fault-mode").addEventListener("change", () => { document.querySelector("#closed-review-filters").hidden = document.querySelector("#fault-mode").value !== "closed"; });
 function renderUsers() {
   const list = document.querySelector("#users-list");
   const removedList = document.querySelector("#removed-users-list");
+  const search = document.querySelector("#user-search").value.trim().toLocaleLowerCase("he");
   list.replaceChildren();
   removedList.replaceChildren();
   if (!technicians.some((person) => person.active && !person.deleted)) list.textContent = "אין טכנאים פעילים. צור משתמש חדש.";
   if (!technicians.some((person) => !person.active && !person.deleted)) removedList.textContent = "אין משתמשים שהוסרו.";
   technicians.forEach((person) => {
     if (person.deleted) return;
+    if (search && !`${person.name} ${person.personalNumber || ""}`.toLocaleLowerCase("he").includes(search)) return;
     const card = document.createElement("div"); card.className = "issue-item";
     const title = document.createElement("strong"); title.textContent = `${person.name} · ${person.active ? "פעיל" : "הוסר"}`;
     const email = document.createElement("span"); email.textContent = person.email || person.uid;
-    const assigned = cloudIssues.filter((issue) => issue.assigneeUid === person.uid);
+    const personal = document.createElement("span"); personal.textContent = `מספר אישי: ${person.personalNumber || "טרם הוגדר"}`;
+    const assigned = cloudIssues.filter((issue) => (issue.teamUids || [issue.assigneeUid]).includes(person.uid));
     const distinct = new Map();
     const rank = { closed: 3, pendingReview: 2, open: 1, cancelled: 0 };
     assigned.forEach((issue) => {
@@ -613,7 +669,11 @@ function renderUsers() {
     const open = [...distinct.values()].filter((issue) => issue.status === "open");
     history.textContent = `תקלות פתוחות: ${open.length} · לסגירה: ${count("pendingReview")} · סגורות: ${closed.length} · מספרי תקלות פתוחות: ${open.map((issue) => issue.sheet.serial).join(", ") || "אין"}`;
     const view = document.createElement("button"); view.type = "button"; view.className = "secondary-button"; view.textContent = "הצג תקלות סגורות";
-    view.addEventListener("click", () => { location.hash = "closed"; showManagerView(); });
+    view.textContent = "היסטוריית טכנאי";
+    view.addEventListener("click", () => { location.hash = "open"; showManagerView(); document.querySelector("#fault-mode").value = "technician-history"; document.querySelector("#fault-technician").value = person.uid; renderIssueLists(); });
+    const numberInput = document.createElement("input"); numberInput.type = "text"; numberInput.inputMode = "numeric"; numberInput.pattern = "[0-9]{7}"; numberInput.maxLength = 7; numberInput.value = person.personalNumber || ""; numberInput.placeholder = "מספר אישי בן 7 ספרות"; numberInput.setAttribute("aria-label", `מספר אישי של ${person.name}`);
+    const saveNumber = document.createElement("button"); saveNumber.type = "button"; saveNumber.className = "secondary-button"; saveNumber.textContent = "שמור מספר אישי";
+    saveNumber.addEventListener("click", async () => { saveNumber.disabled = true; try { await setTechnicianPersonalNumber(person.uid, numberInput.value.trim()); setStatus("#user-status", `המספר האישי של ${person.name} נשמר.`); } catch (error) { setStatus("#user-status", `שמירת המספר האישי נכשלה: ${error.message}`, true); } finally { saveNumber.disabled = false; } });
     const action = document.createElement("button"); action.type = "button"; action.className = "secondary-button";
     action.textContent = person.active ? "מחק משתמש" : "שחזר משתמש";
     action.addEventListener("click", async () => {
@@ -629,7 +689,7 @@ function renderUsers() {
       catch (error) { setStatus("#user-status", `שינוי המשתמש נכשל: ${error.message}`, true); }
       finally { action.disabled = false; }
     });
-    card.append(title, email, history, view, action);
+    card.append(title, email, personal, numberInput, saveNumber, history, view, action);
     if (!person.active) {
       const destroy = document.createElement("button"); destroy.type = "button"; destroy.className = "secondary-button danger-button";
       destroy.textContent = "מחק סופית";
@@ -646,7 +706,13 @@ function renderUsers() {
     (person.active ? list : removedList).append(card);
   });
 }
-watchTechnicians((items) => { technicians = items.sort((a, b) => a.name.localeCompare(b.name, "he")); updateReportData({ users: technicians }); updateUserSelectors(); renderUsers(); renderIssueLists(); }, (error) => {
+document.querySelector("#user-search").addEventListener("input", renderUsers);
+function refreshTechnicianFilter() {
+  const select = document.querySelector("#fault-technician"), previous = select.value;
+  select.replaceChildren(new Option("כל הטכנאים", ""), ...technicians.map((person) => new Option(`${person.name}${person.personalNumber ? ` · ${person.personalNumber}` : ""}`, person.uid)));
+  select.value = previous;
+}
+watchTechnicians((items) => { technicians = items.sort((a, b) => a.name.localeCompare(b.name, "he")); updateReportData({ users: technicians }); updateUserSelectors(); refreshTechnicianFilter(); renderUsers(); renderIssueLists(); }, (error) => {
   setStatus("#user-status", `טעינת המשתמשים נכשלה: ${error.message}`, true);
 });
 const userForm = document.querySelector("#create-user-form");
@@ -655,7 +721,7 @@ userForm.addEventListener("submit", async (event) => {
   const button = userForm.querySelector('button[type="submit"]'); button.disabled = true;
   setStatus("#user-status", "יוצר משתמש…");
   try {
-    await createTechnician(userForm.elements.name.value, userForm.elements.email.value, userForm.elements.password.value);
+    await createTechnician(userForm.elements.name.value, userForm.elements.email.value, userForm.elements.password.value, userForm.elements.personalNumber.value.trim());
     userForm.reset(); setStatus("#user-status", "הטכנאי נוצר. מסור לו את פרטי הכניסה בערוץ מתאים.");
   } catch (error) { setStatus("#user-status", `יצירת המשתמש נכשלה: ${error.message}`, true); }
   finally { button.disabled = false; }

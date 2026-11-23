@@ -357,7 +357,8 @@ export async function reopenKeyLoad(id, managerUid) {
   });
 }
 
-export async function createTechnician(name, email, password) {
+export async function createTechnician(name, email, password, personalNumber) {
+  if (!/^\d{7}$/.test(personalNumber)) throw new Error("מספר אישי חייב להכיל שבע ספרות.");
   const secondary = initializeApp(firebaseConfig, `provision-${crypto.randomUUID()}`);
   const provisioningAuth = getAuth(secondary);
   let createdUser = null;
@@ -365,7 +366,12 @@ export async function createTechnician(name, email, password) {
     await setPersistence(provisioningAuth, inMemoryPersistence);
     const credential = await createUserWithEmailAndPassword(provisioningAuth, email.trim(), password);
     createdUser = credential.user;
-    await setDoc(doc(db, "roles", createdUser.uid), { role: "technician", name: name.trim(), email: email.trim(), active: true, createdAt: new Date().toISOString() });
+    await runTransaction(db, async (transaction) => {
+      const numberRef = doc(db, "personalNumbers", personalNumber);
+      if ((await transaction.get(numberRef)).exists()) throw new Error("המספר האישי כבר משויך למשתמש אחר.");
+      transaction.set(doc(db, "roles", createdUser.uid), { role: "technician", name: name.trim(), email: email.trim(), personalNumber, active: true, createdAt: new Date().toISOString() });
+      transaction.set(numberRef, { uid: createdUser.uid });
+    });
     return createdUser.uid;
   } catch (error) {
     if (createdUser) await deleteUser(createdUser).catch(() => {});
@@ -374,6 +380,42 @@ export async function createTechnician(name, email, password) {
     await signOut(provisioningAuth).catch(() => {});
     await deleteApp(secondary);
   }
+}
+
+export async function setTechnicianPersonalNumber(uid, personalNumber) {
+  if (!/^\d{7}$/.test(personalNumber)) throw new Error("מספר אישי חייב להכיל שבע ספרות.");
+  await runTransaction(db, async (transaction) => {
+    const roleRef = doc(db, "roles", uid), numberRef = doc(db, "personalNumbers", personalNumber);
+    const [role, number] = await Promise.all([transaction.get(roleRef), transaction.get(numberRef)]);
+    if (!role.exists() || role.data().role !== "technician") throw new Error("הטכנאי אינו קיים.");
+    if (number.exists() && number.data().uid !== uid) throw new Error("המספר האישי כבר משויך למשתמש אחר.");
+    const previous = role.data().personalNumber;
+    if (previous && previous !== personalNumber) {
+      const oldRef = doc(db, "personalNumbers", previous);
+      const oldNumber = await transaction.get(oldRef);
+      if (oldNumber.exists() && oldNumber.data().uid === uid) transaction.delete(oldRef);
+    }
+    transaction.update(roleRef, { personalNumber });
+    if (!number.exists()) transaction.set(numberRef, { uid });
+  });
+}
+
+export async function updateOpenIssueDefinition(id, sheet, team) {
+  if (team.length < 2 || new Set(team.map((person) => person.uid)).size !== team.length) throw new Error("בחר לפחות שני טכנאים שונים.");
+  const ref = doc(db, "issues", id);
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(ref);
+    if (!current.exists() || current.data().status !== "open") throw new Error("התקלה כבר אינה פתוחה לעריכה.");
+    const issue = current.data();
+    const lock = await transaction.get(editLockRef("issue", issue.sheet.serial));
+    if (lock.exists() && lock.data().expiresAt.toMillis() > Date.now()) throw new Error(`הטופס נמצא כרגע בעריכה של ${lock.data().ownerName || "טכנאי"}.`);
+    transaction.update(ref, {
+      sheet: storedSheet({ ...restoredSheet(issue.sheet), ...sheet, id, serial: issue.sheet.serial, technicians: team.map((person) => person.name).join(" · ") }),
+      assigneeUid: team[0].uid, assigneeName: team[0].name,
+      teamUids: team.map((person) => person.uid), teamNames: team.map((person) => person.name),
+      definitionUpdatedAt: new Date().toISOString()
+    });
+  });
 }
 
 export async function setTechnicianActive(uid, active) {
