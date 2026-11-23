@@ -25,6 +25,7 @@
 #history-results .issue-item { min-width: 0; overflow: hidden; overflow-wrap: anywhere; word-break: break-word; }
 #history-results .issue-item > * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
 .history-page { direction: rtl; }
+.history-page .section-note { margin: 13px 0 0; line-height: 1.55; }
 .history-mode-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 14px; }
 .history-mode-tabs button { flex: 1 1 130px; min-height: 42px; border: 1px solid #cbdce5; border-radius: 10px; color: #234960; background: #f5f9fb; font: inherit; font-weight: 700; cursor: pointer; }
 .history-mode-tabs button[aria-pressed="true"] { background: #176b96; color: #fff; border-color: #176b96; }
