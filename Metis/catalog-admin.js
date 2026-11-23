@@ -1,16 +1,10 @@
 import { watchSystems, watchComponents, saveSystem, saveComponent } from "../firebase-sync.js?v=1.9.0";
 import { SYSTEMS, COMPONENTS_BY_SYSTEM } from "./catalog.js?v=1.9.0";
+import { VOLUMES, DEFAULT_SYSTEMS, DEFAULT_COMPONENTS, mergeCatalog, volumeLabel } from "./catalog-data.js?v=1.9.2";
 
-const defaultSystems = [
-  { id: "system_fcr", name: "מכם | FCR", code: "74A", volume: "0235" },
-  { id: "system_tcn", name: "טאקאן | TCN", code: "63A", volume: "" },
-  { id: "system_ew", name: "אימפריה פאסיבית", code: "76E", volume: "" }
-];
-const defaultComponents = ["ANT", "DMT", "MLPRF", "PSP"].map((name) => ({ id: `component_${name.toLowerCase()}`, name, systemId: "system_fcr" }));
 let savedSystems = [], savedComponents = [];
-const byId = (defaults, saved) => [...new Map([...defaults, ...saved].map((item) => [item.id, item])).values()];
-const systems = () => byId(defaultSystems, savedSystems);
-const components = () => byId(defaultComponents, savedComponents);
+const systems = () => mergeCatalog(DEFAULT_SYSTEMS, savedSystems);
+const components = () => mergeCatalog(DEFAULT_COMPONENTS, savedComponents);
 const status = (selector, message, error = false) => { const el = document.querySelector(selector); el.textContent = message; if (error) el.dataset.state = "error"; else delete el.dataset.state; };
 
 function syncCatalog() {
@@ -33,11 +27,17 @@ function syncCatalog() {
 function field(value, label, maxLength = 80) {
   const input = document.createElement("input"); input.value = value || ""; input.maxLength = maxLength; input.setAttribute("aria-label", label); return input;
 }
+function volumeSelect(value, label) {
+  const select = document.createElement("select"); select.required = true; select.setAttribute("aria-label", label);
+  select.append(new Option("בחר כרך", ""), ...VOLUMES.map((item) => new Option(volumeLabel(item.code), item.code)));
+  select.value = value || "";
+  return select;
+}
 
 function renderSystems() {
   const body = document.querySelector("#systems-table"); body.replaceChildren();
   systems().forEach((item) => {
-    const row = document.createElement("tr"), name = field(item.name, `שם מערכת ${item.name}`), code = field(item.code, `קוד מערכת ${item.name}`, 30), volume = field(item.volume, `כרך ${item.name}`, 30);
+    const row = document.createElement("tr"), name = field(item.name, `שם מערכת ${item.name}`), code = field(item.code, `קוד מערכת ${item.name}`, 30), volume = volumeSelect(item.volume, `כרך ${item.name}`);
     for (const [label, input] of [["שם מערכת", name], ["קוד מערכת", code], ["כרך", volume]]) { const cell = document.createElement("td"); cell.dataset.label = label; cell.append(input); row.append(cell); }
     const action = document.createElement("td"); action.dataset.label = "פעולות";
     const button = document.createElement("button"); button.type = "button"; button.className = "secondary-button"; button.textContent = "שמור";
@@ -47,6 +47,9 @@ function renderSystems() {
   const select = document.querySelector('#component-form [name="systemId"]'), previous = select.value;
   select.replaceChildren(new Option("בחר מערכת", ""), ...systems().map((item) => new Option(item.name, item.id)));
   select.value = previous;
+  const formVolume = document.querySelector('#system-form [name="volume"]'), previousVolume = formVolume.value;
+  formVolume.replaceChildren(new Option("בחר כרך", ""), ...VOLUMES.map((item) => new Option(volumeLabel(item.code), item.code)));
+  formVolume.value = previousVolume;
 }
 
 function renderComponents() {

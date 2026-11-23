@@ -5,6 +5,7 @@ import { validateTreatment } from "./mechanic-validation.js?v=1.7.6";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.7.6";
 import { createEditLock } from "./edit-lock.js?v=1.9.0";
+import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.2";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -22,10 +23,23 @@ if (selectedId) {
 }
 const sheet = EzEizoData.normalizeSheet(remoteIssue?.sheet || EzEizoData.defaultSheet);
 const selectedSheet = Boolean(remoteIssue && (managerClosedView ? ["closed", "pendingReview"].includes(remoteIssue.status) : remoteIssue.status !== "cancelled" && (remoteIssue.teamUids || [remoteIssue.assigneeUid]).includes(currentUser.uid)));
+if (!managerClosedView) {
+  initCatalogView();
+  const catalog = document.querySelector("#catalog-view"), tile = document.querySelector("#open-catalog"), queue = document.querySelector(".queue-card");
+  function showCatalog() {
+    const open = !selectedSheet && location.hash === "#catalog";
+    catalog.hidden = !open;
+    tile.hidden = open || selectedSheet;
+    queue.hidden = open || selectedSheet;
+  }
+  document.querySelector("#close-catalog").addEventListener("click", () => { location.hash = ""; showCatalog(); });
+  window.addEventListener("hashchange", showCatalog);
+  showCatalog();
+}
 if (selectedId && !managerClosedView && !selectedSheet && !selectedIssueError) selectedIssueError = remoteIssue ? "התקלה אינה משויכת לחשבון זה או שהשילוח בוטל." : "התקלה לא נמצאה. חזור לרשימה ורענן משימות.";
 document.querySelector("#sheet-form").hidden = !selectedSheet || (!managerClosedView && remoteIssue?.status === "open");
 document.querySelector("#mechanic-back").hidden = !selectedId && !managerClosedView;
-document.querySelector(".queue-card").hidden = selectedSheet;
+document.querySelector(".queue-card").hidden = selectedSheet || (!managerClosedView && location.hash === "#catalog");
 const ACTIONS = sheet.actions;
 const STORAGE_KEY = selectedSheet && sheet.id !== "example" ? `fault-sheet-v2:${sheet.id}` : "fault-sheet-v1";
 const actionList = document.querySelector("#action-list");

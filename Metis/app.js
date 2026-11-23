@@ -1,7 +1,8 @@
 import "../sheet-data.js?v=1.7.6";
 import { gate, revealApp, watchIssues, watchKeyLoads, watchAccounts, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.0";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
-import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.1";
+import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.2";
+import { initCatalogView } from "./catalog-view.js?v=1.9.2";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
 import { createEditLock } from "../edit-lock.js?v=1.9.0";
@@ -11,6 +12,7 @@ import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-
 
 const managerUser = await gate("manager");
 initCatalogAdmin();
+initCatalogView();
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
 let cloudIssues = [];
 let cloudKeyLoads = [];
@@ -313,18 +315,21 @@ function addDefinitionEditor(card, issue) {
   technicians.filter((person) => person.active || selected.includes(person.uid)).forEach((person) => { const label = document.createElement("label"); const box = document.createElement("input"); box.type = "checkbox"; box.value = person.uid; box.checked = selected.includes(person.uid); box.disabled = !person.active; label.append(box, ` ${person.name}${person.personalNumber ? ` · ${person.personalNumber}` : ""}`); team.append(label); });
   const save = document.createElement("button"); save.type = "submit"; save.className = "primary-button"; save.textContent = "שמור פרטי תקלה";
   const status = document.createElement("p"); status.className = "copy-status"; status.setAttribute("role", "status");
+  const retryLock = document.createElement("button"); retryLock.type = "button"; retryLock.className = "secondary-button"; retryLock.textContent = "בדוק שוב"; retryLock.hidden = true;
+  retryLock.addEventListener("click", () => { if (editLock && !editLock.held) void editLock.acquire(); });
   let editLock = null;
   form.hidden = true;
-  const release = () => { if (editLock) { editLock.dispose(); managerEditorLocks.delete(editLock); editLock = null; } form.hidden = true; };
+  const release = () => { if (editLock) { editLock.dispose(); managerEditorLocks.delete(editLock); editLock = null; } form.hidden = true; retryLock.hidden = true; };
   editor.addEventListener("toggle", () => {
     if (!editor.open) { release(); return; }
     status.textContent = "בודק אם הטופס פנוי ונועל אותו לעריכת המנהל…";
+    retryLock.hidden = true;
     editLock = createEditLock({ kind: "issue", serialOrId: issue.sheet.serial, formId: issue.id, user: { uid: managerUser.uid, name: "מנהל" }, manager: true,
-      onChange: ({ held, message }) => { form.hidden = !held; status.textContent = held ? "הטופס נעול לעריכת המנהל. הטכנאים יוכלו לערוך לאחר סגירת החלונית." : message; } });
+      onChange: ({ held, message }) => { form.hidden = !held; retryLock.hidden = held || !message || message.includes("בודק אם"); status.textContent = held ? "הטופס נעול לעריכת המנהל. הטכנאים יוכלו לערוך לאחר סגירת החלונית." : message; } });
     managerEditorLocks.add(editLock);
     void editLock.acquire();
   });
-  form.append(fields, origins, team, save); editor.append(summary, status, form); card.append(editor);
+  form.append(fields, origins, team, save); editor.append(summary, status, retryLock, form); card.append(editor);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const members = [...team.querySelectorAll("input:checked")].map((box) => technicians.find((person) => person.uid === box.value && person.active)).filter(Boolean);
@@ -501,12 +506,12 @@ let keyPagesStarted = false;
 let previousManagerView = "";
 function showManagerView() {
   const requested = window.location.hash.slice(1);
-  const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : requested === "closed" ? "open" : requested === "technicians" ? "users" : ["home", "management", "reports", "aircraft-constants", "new", "open", "pending", "history", "users", "systems", "components"].includes(requested) ? requested : "home";
+  const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : requested === "closed" ? "open" : requested === "technicians" ? "users" : ["home", "catalog", "management", "reports", "aircraft-constants", "new", "open", "pending", "history", "users", "systems", "components"].includes(requested) ? requested : "home";
   if (requested === "closed") document.querySelector("#fault-mode").value = "closed";
   if (selected === "open" && previousManagerView !== "open" && requested !== "closed") document.querySelector("#fault-mode").value = "open-default";
   previousManagerView = selected;
   document.querySelector("#closed-review-filters").hidden = !["closed"].includes(document.querySelector("#fault-mode").value);
-  document.querySelector("#manager-back").hidden = !["users", "systems", "components", "reports", "aircraft-constants"].includes(selected);
+  document.querySelector("#manager-back").hidden = !["catalog", "users", "systems", "components", "reports", "aircraft-constants"].includes(selected);
   document.querySelector("#reset-draft").hidden = requested !== "new" && requested !== "keys/create";
   if (selected !== "keys") document.querySelector("#key-back-link").hidden = true;
   document.querySelector("#fault-nav").hidden = !["new", "open", "pending", "history"].includes(selected);
@@ -520,7 +525,7 @@ function showManagerView() {
   if (selected === "keys" && !keyPagesStarted) { keyPagesStarted = true; initKeyPages({ user: managerUser, embedded: true }); }
   if (selected !== "new") renderIssueLists();
 }
-document.querySelector("#manager-back").addEventListener("click", () => { if (location.hash === "#aircraft-constants" && closeConstantsEditor()) return; location.hash = "management"; });
+document.querySelector("#manager-back").addEventListener("click", () => { if (location.hash === "#aircraft-constants" && closeConstantsEditor()) return; location.hash = location.hash === "#catalog" ? "home" : "management"; });
 window.addEventListener("hashchange", showManagerView);
 function resetFaultDraft() {
   draft = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);

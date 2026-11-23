@@ -183,6 +183,19 @@ td input:focus { border-color: #5da8c5; }
 .card, .table-wrap, .issue-item, .details-grid > *, .signature-grid > * { min-width: 0; max-width: 100%; }
 .card h2, .section-heading > div { overflow-wrap: anywhere; }
 .table-wrap { overflow-x: auto; overscroll-behavior-inline: contain; }
+.catalog-view { min-width: 0; }
+.catalog-section + .catalog-section { margin-top: 22px; }
+.catalog-section h3 { margin: 0 0 9px; color: #173b5d; font-size: 16px; }
+.catalog-table { width: 100%; border-collapse: collapse; direction: rtl; table-layout: fixed; }
+.catalog-table th, .catalog-table td { padding: 12px; border: 1px solid #dce6eb; text-align: right; vertical-align: middle; overflow-wrap: anywhere; }
+.catalog-table th { background: #eaf3f8; color: #173b5d; font-size: 13px; }
+.catalog-table td[rowspan] { background: #f5fafc; font-weight: 700; }
+.catalog-table tr:nth-child(even) td:not([rowspan]) { background: #fbfdfe; }
+.mechanic-catalog-tile { display: flex; flex-direction: column; gap: 7px; min-height: 88px; box-sizing: border-box; margin-bottom: 18px; padding: 18px; border: 1px solid #c8dce7; border-radius: 15px; background: #fff; color: #173b5d; text-decoration: none; box-shadow: var(--shadow); }
+.mechanic-catalog-tile strong { font-size: 18px; }
+.mechanic-catalog-tile span { color: #607686; font-size: 13px; }
+.mechanic-catalog-tile:hover, .mechanic-catalog-tile:focus-visible { border-color: #176b96; background: #f3f9fc; outline: none; }
+@media (max-width: 500px) { .catalog-table th, .catalog-table td { padding: 9px 7px; font-size: 12px; } }
 .sheet-save-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .sheet-save-toolbar span { min-width: 0; flex: 1 1 180px; color: var(--muted); font-size: 12px; }
 .transfer-panel { display: grid; justify-items: start; gap: 8px; margin-top: 18px; }
