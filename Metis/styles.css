@@ -80,6 +80,9 @@
 .directory-table th, .directory-table td { padding: 9px; text-align: right; border-bottom: 1px solid #dce6eb; vertical-align: middle; }
 .directory-table input, .directory-table select { box-sizing: border-box; width: 100%; min-width: 80px; max-width: 220px; min-height: 42px; }
 .directory-table .secondary-button { white-space: nowrap; }
+.directory-table:has(#systems-table), .directory-table:has(#components-table) { table-layout: fixed; }
+.directory-table:has(#systems-table) th:last-child, .directory-table:has(#components-table) th:last-child { width: 110px; }
+.directory-table:has(#systems-table) input, .directory-table:has(#components-table) input, .directory-table:has(#components-table) select { min-width: 0; max-width: 100%; }
 .directory-form { margin: 16px 0; align-items: end; }
 @media (max-width: 620px) {
   .directory-table { min-width: 0; }
