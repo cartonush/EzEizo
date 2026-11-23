@@ -1,4 +1,4 @@
-import { SQUADRONS } from "../Metis/catalog.js?v=1.7.5";
+import { SQUADRONS } from "../Metis/catalog.js?v=1.7.6";
 
 export const KEY_SQUADRONS = ["101", "105", "109"];
 export const KEY_TASKS = [
@@ -27,6 +27,15 @@ export function periodFor(date) {
   if (!year || !month || !day || new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10) !== date) throw new Error("תאריך אינו תקין");
   const next = new Date(Date.UTC(year, month, 1));
   return { label: `${String(month).padStart(2, "0")}-${String(next.getUTCMonth() + 1).padStart(2, "0")}/${String(next.getUTCFullYear()).slice(-2)}`, year: String(year), current: `${String(month).padStart(2, "0")}/${String(year).slice(-2)}`, next: `${String(next.getUTCMonth() + 1).padStart(2, "0")}/${String(next.getUTCFullYear()).slice(-2)}` };
+}
+export function alreadyLoadedForPeriod(history, squadron, aircraft, date) {
+  let period; try { period = periodFor(date).label; } catch { return false; }
+  const previous = history.get(`${squadron}_${aircraft}`);
+  return [previous?.blue, previous?.shach].some((entry) => {
+    if (!entry) return false;
+    if (entry.period === period) return true;
+    try { return periodFor(entry.date).label === period; } catch { return false; }
+  });
 }
 export function compactRows(rows, columns) {
   return (Array.isArray(rows) ? rows : []).filter((row) => columns.some(({ key }) => String(row?.[key] ?? "").trim())).map((row) => Object.fromEntries(columns.map(({ key }) => [key, row[key] ?? ""])));

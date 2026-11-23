@@ -45,7 +45,7 @@ export function filterIssues(issues, { mode = "open-default", serial = "", squad
     if (mode === "closed") {
       const origins = Array.isArray(sheet.faultOrigins) && sheet.faultOrigins.length ? sheet.faultOrigins : [sheet.faultOrigin].filter(Boolean);
       if (originFilters.length && !originFilters.some((origin) => origins.includes(origin))) return false;
-      const treatments = ["verified", "unitsReplaced", "repairPerformed"];
+      const treatments = ["notVerified", "verified", "unitsReplaced", "repairPerformed"];
       const recurrence = ["missionCancelled", "sortieCancelled", "recurrentYes", "recurrentNo"];
       const permits = ["flightPermitUntil", "trackingPermit", "approvalUntil"];
       const matchesReview = (key) => key === "recurrentYes" ? (review.recurrentAnswer === "yes" || (!review.recurrentAnswer && review.recurrent === true)) : key === "recurrentNo" ? review.recurrentAnswer === "no" : Boolean(review[key]);

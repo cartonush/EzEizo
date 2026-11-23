@@ -1,10 +1,10 @@
-import "./sheet-data.js?v=1.7.5";
-import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.7.5";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.7.5";
-import { validateTreatment } from "./mechanic-validation.js?v=1.7.5";
-import { attachTimeNow } from "./time-now.js?v=1.7.5";
-import { issueTimeline } from "./lifecycle.js?v=1.7.5";
-import { createEditLock } from "./edit-lock.js?v=1.7.5";
+import "./sheet-data.js?v=1.7.6";
+import { gate, revealApp, watchIssues, watchKeyLoads, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.7.6";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
+import { validateTreatment } from "./mechanic-validation.js?v=1.7.6";
+import { attachTimeNow } from "./time-now.js?v=1.7.6";
+import { issueTimeline } from "./lifecycle.js?v=1.7.6";
+import { createEditLock } from "./edit-lock.js?v=1.7.6";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -357,6 +357,9 @@ if (managerClosedView && selectedSheet) {
   const reviewPanel = document.querySelector("#review-panel");
   const managerReview = remoteIssue.managerReview || {};
   document.querySelectorAll("[data-review]").forEach((input) => { input[input.type === "checkbox" ? "checked" : "value"] = managerReview[input.dataset.review] || (input.type === "checkbox" ? false : ""); });
+  for (const key of ["verified", "notVerified"]) document.querySelector(`[data-review="${key}"]`).addEventListener("change", (event) => {
+    if (event.target.checked) document.querySelector(`[data-review="${key === "verified" ? "notVerified" : "verified"}"]`).checked = false;
+  });
   document.querySelectorAll("[data-date-toggle]").forEach((toggle) => {
     const field = document.querySelector(`[data-review="${toggle.dataset.dateToggle}"]`);
     toggle.checked = Boolean(field.value);
@@ -374,6 +377,7 @@ if (managerClosedView && selectedSheet) {
   });
   function collectManagerReview() {
     const review = Object.fromEntries([...document.querySelectorAll("[data-review]")].map((input) => [input.dataset.review, input.type === "checkbox" ? input.checked : input.value]));
+    if (review.verified && review.notVerified) throw new Error("בחר אומת או לא אומת, לא את שניהם.");
     review.recurrentAnswer = document.querySelector("[data-recurrent-answer]:checked")?.dataset.recurrentAnswer || "";
     review.recurrent = review.recurrentAnswer === "yes";
     for (const toggle of document.querySelectorAll("[data-date-toggle]:checked")) {

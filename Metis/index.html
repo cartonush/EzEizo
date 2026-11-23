@@ -11,9 +11,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.7.5">
-  <link rel="stylesheet" href="styles.css?v=1.7.5">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.7.5">
+  <link rel="stylesheet" href="../styles.css?v=1.7.6">
+  <link rel="stylesheet" href="styles.css?v=1.7.6">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.7.6">
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.7.5</span>
+      <span class="version-pill">v1.7.6</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -50,7 +50,7 @@
         <div class="manager-home-grid">
           <a href="#new" class="manager-home-tile"><strong>פתיחת תקלה</strong><span>יצירת דף טיפול חדש לטכנאים</span></a>
           <a href="#open" class="manager-home-tile"><strong>תקלות פתוחות</strong><span id="home-open-count">משימות טיפול פעילות</span></a>
-          <a href="#closed" class="manager-home-tile"><strong>תקלות לסגירה וסגורות</strong><span id="home-review-count">סקירה וחתימת בודק הדף</span></a>
+          <a href="#pending" class="manager-home-tile"><strong>תקלות לסגירה</strong><span id="home-review-count">סקירה וחתימת בודק הדף</span></a>
           <a href="#keys" class="manager-home-tile"><strong>מפתחות</strong><span>פתיחת הטענה, מעקב והיסטוריה</span></a>
           <a href="#management" class="manager-home-tile"><strong>ניהול</strong><span>משתמשים, הפקת דוחות ועדכון קבועים לפי מטוס</span></a>
         </div>
@@ -67,7 +67,7 @@
 <nav id="keys-nav" class="keys-nav" aria-label="דפי מפתחות"><button type="button" data-view="history">היסטוריית מפתחות</button><button type="button" data-view="create">הטענת מפתחות</button><button type="button" data-view="open">הטענות פתוחות</button><button type="button" data-view="pending">לסגירה</button><button type="button" data-view="closed">הטענות סגורות</button></nav>
 <section id="history-view" class="card"><div class="section-heading"><div><p class="section-kicker">שלוש טייסות</p><h2>היסטוריית מפתחות</h2></div></div><p class="section-note">ארז כחול ושחק מתעדכנים בנפרד לאחר הטענה שהושלמה. סוג מפתח שלא נטען עדיין מסומן ״טרם הוטען״.</p><div class="review-tabs squad-tabs" id="history-tabs"></div><div id="history-table" class="table-wrap"></div><p id="history-status" class="copy-status" role="status"></p></section>
 <section id="create-view" hidden>
-<section class="card"><div class="section-heading"><div><p class="section-kicker">דף חדש</p><h2>הטענת מפתחות</h2></div></div><div class="manager-grid">
+<section class="card"><div class="section-heading"><div><p class="section-kicker">דף חדש</p><h2>הטענת מפתחות</h2></div></div><div class="manager-grid key-create-fields">
 <label class="input-field">תאריך<input id="key-date" type="date" required></label><label class="input-field">שעה<input id="key-time" type="time" required></label>
 <label class="input-field">טייסת<select id="key-squadron" required></select></label><label class="input-field">דת״ק<select id="key-shelter" required></select></label>
 </div><fieldset class="assignee-fieldset"><legend>צוות · לפחות שני טכנאים שונים</legend><div id="key-team" class="assignee-options"></div><button id="add-team" class="secondary-button" type="button">+ הוסף טכנאי</button></fieldset></section>
@@ -229,7 +229,8 @@
       <section class="card" aria-labelledby="manager-fault-title">
         <div class="section-heading"><div><p class="section-kicker">נשלח לטכנאי</p><h2 id="manager-fault-title">תיאור תקלה</h2></div><span class="step-badge">03</span></div>
         <fieldset class="origin-options"><legend>מקור התקלה בפתיחה · ניתן לבחור כמה</legend><div class="origin-grid"><label class="replaced-toggle"><input type="checkbox" data-origin="תקלת טייס"><span class="custom-check" aria-hidden="true"></span><span>תקלת טייס</span></label><label class="replaced-toggle"><input type="checkbox" data-origin="תקלת טכנאי"><span class="custom-check" aria-hidden="true"></span><span>תקלת טכנאי</span></label><label class="replaced-toggle"><input type="checkbox" data-origin="פג תוקף"><span class="custom-check" aria-hidden="true"></span><span>פג תוקף</span></label><label class="replaced-toggle"><input type="checkbox" data-origin="שינוי"><span class="custom-check" aria-hidden="true"></span><span>שינוי</span></label><label class="replaced-toggle"><input type="checkbox" data-origin="בדיקה"><span class="custom-check" aria-hidden="true"></span><span>בדיקה</span></label><label class="replaced-toggle"><input type="checkbox" data-origin="פירוק/הרכבה"><span class="custom-check" aria-hidden="true"></span><span>פירוק/הרכבה</span></label><label class="replaced-toggle"><input type="checkbox" data-origin="פריקת ל״א"><span class="custom-check" aria-hidden="true"></span><span>פריקת ל״א</span></label></div></fieldset><label class="input-field">תחום לסגירה<select data-sheet-field="reviewCategory"><option value="">לא סווג</option><option>בקרי</option><option>קשר</option><option>ל״א</option><option>אישורים והיתרים</option><option>פירוקים והרכבות</option></select></label>
-        <textarea class="text-box" data-sheet-field="fault" rows="4" maxlength="2000" required placeholder="תאר את התקלה לטכנאי…"></textarea>
+        <label class="field-label manager-fault-description-label" for="manager-fault-description">תיאור תקלה</label>
+        <textarea id="manager-fault-description" class="text-box" data-sheet-field="fault" rows="4" maxlength="2000" required placeholder="תאר את התקלה לטכנאי…"></textarea>
         <label class="field-label" for="manager-notes">הערות לטכנאי</label>
         <textarea id="manager-notes" class="text-box" data-sheet-field="managerNotes" rows="3" maxlength="2000" placeholder="הערות שיוצגו לטכנאים…"></textarea>
       </section>
@@ -263,22 +264,15 @@
         <div class="section-heading"><div><p class="section-kicker">מעקב משותף</p><h2 id="issued-title">כל התקלות</h2></div></div>
         <div class="manager-grid"><label class="input-field">סינון תקלות<select id="fault-mode"></select></label><label class="input-field">טייסת<select id="fault-squadron"><option value="">כל הטייסות</option></select></label><label class="input-field">מספר מטוס<input id="fault-aircraft" type="search" inputmode="numeric" placeholder="כל המטוסים"></label><label class="input-field">מתאריך<input id="fault-from" type="date"></label><label class="input-field">עד תאריך<input id="fault-to" type="date"></label></div>
         <label class="input-field list-search">חיפוש לפי מספר תקלה<input id="open-issue-search" type="search" inputmode="numeric" placeholder="לדוגמה: 000001" autocomplete="off"></label>
-        <details id="closed-review-filters" class="review-filter-panel" hidden><summary>סינון לפי הבקרה בתקלות סגורות</summary><div class="review-filter-grid"><fieldset><legend>טיפול בתקלה</legend><label><input type="checkbox" data-closed-filter="verified"> אומת</label><label><input type="checkbox" data-closed-filter="unitsReplaced"> הוחלפו יחידות</label><label><input type="checkbox" data-closed-filter="repairPerformed"> בוצע תיקון</label></fieldset><fieldset><legend>חוזרת וביטולים</legend><label><input type="checkbox" data-closed-filter="missionCancelled"> ביטול משימה</label><label><input type="checkbox" data-closed-filter="sortieCancelled"> ביטול גיחה</label><label><input type="checkbox" data-closed-filter="recurrentYes"> חוזרת: כן</label><label><input type="checkbox" data-closed-filter="recurrentNo"> חוזרת: לא</label></fieldset><fieldset><legend>היתרים ואישורים</legend><label><input type="checkbox" data-closed-filter="flightPermitUntil"> היתר לטיסה</label><label><input type="checkbox" data-closed-filter="trackingPermit"> היתר למעקב</label><label><input type="checkbox" data-closed-filter="approvalUntil"> אישור עד תאריך</label></fieldset></div><fieldset class="origin-options"><legend>מקור התקלה בפתיחה</legend><div id="closed-origin-filters" class="origin-grid"></div></fieldset><button id="clear-closed-filters" type="button" class="secondary-button">נקה סינון בקרה</button></details>
+        <details id="closed-review-filters" class="review-filter-panel" hidden><summary>סינון לפי הבקרה בתקלות סגורות</summary><div class="review-filter-grid"><fieldset><legend>טיפול בתקלה</legend><label><input type="checkbox" data-closed-filter="notVerified"> לא אומת</label><label><input type="checkbox" data-closed-filter="verified"> אומת</label><label><input type="checkbox" data-closed-filter="unitsReplaced"> הוחלפו יחידות</label><label><input type="checkbox" data-closed-filter="repairPerformed"> בוצע תיקון</label></fieldset><fieldset><legend>חוזרת וביטולים</legend><label><input type="checkbox" data-closed-filter="missionCancelled"> ביטול משימה</label><label><input type="checkbox" data-closed-filter="sortieCancelled"> ביטול גיחה</label><label><input type="checkbox" data-closed-filter="recurrentYes"> חוזרת: כן</label><label><input type="checkbox" data-closed-filter="recurrentNo"> חוזרת: לא</label></fieldset><fieldset><legend>היתרים ואישורים</legend><label><input type="checkbox" data-closed-filter="flightPermitUntil"> היתר לטיסה</label><label><input type="checkbox" data-closed-filter="trackingPermit"> היתר למעקב</label><label><input type="checkbox" data-closed-filter="approvalUntil"> אישור עד תאריך</label></fieldset></div><fieldset class="origin-options"><legend>מקור התקלה בפתיחה</legend><div id="closed-origin-filters" class="origin-grid"></div></fieldset><button id="clear-closed-filters" type="button" class="secondary-button">נקה סינון בקרה</button></details>
         <div id="issued-list" class="issue-list"></div>
       </section>
       </div>
       <div id="view-closed" data-manager-view="closed" hidden>
-      <div class="review-tabs" role="navigation" aria-label="מצב סגירת תקלות"><a href="#pending" data-review-link="pending">תקלות לסגירה</a><a href="#closed" data-review-link="closed">תקלות סגורות</a></div>
-      <section id="pending-section" class="card" aria-labelledby="pending-list-title" hidden>
+      <section id="pending-section" class="card" aria-labelledby="pending-list-title">
         <div class="section-heading"><div><p class="section-kicker">ממתין לבדיקת הדף</p><h2 id="pending-list-title">תקלות לסגירה</h2></div></div>
         <div class="manager-grid"><label class="input-field">תחום לסגירה<select id="pending-category"><option value="">כל התחומים</option><option>בקרי</option><option>קשר</option><option>ל״א</option><option>אישורים והיתרים</option><option>פירוקים והרכבות</option></select></label><label class="input-field list-search">מספר תקלה<input id="pending-issue-search" type="search" inputmode="numeric" placeholder="לדוגמה: 000001" autocomplete="off"></label></div>
         <div id="pending-list" class="issue-list"></div>
-      </section>
-      <section id="closed-section" class="card" aria-labelledby="closed-list-title">
-        <div class="section-heading"><div><p class="section-kicker">מעקב משותף</p><h2 id="closed-list-title">תקלות סגורות</h2></div></div>
-        <label class="input-field">הצג לפי טכנאי<select id="closed-filter"><option value="">כל הטכנאים</option></select></label>
-        <label class="input-field list-search">חיפוש לפי מספר תקלה<input id="closed-issue-search" type="search" inputmode="numeric" placeholder="לדוגמה: 000001" autocomplete="off"></label>
-        <div id="closed-list" class="issue-list"></div>
       </section>
       </div>
       <div id="view-history" data-manager-view="history" hidden>
@@ -291,11 +285,15 @@
           <div class="history-search-fields" data-history-fields="aircraft">
             <label class="input-field">טייסת<select id="history-squadron"><option value="">בחר טייסת</option></select></label>
             <div class="input-field"><label for="history-aircraft">מספר מטוס</label><div class="search-picker"><input id="history-aircraft" type="search" inputmode="numeric" placeholder="חפש ובחר מטוס" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="history-aircraft-options"><div id="history-aircraft-options" class="picker-list" role="listbox" hidden></div></div></div>
+            <label class="input-field">מערכת<select id="history-aircraft-system"><option value="">בחר מערכת</option></select></label>
+            <label class="input-field">מכלול<select id="history-aircraft-unit" disabled><option value="">בחר מכלול</option></select></label>
           </div>
           <div class="history-search-fields" data-history-fields="component" hidden>
-            <div class="input-field"><label for="history-unit">שם מכלול</label><div class="search-picker"><input id="history-unit" type="search" placeholder="חפש ובחר מכלול" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="history-unit-options"><div id="history-unit-options" class="picker-list" role="listbox" hidden></div></div></div>
+            <label class="input-field">מערכת<select id="history-component-system"><option value="">בחר מערכת</option></select></label>
+            <label class="input-field">מכלול<select id="history-unit" disabled><option value="">בחר מכלול</option></select></label>
+            <label class="input-field">מספר סידורי למכלול<input id="history-unit-serial" type="search" placeholder="חפש מספר סידורי" autocomplete="off" disabled></label>
           </div>
-          <p class="section-note" id="history-hint">בחר טייסת ומטוס להצגת כל התקלות והחלפות המכלולים שלו.</p>
+          <div class="history-toolbar"><p class="section-note" id="history-hint">בחר טייסת, מטוס, מערכת ומכלול להצגת הפירוקים וההרכבות.</p><button id="history-reset" type="button" class="secondary-button">אפס בחירה</button></div>
           <div id="history-results" class="history-results" aria-live="polite"></div>
         </section>
       </div>
@@ -316,6 +314,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.7.5"></script>
+  <script type="module" src="app.js?v=1.7.6"></script>
 </body>
 </html>

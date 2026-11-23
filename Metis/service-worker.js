@@ -1,6 +1,6 @@
-const CACHE_NAME = "ezeizo-metis-v1.7.5";
-const ASSETS = ["./", "./index.html", "./closed.html", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png", "./styles.css?v=1.7.5", "./app.js?v=1.7.5", "./management-pages.js?v=1.7.5", "./report-pdf.js?v=1.7.5", "./form-pdf.js?v=1.7.5", "./zip.js?v=1.7.5", "./catalog.js?v=1.7.5", "./assignee-selection.js?v=1.7.5", "../styles.css?v=1.7.5", "../app.js?v=1.7.5", "../mechanic-validation.js?v=1.7.5", "../sheet-data.js?v=1.7.5", "../firebase-sync.js?v=1.7.5", "../signature-canvas.js?v=1.7.5", "../time-now.js?v=1.7.5", "../lifecycle.js?v=1.7.5", "../keys/app.js?v=1.7.5", "../keys/data.js?v=1.7.5", "../keys/styles.css?v=1.7.5"];
-ASSETS.push("./fault-taxonomy.js?v=1.7.5");
+const CACHE_NAME = "ezeizo-metis-v1.7.6";
+const ASSETS = ["./", "./index.html", "./closed.html", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png", "./styles.css?v=1.7.6", "./app.js?v=1.7.6", "./management-pages.js?v=1.7.6", "./report-pdf.js?v=1.7.6", "./form-pdf.js?v=1.7.6", "./zip.js?v=1.7.6", "./catalog.js?v=1.7.6", "./assignee-selection.js?v=1.7.6", "../styles.css?v=1.7.6", "../app.js?v=1.7.6", "../mechanic-validation.js?v=1.7.6", "../sheet-data.js?v=1.7.6", "../firebase-sync.js?v=1.7.6", "../signature-canvas.js?v=1.7.6", "../time-now.js?v=1.7.6", "../lifecycle.js?v=1.7.6", "../keys/app.js?v=1.7.6", "../keys/data.js?v=1.7.6", "../keys/styles.css?v=1.7.6"];
+ASSETS.push("./fault-taxonomy.js?v=1.7.6");
 const ASSET_URLS = new Set(ASSETS.map((path) => new URL(path, self.location.href).href));
 
 self.addEventListener("install", (event) => {

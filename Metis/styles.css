@@ -26,6 +26,10 @@
 #history-results .issue-item > * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
 .history-page { direction: rtl; }
 .history-page .section-note { margin: 13px 0 0; line-height: 1.55; }
+.history-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.history-toolbar .section-note { margin: 0; }
+.history-toolbar button { flex: none; }
+.manager-fault-description-label { display: block; margin: 18px 0 8px; font-size: 14px; font-weight: 800; color: #173b5d; }
 .history-mode-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 14px; }
 .history-mode-tabs button { flex: 1 1 130px; min-height: 42px; border: 1px solid #cbdce5; border-radius: 10px; color: #234960; background: #f5f9fb; font: inherit; font-weight: 700; cursor: pointer; }
 .history-mode-tabs button[aria-pressed="true"] { background: #176b96; color: #fff; border-color: #176b96; }
@@ -167,10 +171,10 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .report-choice label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
 #report-aircraft-fields .replaced-toggle { margin: 5px 0 10px; padding: 10px; }
 .report-dates { margin: 14px 0; }
-.report-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 12px 0 20px; }
-.report-stat { display: grid; gap: 3px; padding: 12px; border-radius: 10px; background: #eef6fa; text-align: center; }
-.report-stat strong { color: #14678f; font-size: 21px; }
-.report-stat span { font-size: 11px; }
+.report-summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; margin: 12px 0 20px; }
+.report-stat { display: grid; gap: 3px; padding: 7px 4px; border-radius: 10px; background: #eef6fa; text-align: center; }
+.report-stat strong { color: #14678f; font-size: 18px; }
+.report-stat span { font-size: 10px; }
 .report-stat { min-width: 0; }
 .report-stat span { overflow-wrap: anywhere; line-height: 1.4; }
 .report-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -213,14 +217,17 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 #constants-editor .constants-grid { margin: 15px 0; }
 #constants-editor .manager-constant-row input { font-size: 16px; }
 @media (max-width: 720px) {
-  .report-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .report-summary { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .report-results { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
   .report-choice { flex-wrap: wrap; gap: 10px 18px; }
   .report-filters .manager-grid { gap: 14px; }
   .report-subject-fields { grid-template-columns: 1fr; }
-  .report-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-summary { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
+  .report-stat { padding: 6px 2px; }
+  .report-stat strong { font-size: 15px; }
+  .report-stat span { font-size: 9px; line-height: 1.2; }
   .report-entry-details { grid-template-columns: 1fr; }
   .list-search { max-width: none; }
   .report-aircraft-options { grid-template-columns: repeat(auto-fit, minmax(min(100%, 105px), 1fr)); }

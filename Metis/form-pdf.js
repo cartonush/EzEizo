@@ -1,5 +1,5 @@
-import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.7.5";
-import { KEY_TASKS, KEY_TABLES } from "../keys/data.js?v=1.7.5";
+import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.7.6";
+import { KEY_TASKS, KEY_TABLES } from "../keys/data.js?v=1.7.6";
 
 const left = MARGIN, right = PAGE_WIDTH - MARGIN;
 const dateTime = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -204,7 +204,7 @@ async function issuePdf(issue) {
   if (issue.status === "closed") {
     const review = issue.managerReview || {};
     pdf.heading("בקרה וניהול");
-    for (const [label, key] of [["התקלה אומתה", "verified"], ["הוחלפו יחידות", "unitsReplaced"], ["בוצע תיקון", "repairPerformed"], ["תקלה חוזרת", "recurrent"], ["ביטול משימה", "missionCancelled"], ["ביטול גיחה", "sortieCancelled"], ["היתר למעקב", "trackingPermit"]]) pdf.text(label, checked(review[key]));
+    for (const [label, key] of [["לא אומת", "notVerified"], ["התקלה אומתה", "verified"], ["הוחלפו יחידות", "unitsReplaced"], ["בוצע תיקון", "repairPerformed"], ["תקלה חוזרת", "recurrent"], ["ביטול משימה", "missionCancelled"], ["ביטול גיחה", "sortieCancelled"], ["היתר למעקב", "trackingPermit"]]) pdf.text(label, checked(review[key]));
     if (review.recurrentAnswer === "no") pdf.text("תקלה חוזרת", "לא");
     for (const [label, key] of [["היתר לבדיקה עד", "inspectionPermitUntil"], ["היתר לטיסה עד", "flightPermitUntil"], ["אישור עד", "approvalUntil"]]) if (review[key]) pdf.text(label, review[key]);
     await pdf.signature("חתימת בודק הדף", issue.reviewerSignature);

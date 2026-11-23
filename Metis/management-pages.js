@@ -1,9 +1,9 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.7.5";
-import { SQUADRONS, SYSTEMS } from "./catalog.js?v=1.7.5";
-import { downloadReportPdf } from "./report-pdf.js?v=1.7.5";
-import { downloadFile } from "./report-pdf.js?v=1.7.5";
-import { createFormPdf } from "./form-pdf.js?v=1.7.5";
-import { zipFiles } from "./zip.js?v=1.7.5";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.7.6";
+import { SQUADRONS, SYSTEMS } from "./catalog.js?v=1.7.6";
+import { downloadReportPdf } from "./report-pdf.js?v=1.7.6";
+import { downloadFile } from "./report-pdf.js?v=1.7.6";
+import { createFormPdf } from "./form-pdf.js?v=1.7.6";
+import { zipFiles } from "./zip.js?v=1.7.6";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -196,7 +196,7 @@ function renderReport() {
   $("#report-download-all").disabled = Boolean(state.error || !reportRows.length || reportBusy || state.kind === "system-codes");
   const summary = $("#report-summary"); summary.replaceChildren();
   if (!state.error) {
-    const counts = [["שילוחים שבוטלו", reportRows.filter((r) => r.status === "cancelled").length], ["תקלות", reportRows.filter((r) => r.type === "issue").length], ["מטוסים בהטענות", reportRows.filter((r) => r.type === "key").length], ["פתוח", reportRows.filter((r) => r.status === "open").length], ["ממתין לסגירה", reportRows.filter((r) => r.status === "pendingReview").length], ["סגור", reportRows.filter((r) => r.status === "closed").length]];
+    const counts = [["תקלות", reportRows.filter((r) => r.type === "issue").length], ["מטוסים בהטענות", reportRows.filter((r) => r.type === "key").length], ["פתוח", reportRows.filter((r) => r.status === "open").length], ["ממתין לסגירה", reportRows.filter((r) => r.status === "pendingReview").length], ["סגור", reportRows.filter((r) => r.status === "closed").length], ["שילוח בוטל", reportRows.filter((r) => r.status === "cancelled").length]];
     counts.forEach(([label, amount]) => { const item = element("div", null, "report-stat"); item.append(element("strong", String(amount)), element("span", label)); summary.append(item); });
   }
   const results = $("#report-results"); results.replaceChildren();

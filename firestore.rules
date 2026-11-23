@@ -12,8 +12,8 @@ service cloud.firestore {
     function validManagerReview(data) {
       return data is map
         && data.keys().hasAll(['verified', 'unitsReplaced', 'repairPerformed', 'recurrent', 'recurrentAnswer', 'missionCancelled', 'sortieCancelled', 'inspectionPermitUntil', 'flightPermitUntil', 'trackingPermit', 'approvalUntil'])
-        && data.keys().hasOnly(['verified', 'unitsReplaced', 'repairPerformed', 'recurrent', 'recurrentAnswer', 'missionCancelled', 'sortieCancelled', 'inspectionPermitUntil', 'flightPermitUntil', 'trackingPermit', 'approvalUntil'])
-        && data.verified is bool && data.unitsReplaced is bool && data.repairPerformed is bool
+        && data.keys().hasOnly(['verified', 'notVerified', 'unitsReplaced', 'repairPerformed', 'recurrent', 'recurrentAnswer', 'missionCancelled', 'sortieCancelled', 'inspectionPermitUntil', 'flightPermitUntil', 'trackingPermit', 'approvalUntil'])
+        && data.verified is bool && data.get('notVerified', false) is bool && !(data.verified && data.get('notVerified', false)) && data.unitsReplaced is bool && data.repairPerformed is bool
         && data.recurrent is bool && data.recurrentAnswer in ['', 'yes', 'no']
         && data.recurrent == (data.recurrentAnswer == 'yes')
         && data.missionCancelled is bool && data.sortieCancelled is bool && data.trackingPermit is bool

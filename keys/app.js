@@ -1,9 +1,9 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.7.5";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.7.5";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.7.5";
-import { attachTimeNow } from "../time-now.js?v=1.7.5";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.7.5";
-import { createEditLock } from "../edit-lock.js?v=1.7.5";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.7.6";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, alreadyLoadedForPeriod, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.7.6";
+import { attachTimeNow } from "../time-now.js?v=1.7.6";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.7.6";
+import { createEditLock } from "../edit-lock.js?v=1.7.6";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -121,7 +121,10 @@ function renderAircraftRows() {
     const holder = make("div", undefined, "search-picker");
     function showChoices() {
       choices.replaceChildren(); const matches = aircraftFor(draft.squadron).filter((value) => value.includes(input.value.trim()) && (value === item.aircraft || !draft.rows.some((other, at) => at !== index && other.aircraft === value)));
-      matches.forEach((value) => { const button = make("button", value, "picker-option"); button.type = "button"; button.setAttribute("role", "option"); button.setAttribute("aria-selected", String(value === item.aircraft)); button.addEventListener("pointerdown", (event) => event.preventDefault()); button.addEventListener("click", () => { const target = draft.rows[index] || (draft.rows[index] = { aircraft: "", blue: false, shach: false, notes: "" }); target.aircraft = value; saveDraft(); renderAircraftRows(); }); choices.append(button); }); choices.hidden = !matches.length; input.setAttribute("aria-expanded", String(!choices.hidden));
+      matches.forEach((value) => { const button = make("button", value, "picker-option"); button.type = "button"; button.setAttribute("role", "option"); button.setAttribute("aria-selected", String(value === item.aircraft)); button.addEventListener("pointerdown", (event) => event.preventDefault()); button.addEventListener("click", () => {
+        if (alreadyLoadedForPeriod(history, draft.squadron, value, draft.date) && !window.confirm("מטוס זה נטען כבר לחודש הנוכחי ולחודש הבא. האם להטעין שוב?")) { input.value = ""; choices.hidden = true; input.setAttribute("aria-expanded", "false"); return; }
+        const target = draft.rows[index] || (draft.rows[index] = { aircraft: "", blue: false, shach: false, notes: "" }); target.aircraft = value; saveDraft(); renderAircraftRows();
+      }); choices.append(button); }); choices.hidden = !matches.length; input.setAttribute("aria-expanded", String(!choices.hidden));
     }
     input.addEventListener("focus", showChoices);
     input.addEventListener("input", () => { if (draft.rows[index]) { draft.rows[index].aircraft = ""; saveDraft(); } showChoices(); });

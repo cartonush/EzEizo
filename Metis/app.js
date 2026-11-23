@@ -1,11 +1,11 @@
-import "../sheet-data.js?v=1.7.5";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.7.5";
-import { SQUADRONS, SYSTEMS, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.7.5";
-import { resolveAssignees } from "./assignee-selection.js?v=1.7.5";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.7.5";
-import { initKeyPages } from "../keys/app.js?v=1.7.5";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.7.5";
-import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.7.5";
+import "../sheet-data.js?v=1.7.6";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchTechnicians, createIssue, createAssignedIssues, createTechnician, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.7.6";
+import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.7.6";
+import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
+import { initKeyPages } from "../keys/app.js?v=1.7.6";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.7.6";
+import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.7.6";
 
 const managerUser = await gate("manager");
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
@@ -352,17 +352,12 @@ function addIssueCard(container, item, mode) {
 
 function renderIssueLists() {
   const opened = document.querySelector("#issued-list");
-  const closed = document.querySelector("#closed-list");
   const pending = document.querySelector("#pending-list");
   opened.replaceChildren();
-  closed.replaceChildren();
   pending.replaceChildren();
   delete opened.dataset.state;
-  delete closed.dataset.state;
-  const filter = document.querySelector("#closed-filter").value;
   const matches = (selector, serial) => String(serial || "").includes(document.querySelector(selector).value.trim());
   const uniqueSerials = (items) => [...new Map(items.map((item) => [item.serial, item])).values()];
-  const allClosed = uniqueSerials(cloudIssues.filter((item) => item.status === "closed" && item.closed?.record && (!filter || item.assigneeUid === filter) && matches("#closed-issue-search", item.closed.record.serial)).map((item) => item.closed.record));
   const awaiting = uniqueSerials(cloudIssues.filter((item) => item.status === "pendingReview" && item.closed?.record && matches("#pending-issue-search", item.closed.record.serial)).map((item) => item.closed.record));
   const active = filterIssues(cloudIssues, { mode: document.querySelector("#fault-mode").value, serial: document.querySelector("#open-issue-search").value, squadron: document.querySelector("#fault-squadron").value, aircraft: document.querySelector("#fault-aircraft").value.trim(), from: document.querySelector("#fault-from").value, to: document.querySelector("#fault-to").value, reviewFilters: [...document.querySelectorAll("[data-closed-filter]:checked")].map((input) => input.dataset.closedFilter), originFilters: [...document.querySelectorAll("[data-closed-origin]:checked")].map((input) => input.dataset.closedOrigin) });
   [...new Map(active.map((issue) => [issue.sheet.serial, issue])).values()].forEach((issue) => addIssueCard(opened, issue.closed?.record || issue.sheet, issue.status));
@@ -375,10 +370,8 @@ function renderIssueLists() {
     const link = document.createElement("a"); link.className = "secondary-button"; link.href = `#keys/work/${encodeURIComponent(load.id)}`; link.textContent = "בדוק וסגור הטענה";
     card.append(title, subtitle, link); pending.append(card);
   });
-  allClosed.forEach((item) => addIssueCard(closed, item, "closed"));
   if (!active.length) opened.textContent = "לא נמצאו תקלות התואמות לסינון.";
   if (!pending.children.length) pending.textContent = "לא נמצאו תקלות לסגירה התואמות לסינון.";
-  if (!allClosed.length) closed.textContent = "לא נמצאו תקלות סגורות התואמות לחיפוש.";
   renderFaultHistory();
 }
 
@@ -388,14 +381,19 @@ function renderFaultHistory() {
   results.replaceChildren();
   const squadron = document.querySelector("#history-squadron").value;
   const aircraft = document.querySelector("#history-aircraft").value.trim();
-  const component = document.querySelector("#history-unit").value.trim();
-  if (historyMode === "aircraft" && (!squadron || !aircraft)) { results.textContent = "בחר טייסת ומטוס כדי לראות את ההיסטוריה."; return; }
-  if (historyMode === "component" && !component) { results.textContent = "בחר מכלול מהרשימה כדי לראות פירוקים והרכבות."; return; }
-  const matching = historyMode === "component" ? componentHistory(cloudIssues, component).map(({ issue, kind, unit }) => ({ issue, detail: `${kind === "removed" ? "פורק" : "הורכב"}: ${unit.name || "מכלול"} · ${unit.serial || "ללא מספר סידורי"}` })) : filterIssues(cloudIssues, { mode: "date", squadron, aircraft }).map((issue) => ({ issue, detail: "" }));
+  const system = document.querySelector(historyMode === "aircraft" ? "#history-aircraft-system" : "#history-component-system").value;
+  const component = document.querySelector(historyMode === "aircraft" ? "#history-aircraft-unit" : "#history-unit").value;
+  const serial = document.querySelector("#history-unit-serial").value.trim();
+  if (historyMode === "aircraft" && (!squadron || !aircraft || !system || !component)) { results.textContent = "בחר טייסת, מטוס, מערכת ומכלול כדי לראות את הפירוקים וההרכבות."; return; }
+  if (historyMode === "component" && (!system || !component || !serial)) { results.textContent = "בחר מערכת ומכלול והזן מספר סידורי כדי לראות את ההיסטוריה שלו."; return; }
+  if (!COMPONENTS_BY_SYSTEM[system]?.includes(component)) { results.textContent = "המכלול אינו שייך למערכת שנבחרה."; return; }
+  const matching = componentHistory(cloudIssues, component)
+    .filter(({ issue, unit }) => historyMode === "aircraft" ? issue.sheet?.squadron === squadron && issue.sheet?.aircraft === aircraft : String(unit.serial || "").trim().toLocaleLowerCase("he") === serial.toLocaleLowerCase("he"))
+    .map(({ issue, kind, unit, at }) => ({ issue, detail: `${kind === "removed" ? "פורק" : "הורכב"}: ${unit.name || "מכלול"} · מספר סידורי ${unit.serial || "לא צוין"} · ${new Date(at).toLocaleDateString("he-IL")}` }));
   const grouped = new Map();
   for (const { issue, detail } of matching) {
     const key = `${issue.sheet?.serial || issue.id}|${issue.sheet?.squadron || ""}|${issue.sheet?.aircraft || ""}`;
-    const notes = (historyMode === "component" ? [detail] : ["removed", "installed"].flatMap((kind) => (issue.closed?.state?.[kind] || []).map((unit) => `${kind === "removed" ? "פורק" : "הורכב"}: ${unit.name || "מכלול"} · ${unit.serial || "ללא מספר סידורי"}`))).filter(Boolean);
+    const notes = [detail];
     if (!grouped.has(key)) grouped.set(key, { issue, notes: new Set() });
     const entry = grouped.get(key);
     notes.forEach((note) => entry.notes.add(note));
@@ -418,14 +416,14 @@ function renderFaultHistory() {
     if (["closed", "pendingReview"].includes(issue.status)) { const link = document.createElement("a"); link.className = "secondary-button"; link.href = `./closed.html?id=${encodeURIComponent(issue.id)}`; link.textContent = "פתח דף תקלה"; card.append(link); }
     results.append(card);
   });
-  if (!grouped.size) results.textContent = "לא נמצאה היסטוריה התואמת לחיפוש.";
+  if (!grouped.size) results.textContent = "לא נמצאו פירוקים או הרכבות התואמים לבחירה.";
 }
 
 document.querySelectorAll("[data-history-mode]").forEach((button) => button.addEventListener("click", () => {
   historyMode = button.dataset.historyMode;
   document.querySelectorAll("[data-history-mode]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
   document.querySelectorAll("[data-history-fields]").forEach((group) => { group.hidden = group.dataset.historyFields !== historyMode; });
-  document.querySelector("#history-hint").textContent = historyMode === "aircraft" ? "בחר טייסת ומטוס להצגת כל התקלות והחלפות המכלולים שלו." : "בחר שם מכלול להצגת הפירוקים וההרכבות בכל המטוסים. חיפוש לפי מספר סידורי יתווסף בהמשך.";
+  document.querySelector("#history-hint").textContent = historyMode === "aircraft" ? "בחר טייסת, מטוס, מערכת ומכלול להצגת הפירוקים וההרכבות שלו." : "בחר מערכת, מכלול ומספר סידורי להצגת כל הפעולות במכלול הזה.";
   renderFaultHistory();
 }));
 
@@ -433,25 +431,22 @@ let keyPagesStarted = false;
 let previousManagerView = "";
 function showManagerView() {
   const requested = window.location.hash.slice(1);
-  const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : ["home", "management", "reports", "aircraft-constants", "new", "open", "pending", "closed", "history", "users"].includes(requested) ? requested : "home";
-  if (selected === "closed") document.querySelector("#fault-mode").value = "closed";
-  if (selected === "open" && previousManagerView !== "open") document.querySelector("#fault-mode").value = "open-default";
+  const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : requested === "closed" ? "open" : ["home", "management", "reports", "aircraft-constants", "new", "open", "pending", "history", "users"].includes(requested) ? requested : "home";
+  if (requested === "closed") document.querySelector("#fault-mode").value = "closed";
+  if (selected === "open" && previousManagerView !== "open" && requested !== "closed") document.querySelector("#fault-mode").value = "open-default";
   previousManagerView = selected;
   document.querySelector("#closed-review-filters").hidden = !["closed"].includes(document.querySelector("#fault-mode").value);
   document.querySelector("#manager-back").hidden = !["users", "reports", "aircraft-constants"].includes(selected);
   document.querySelector("#reset-draft").hidden = requested !== "new" && requested !== "keys/create";
   if (selected !== "keys") document.querySelector("#key-back-link").hidden = true;
-  document.querySelector("#fault-nav").hidden = !["new", "open", "pending", "closed", "history"].includes(selected);
-  document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== (selected === "pending" ? "closed" : selected === "closed" ? "open" : selected); });
-  document.querySelector("#pending-section").hidden = selected !== "pending";
-  document.querySelector("#closed-section").hidden = selected === "pending";
+  document.querySelector("#fault-nav").hidden = !["new", "open", "pending", "history"].includes(selected);
+  document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== (selected === "pending" ? "closed" : selected); });
   document.querySelectorAll("[data-view-link]").forEach((link) => {
-    const nav = ["new", "open", "pending", "closed", "history"].includes(selected) ? "faults" : ["users", "reports", "aircraft-constants"].includes(selected) ? "management" : selected;
+    const nav = ["new", "open", "pending", "history"].includes(selected) ? "faults" : ["users", "reports", "aircraft-constants"].includes(selected) ? "management" : selected;
     if (link.dataset.viewLink === nav) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
   document.querySelectorAll("[data-fault-link]").forEach((link) => { if (link.dataset.faultLink === selected) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current"); });
-  document.querySelectorAll("[data-review-link]").forEach((link) => { if (link.dataset.reviewLink === selected) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current"); });
   if (selected === "keys" && !keyPagesStarted) { keyPagesStarted = true; initKeyPages({ user: managerUser, embedded: true }); }
   if (selected !== "new") renderIssueLists();
 }
@@ -495,7 +490,7 @@ watchIssues((issues) => {
   renderIssueLists(); renderUsers();
 }, (error) => {
   setStatus("#issued-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
-  setStatus("#closed-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
+  setStatus("#pending-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
 });
 function selectedAssigneeUids() {
   return [...document.querySelectorAll('#new-assignees select')].map((select) => select.value);
@@ -534,14 +529,8 @@ function renderAssigneeSelectors(values = selectedAssigneeUids()) {
 document.querySelector('#add-assignee').addEventListener('click', () => renderAssigneeSelectors([...selectedAssigneeUids(), '']));
 function updateUserSelectors() {
   renderAssigneeSelectors();
-  const filter = document.querySelector('#closed-filter');
-  const previous = filter.value;
-  filter.replaceChildren(new Option('כל הטכנאים', ''));
-  technicians.forEach((person) => filter.append(new Option(`${person.name}${person.deleted ? ' (נמחק)' : person.active ? '' : ' (הוסר)'}`, person.uid)));
-  filter.value = previous;
 }
-document.querySelector("#closed-filter").addEventListener("change", renderIssueLists);
-for (const id of ["open-issue-search", "pending-issue-search", "closed-issue-search"]) document.getElementById(id).addEventListener("input", renderIssueLists);
+for (const id of ["open-issue-search", "pending-issue-search"]) document.getElementById(id).addEventListener("input", renderIssueLists);
 FAULT_FILTERS.forEach(([value, label]) => document.querySelector("#fault-mode").append(new Option(label, value)));
 ORIGINS.forEach((origin) => { const label = document.createElement("label"); const input = document.createElement("input"); input.type = "checkbox"; input.dataset.closedOrigin = origin; label.append(input, document.createTextNode(` ${origin}`)); document.querySelector("#closed-origin-filters").append(label); });
 document.querySelector("#clear-closed-filters").addEventListener("click", () => { document.querySelectorAll("[data-closed-filter], [data-closed-origin]").forEach((input) => { input.checked = false; }); renderIssueLists(); });
@@ -550,7 +539,7 @@ for (const squadron of Object.keys(SQUADRONS)) {
   document.querySelector("#fault-squadron").append(new Option(squadron, squadron));
   document.querySelector("#history-squadron").append(new Option(squadron, squadron));
 }
-for (const [inputId, optionsId, values] of [["history-aircraft", "history-aircraft-options", () => SQUADRONS[document.querySelector("#history-squadron").value]?.aircraft || []], ["history-unit", "history-unit-options", () => ["MLPRF", "PSP", "DMT"]]]) {
+for (const [inputId, optionsId, values] of [["history-aircraft", "history-aircraft-options", () => SQUADRONS[document.querySelector("#history-squadron").value]?.aircraft || []]]) {
   const input = document.getElementById(inputId), list = document.getElementById(optionsId);
   function showChoices() {
     list.replaceChildren();
@@ -568,8 +557,28 @@ for (const [inputId, optionsId, values] of [["history-aircraft", "history-aircra
   input.addEventListener("blur", () => setTimeout(() => { list.hidden = true; input.setAttribute("aria-expanded", "false"); }, 200));
   input.addEventListener("keydown", (event) => { if (event.key === "Escape") { list.hidden = true; input.setAttribute("aria-expanded", "false"); } if (event.key === "Enter" && !list.hidden && list.firstElementChild) { event.preventDefault(); list.firstElementChild.click(); } });
 }
-document.querySelector("#history-squadron").addEventListener("change", () => { document.querySelector("#history-aircraft").value = ""; renderIssueLists(); });
-for (const id of ["fault-mode", "fault-squadron", "fault-aircraft", "fault-from", "fault-to", "pending-category", "history-squadron", "history-aircraft", "history-unit"]) document.getElementById(id).addEventListener("input", renderIssueLists);
+for (const systemId of ["history-aircraft-system", "history-component-system"]) {
+  const select = document.getElementById(systemId);
+  SYSTEMS.forEach((system) => select.append(new Option(system.name, system.name)));
+  select.addEventListener("change", () => {
+    const unit = document.getElementById(systemId === "history-aircraft-system" ? "history-aircraft-unit" : "history-unit");
+    unit.replaceChildren(new Option("בחר מכלול", ""));
+    (COMPONENTS_BY_SYSTEM[select.value] || []).forEach((name) => unit.append(new Option(name, name)));
+    unit.disabled = unit.options.length === 1;
+    document.querySelector("#history-unit-serial").value = "";
+    document.querySelector("#history-unit-serial").disabled = true;
+    renderFaultHistory();
+  });
+}
+document.querySelector("#history-unit").addEventListener("change", () => { document.querySelector("#history-unit-serial").value = ""; document.querySelector("#history-unit-serial").disabled = !document.querySelector("#history-unit").value; renderFaultHistory(); });
+document.querySelector("#history-squadron").addEventListener("change", () => { document.querySelector("#history-aircraft").value = ""; renderFaultHistory(); });
+document.querySelector("#history-reset").addEventListener("click", () => {
+  for (const id of ["history-squadron", "history-aircraft", "history-aircraft-system", "history-aircraft-unit", "history-component-system", "history-unit", "history-unit-serial"]) document.getElementById(id).value = "";
+  for (const id of ["history-aircraft-unit", "history-unit"]) { document.getElementById(id).replaceChildren(new Option("בחר מכלול", "")); document.getElementById(id).disabled = true; }
+  document.querySelector("#history-unit-serial").disabled = true;
+  renderFaultHistory();
+});
+for (const id of ["fault-mode", "fault-squadron", "fault-aircraft", "fault-from", "fault-to", "pending-category", "history-squadron", "history-aircraft", "history-aircraft-unit", "history-unit-serial"]) document.getElementById(id).addEventListener("input", renderIssueLists);
 document.querySelector("#fault-mode").addEventListener("change", () => { document.querySelector("#closed-review-filters").hidden = document.querySelector("#fault-mode").value !== "closed"; });
 function renderUsers() {
   const list = document.querySelector("#users-list");
@@ -593,9 +602,10 @@ function renderUsers() {
     const count = (status) => [...distinct.values()].filter((issue) => issue.status === status).length;
     const closed = [...distinct.values()].filter((issue) => issue.status === "closed");
     const history = document.createElement("p");
-    history.textContent = `תקלות פתוחות: ${count("open")} · לסגירה: ${count("pendingReview")} · סגורות: ${closed.length} · מספרים סידוריים: ${closed.map((issue) => issue.sheet.serial).join(", ") || "אין"}`;
-    const view = document.createElement("button"); view.type = "button"; view.className = "secondary-button"; view.textContent = "הצג דפים סגורים";
-    view.addEventListener("click", () => { document.querySelector("#closed-filter").value = person.uid; location.hash = "closed"; renderIssueLists(); });
+    const open = [...distinct.values()].filter((issue) => issue.status === "open");
+    history.textContent = `תקלות פתוחות: ${open.length} · לסגירה: ${count("pendingReview")} · סגורות: ${closed.length} · מספרי תקלות פתוחות: ${open.map((issue) => issue.sheet.serial).join(", ") || "אין"}`;
+    const view = document.createElement("button"); view.type = "button"; view.className = "secondary-button"; view.textContent = "הצג תקלות סגורות";
+    view.addEventListener("click", () => { location.hash = "closed"; showManagerView(); });
     const action = document.createElement("button"); action.type = "button"; action.className = "secondary-button";
     action.textContent = person.active ? "מחק משתמש" : "שחזר משתמש";
     action.addEventListener("click", async () => {

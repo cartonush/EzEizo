@@ -22,6 +22,7 @@ export const SYSTEMS = [
   { name: "טאקאן | TCN", code: "63A" },
   { name: "אימפריה פאסיבית", code: "76E" }
 ];
+export const COMPONENTS_BY_SYSTEM = { "מכם | FCR": ["ANT", "DMT", "MLPRF", "PSP"] };
 
 export function validateCatalogSelection(selected, draft) {
   if (!Object.hasOwn(SQUADRONS, selected.squadron) || draft.squadron !== selected.squadron) return { field: "squadron", message: "בחר טייסת מהרשימה." };
