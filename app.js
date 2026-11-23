@@ -5,8 +5,8 @@ import { validateTreatment } from "./mechanic-validation.js?v=1.7.6";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.7.6";
 import { createEditLock } from "./edit-lock.js?v=1.9.0";
-import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.4";
-import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.4";
+import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.5";
+import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.5";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -103,13 +103,6 @@ const TABLES = {
 };
 const componentNames = () => [...new Set(mergeCatalog(DEFAULT_COMPONENTS, savedUnitComponents).map((item) => item.name.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he"));
 let savedUnitComponents = [];
-const componentSuggestions = document.createElement("datalist");
-componentSuggestions.id = "component-name-suggestions";
-document.body.append(componentSuggestions);
-function refreshComponentSuggestions() {
-  componentSuggestions.replaceChildren(...componentNames().map((name) => new Option(name, name)));
-}
-refreshComponentSuggestions();
 const defaultState = {
   repair: "", technicianNotes: [], actions: ACTIONS.map(() => false), action11Result: "", arrivalTime: "", completionTime: "", closedAt: "",
   unitsEnabled: false, removed: [], installed: [], constantsEnabled: false,
@@ -580,38 +573,85 @@ function renderRows(type, focusTarget = null) {
       const componentField = (type === "removed" || type === "installed") && key === "name";
       const input = document.createElement("input");
       input.type = componentField ? "search" : field.type || "text";
-      if (componentField) {
-        input.setAttribute("list", componentSuggestions.id);
-        input.autocomplete = "off";
-        input.setAttribute("aria-description", "חפש ובחר מכלול ממאגר המכלולים");
-        input.addEventListener("input", () => {
-          const valid = componentNames().some((name) => name.toLocaleLowerCase("he") === input.value.trim().toLocaleLowerCase("he"));
-          input.setCustomValidity(input.value && !valid ? "בחר מכלול מתוך הרשימה." : "");
-        });
-      }
+      if (componentField) input.autocomplete = "off";
       if (field.type === "number") input.step = "1";
       input.value = item[key] || "";
       input.placeholder = field.placeholder;
       input.dataset.rowIndex = String(index);
       input.dataset.field = key;
       input.setAttribute("aria-label", `${field.label}, שורה ${index + 1}`);
-      input.addEventListener(componentField ? "change" : "input", () => {
-        if (componentField && input.value.trim()) {
-          const canonical = componentNames().find((name) => name.toLocaleLowerCase("he") === input.value.trim().toLocaleLowerCase("he"));
-          if (!canonical) { input.setCustomValidity("בחר מכלול מתוך הרשימה."); input.reportValidity(); return; }
-          input.value = canonical; input.setCustomValidity("");
-        }
+      function commitValue(value) {
         const wasFilled = rowHasValue(rows[index], fields);
-        rows[index][key] = input.value;
+        rows[index][key] = value;
         const isFilled = rowHasValue(rows[index], fields);
         const isLastRow = index === rows.length - 1;
         if ((isFilled && isLastRow) || (wasFilled && !isFilled && !isLastRow)) {
           const caret = input.selectionStart;
-          renderRows(type, { index, key, caret });
+          renderRows(type, componentField && value ? { index, key: "serial", caret: null } : { index, key, caret });
         }
         saveState();
-      });
-      td.append(input);
+      }
+      if (componentField && !managerClosedView && !state.closedAt) {
+        const picker = document.createElement("div");
+        picker.className = "component-picker";
+        const list = document.createElement("div");
+        list.className = "component-results";
+        list.id = `component-results-${type}-${index}`;
+        list.setAttribute("role", "listbox");
+        list.setAttribute("aria-label", "תוצאות חיפוש מכלולים");
+        list.hidden = true;
+        input.setAttribute("role", "combobox");
+        input.setAttribute("aria-autocomplete", "list");
+        input.setAttribute("aria-controls", list.id);
+        input.setAttribute("aria-expanded", "false");
+        const hideResults = () => { list.hidden = true; input.setAttribute("aria-expanded", "false"); };
+        const selectComponent = (name) => {
+          input.value = name;
+          input.setCustomValidity("");
+          hideResults();
+          commitValue(name);
+          requestAnimationFrame(() => target.querySelector(`[data-row-index="${index}"][data-field="serial"]`)?.focus({ preventScroll: true }));
+        };
+        const showResults = () => {
+          const query = input.value.trim().toLocaleLowerCase("he");
+          const matches = componentNames().filter((name) => name.toLocaleLowerCase("he").includes(query));
+          list.replaceChildren();
+          if (!matches.length) {
+            const empty = document.createElement("span"); empty.className = "component-no-results"; empty.textContent = "לא נמצאו מכלולים במאגר."; list.append(empty);
+          }
+          matches.forEach((name) => {
+            const option = document.createElement("button");
+            option.type = "button"; option.className = "component-result";
+            option.setAttribute("role", "option"); option.textContent = name;
+            option.addEventListener("click", () => selectComponent(name));
+            list.append(option);
+          });
+          list.hidden = false;
+          input.setAttribute("aria-expanded", "true");
+          input.setCustomValidity(input.value && !componentNames().some((name) => name.toLocaleLowerCase("he") === query) ? "בחר מכלול מתוך תוצאות החיפוש." : "");
+        };
+        input.addEventListener("focus", showResults);
+        input.addEventListener("input", showResults);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") { hideResults(); return; }
+          if (event.key !== "Enter" && event.key !== "ArrowDown") return;
+          const first = list.querySelector(".component-result");
+          if (!first || list.hidden) return;
+          event.preventDefault();
+          if (event.key === "Enter") selectComponent(first.textContent);
+          else first.focus();
+        });
+        input.addEventListener("change", () => {
+          const exact = componentNames().find((name) => name.toLocaleLowerCase("he") === input.value.trim().toLocaleLowerCase("he"));
+          if (exact) selectComponent(exact);
+          else if (!input.value.trim()) commitValue("");
+        });
+        picker.addEventListener("focusout", () => { setTimeout(() => { if (!picker.contains(document.activeElement)) hideResults(); }, 100); });
+        picker.append(input, list); td.append(picker);
+      } else {
+        input.addEventListener("input", () => commitValue(input.value));
+        td.append(input);
+      }
       tr.append(td);
     });
     const removeCell = document.createElement("td");
@@ -755,7 +795,7 @@ if (managerClosedView) document.querySelector("#save-state").textContent = "דף
 renderTechnicianNotes();
 renderActions();
 Object.keys(TABLES).forEach((table) => renderRows(table));
-if (selectedSheet) watchComponents((items) => { savedUnitComponents = items; refreshComponentSuggestions(); }, () => {});
+if (selectedSheet) watchComponents((items) => { savedUnitComponents = items; }, () => {});
 bindToggleInputs();
 bindStateFields();
 attachTimeNow();

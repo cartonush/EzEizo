@@ -1,8 +1,8 @@
 import "../sheet-data.js?v=1.7.6";
 import { gate, revealApp, watchIssues, watchKeyLoads, watchAccounts, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.0";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
-import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.4";
-import { initCatalogView } from "./catalog-view.js?v=1.9.4";
+import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.5";
+import { initCatalogView } from "./catalog-view.js?v=1.9.5";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
 import { createEditLock } from "../edit-lock.js?v=1.9.0";

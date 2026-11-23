@@ -106,6 +106,13 @@ th:last-child { width: 10%; }
 td { padding: 5px 8px; border-top: 1px solid #edf1f3; }
 td input { width: 100%; min-width: 70px; height: 34px; padding: 6px 8px; color: var(--ink); border: 1px solid #e0e8ed; border-radius: 7px; background: #fff; outline: none; font-size: 12px; }
 td input:focus { border-color: #5da8c5; }
+.component-picker { display: grid; gap: 4px; min-width: 0; }
+.component-picker input { min-width: 0; }
+.component-results { max-height: 180px; overflow-y: auto; border: 1px solid #b9d2df; border-radius: 9px; background: #fff; box-shadow: 0 5px 14px #153b561c; }
+.component-result { display: block; width: 100%; padding: 9px 10px; border: 0; border-bottom: 1px solid #edf1f3; background: #fff; text-align: right; color: #173b5d; font: inherit; cursor: pointer; }
+.component-result:last-child { border-bottom: 0; }
+.component-result:hover,.component-result:focus-visible { background: #eaf5f9; outline: none; }
+.component-no-results { display: block; padding: 9px 10px; color: #617888; font-size: 12px; }
 .remove-row { border: 0; background: transparent; color: #98a6af; font-size: 17px; cursor: pointer; padding: 3px 5px; }
 .remove-row:hover { color: #c25454; }
 .empty-row td { color: #a0adb5; text-align: center; font-size: 11px; padding: 14px; }
