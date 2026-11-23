@@ -170,7 +170,7 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .report-choice legend { padding: 0 6px; font-weight: 700; }
 .report-choice label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
 #report-aircraft-fields .replaced-toggle { margin: 5px 0 10px; padding: 10px; }
-.report-dates { margin: 14px 0; }
+.report-filters .report-dates { grid-template-columns: repeat(2, minmax(0, 230px)); gap: 12px; margin: 14px 0; }
 .report-summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; margin: 12px 0 20px; }
 .report-stat { display: grid; gap: 3px; padding: 7px 4px; border-radius: 10px; background: #eef6fa; text-align: center; }
 .report-stat strong { color: #14678f; font-size: 18px; }
@@ -195,7 +195,7 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .report-filters details, .report-filters summary, .report-multi-aircraft-panel, .report-aircraft-options label, .report-stat, .report-entry { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .report-multi-aircraft summary { white-space: normal; overflow-wrap: anywhere; }
 .report-technician-header > *, .report-subject-fields > *, .manager-grid > * { min-width: 0; max-width: 100%; }
-.report-dates input[type="datetime-local"] { min-width: 0; max-width: 100%; font-size: 14px; }
+.report-dates input[type="datetime-local"] { min-width: 0; max-width: 100%; min-height: 39px; height: 39px; font-size: 13px; padding-inline: 6px; }
 .report-output .section-heading > div, .report-filters .section-heading > div { flex: 1; text-align: center; }
 .report-output .section-heading h2, .report-filters .section-heading h2 { text-align: center; }
 .report-aircraft-group { grid-column: 1 / -1; margin: 12px 0 0; padding: 10px 14px; border-radius: 10px; background: #eaf4f8; color: #173b5d; font-size: 16px; }
@@ -223,6 +223,7 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 @media (max-width: 620px) {
   .report-choice { flex-wrap: wrap; gap: 10px 18px; }
   .report-filters .manager-grid { gap: 14px; }
+  .report-filters .report-dates { grid-template-columns: minmax(0, 230px); }
   .report-subject-fields { grid-template-columns: 1fr; }
   .report-summary { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
   .report-stat { padding: 6px 2px; }

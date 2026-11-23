@@ -11,9 +11,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.7.6">
-  <link rel="stylesheet" href="styles.css?v=1.7.6">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.7.6">
+  <link rel="stylesheet" href="../styles.css?v=1.7.7">
+  <link rel="stylesheet" href="styles.css?v=1.7.7">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.7.7">
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.7.6</span>
+      <span class="version-pill">v1.7.7</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -68,7 +68,7 @@
 <section id="history-view" class="card"><div class="section-heading"><div><p class="section-kicker">שלוש טייסות</p><h2>היסטוריית מפתחות</h2></div></div><p class="section-note">ארז כחול ושחק מתעדכנים בנפרד לאחר הטענה שהושלמה. סוג מפתח שלא נטען עדיין מסומן ״טרם הוטען״.</p><div class="review-tabs squad-tabs" id="history-tabs"></div><div id="history-table" class="table-wrap"></div><p id="history-status" class="copy-status" role="status"></p></section>
 <section id="create-view" hidden>
 <section class="card"><div class="section-heading"><div><p class="section-kicker">דף חדש</p><h2>הטענת מפתחות</h2></div></div><div class="manager-grid key-create-fields">
-<label class="input-field">תאריך<input id="key-date" type="date" required></label><label class="input-field">שעה<input id="key-time" type="time" required></label>
+<div class="key-date-time"><label class="input-field">תאריך<input id="key-date" type="date" required></label><label class="input-field">שעה<input id="key-time" type="time" required></label></div>
 <label class="input-field">טייסת<select id="key-squadron" required></select></label><label class="input-field">דת״ק<select id="key-shelter" required></select></label>
 </div><fieldset class="assignee-fieldset"><legend>צוות · לפחות שני טכנאים שונים</legend><div id="key-team" class="assignee-options"></div><button id="add-team" class="secondary-button" type="button">+ הוסף טכנאי</button></fieldset></section>
 <section class="card"><div class="section-heading"><div><p class="section-kicker">מטוסים ומפתחות</p><h2>רשימת הטענה</h2></div></div><p id="key-aircraft-hint" class="section-note" role="status">חפש ובחר מטוס מהתוצאות, וסמן לפחות סוג מפתח אחד. שורה נוספת תיפתח אוטומטית.</p><div class="table-wrap key-load-table-wrap"><table class="keys-table key-load-table"><colgroup><col class="aircraft-col"><col class="check-col"><col class="check-col"><col class="notes-col"><col class="remove-col"></colgroup><thead><tr><th>מס׳ מטוס</th><th>ארז כחול</th><th>שחק</th><th>הערות</th><th></th></tr></thead><tbody id="key-aircraft-rows"></tbody></table>
