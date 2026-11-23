@@ -1,11 +1,12 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchSystems, watchComponents, refreshTechnicianTasks, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.0";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.0";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
 import { validateTreatment } from "./mechanic-validation.js?v=1.7.6";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.7.6";
 import { createEditLock } from "./edit-lock.js?v=1.9.0";
-import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.3";
+import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.4";
+import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.4";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");
@@ -74,11 +75,11 @@ if (selectedSheet && !managerClosedView && remoteIssue.status === "open") {
 }
 const TABLES = {
   removed: [
-    { key: "name", label: "שם יחידה", placeholder: "בחר יחידה", options: ["ANT", "MLPRF", "PSP", "DMT"] },
+    { key: "name", label: "שם יחידה", placeholder: "חפש מכלול במאגר" },
     { key: "serial", label: "מס״ד", placeholder: "מס״ד" }
   ],
   installed: [
-    { key: "name", label: "שם יחידה", placeholder: "בחר יחידה", options: ["ANT", "MLPRF", "PSP", "DMT"] },
+    { key: "name", label: "שם יחידה", placeholder: "חפש מכלול במאגר" },
     { key: "serial", label: "מס״ד", placeholder: "מס״ד" }
   ],
   tools: [
@@ -100,6 +101,15 @@ const TABLES = {
     { key: "reason", label: "סיבת הפסילה", placeholder: "סיבת הפסילה" }
   ]
 };
+const componentNames = () => [...new Set(mergeCatalog(DEFAULT_COMPONENTS, savedUnitComponents).map((item) => item.name.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he"));
+let savedUnitComponents = [];
+const componentSuggestions = document.createElement("datalist");
+componentSuggestions.id = "component-name-suggestions";
+document.body.append(componentSuggestions);
+function refreshComponentSuggestions() {
+  componentSuggestions.replaceChildren(...componentNames().map((name) => new Option(name, name)));
+}
+refreshComponentSuggestions();
 const defaultState = {
   repair: "", technicianNotes: [], actions: ACTIONS.map(() => false), action11Result: "", arrivalTime: "", completionTime: "", closedAt: "",
   unitsEnabled: false, removed: [], installed: [], constantsEnabled: false,
@@ -567,25 +577,36 @@ function renderRows(type, focusTarget = null) {
     fields.forEach((field) => {
       const { key } = field;
       const td = document.createElement("td");
-      const input = document.createElement(field.options ? "select" : "input");
-      if (field.options) {
-        input.append(new Option(field.placeholder, ""));
-        field.options.forEach((name) => input.append(new Option(name, name)));
-        if (item[key] && !field.options.includes(item[key])) input.append(new Option(`${item[key]} (ערך קודם)`, item[key]));
-      } else input.type = field.type || "text";
+      const componentField = (type === "removed" || type === "installed") && key === "name";
+      const input = document.createElement("input");
+      input.type = componentField ? "search" : field.type || "text";
+      if (componentField) {
+        input.setAttribute("list", componentSuggestions.id);
+        input.autocomplete = "off";
+        input.setAttribute("aria-description", "חפש ובחר מכלול ממאגר המכלולים");
+        input.addEventListener("input", () => {
+          const valid = componentNames().some((name) => name.toLocaleLowerCase("he") === input.value.trim().toLocaleLowerCase("he"));
+          input.setCustomValidity(input.value && !valid ? "בחר מכלול מתוך הרשימה." : "");
+        });
+      }
       if (field.type === "number") input.step = "1";
       input.value = item[key] || "";
       input.placeholder = field.placeholder;
       input.dataset.rowIndex = String(index);
       input.dataset.field = key;
       input.setAttribute("aria-label", `${field.label}, שורה ${index + 1}`);
-      input.addEventListener(field.options ? "change" : "input", () => {
+      input.addEventListener(componentField ? "change" : "input", () => {
+        if (componentField && input.value.trim()) {
+          const canonical = componentNames().find((name) => name.toLocaleLowerCase("he") === input.value.trim().toLocaleLowerCase("he"));
+          if (!canonical) { input.setCustomValidity("בחר מכלול מתוך הרשימה."); input.reportValidity(); return; }
+          input.value = canonical; input.setCustomValidity("");
+        }
         const wasFilled = rowHasValue(rows[index], fields);
         rows[index][key] = input.value;
         const isFilled = rowHasValue(rows[index], fields);
         const isLastRow = index === rows.length - 1;
         if ((isFilled && isLastRow) || (wasFilled && !isFilled && !isLastRow)) {
-          const caret = field.options ? null : input.selectionStart;
+          const caret = input.selectionStart;
           renderRows(type, { index, key, caret });
         }
         saveState();
@@ -734,17 +755,7 @@ if (managerClosedView) document.querySelector("#save-state").textContent = "דף
 renderTechnicianNotes();
 renderActions();
 Object.keys(TABLES).forEach((table) => renderRows(table));
-if (selectedSheet) {
-  let knownSystems = [], knownComponents = [];
-  const updateUnitOptions = () => {
-    const systemId = knownSystems.find((entry) => entry.name === sheet.systemName)?.id || ({ "מכם | FCR": "system_fcr", "טאקאן | TCN": "system_tcn", "אימפריה פאסיבית": "system_ew" })[sheet.systemName] || (String(sheet.systemName).includes("מכם") ? "system_fcr" : "");
-    const names = systemId === "system_fcr" ? ["ANT", "DMT", "MLPRF", "PSP"] : [];
-    knownComponents.filter((entry) => entry.systemId === systemId).forEach((entry) => { if (!names.includes(entry.name)) names.push(entry.name); });
-    for (const type of ["removed", "installed"]) { TABLES[type][0].options = names; renderRows(type); }
-  };
-  watchSystems((items) => { knownSystems = items; updateUnitOptions(); }, () => {});
-  watchComponents((items) => { knownComponents = items; updateUnitOptions(); }, () => {});
-}
+if (selectedSheet) watchComponents((items) => { savedUnitComponents = items; refreshComponentSuggestions(); }, () => {});
 bindToggleInputs();
 bindStateFields();
 attachTimeNow();

@@ -1,8 +1,8 @@
 import "../sheet-data.js?v=1.7.6";
 import { gate, revealApp, watchIssues, watchKeyLoads, watchAccounts, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.0";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
-import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.3";
-import { initCatalogView } from "./catalog-view.js?v=1.9.3";
+import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.4";
+import { initCatalogView } from "./catalog-view.js?v=1.9.4";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
 import { createEditLock } from "../edit-lock.js?v=1.9.0";
@@ -667,7 +667,12 @@ for (const id of ["fault-mode", "fault-technician", "fault-squadron", "fault-air
 document.querySelector("#fault-mode").addEventListener("change", () => { document.querySelector("#closed-review-filters").hidden = document.querySelector("#fault-mode").value !== "closed"; });
 function renderDirectory() {
   const body = document.querySelector("#technician-directory"); body.replaceChildren();
-  directoryAccounts.forEach((person) => {
+  const editor = document.querySelector("#directory-editor");
+  const person = directoryAccounts.find((entry) => entry.uid === selectedDirectoryUid && !entry.deleted);
+  editor.hidden = !person;
+  if (!person) return;
+  document.querySelector("#directory-editor-title").textContent = `פרטי טכנאי · ${person.name || person.personalNumber || "משתמש"}`;
+  [person].forEach((person) => {
     if (person.deleted) return;
     const row = document.createElement("tr"), profile = {};
     const parts = (person.name || "").trim().split(/\s+/);
@@ -697,10 +702,33 @@ function renderDirectory() {
     actions.append(save); row.append(actions); body.append(row);
   });
 }
+let selectedDirectoryUid = "";
+function selectDirectoryPerson(uid) {
+  selectedDirectoryUid = uid;
+  renderDirectory();
+  document.querySelector("#directory-editor").scrollIntoView({ block: "start", behavior: "smooth" });
+}
+function renderDirectoryMatches() {
+  const matches = document.querySelector("#directory-matches");
+  const query = document.querySelector("#user-search").value.trim().toLocaleLowerCase("he");
+  matches.replaceChildren();
+  if (!query) { matches.textContent = "הקלד שם או מספר אישי כדי לבחור משתמש לעריכה."; return; }
+  const found = directoryAccounts.filter((person) => !person.deleted && `${person.name || ""} ${person.personalNumber || ""}`.toLocaleLowerCase("he").includes(query));
+  if (!found.length) { matches.textContent = "לא נמצאו משתמשים התואמים לחיפוש."; return; }
+  found.slice(0, 30).forEach((person) => {
+    const button = document.createElement("button");
+    button.type = "button"; button.className = "secondary-button";
+    button.textContent = `${person.name || "משתמש"}${person.personalNumber ? ` · ${person.personalNumber}` : ""}${person.role === "manager" ? " · מנהל" : ""}`;
+    button.setAttribute("aria-label", `פתח פרטים של ${person.name || person.personalNumber || "משתמש"}`);
+    button.addEventListener("click", () => selectDirectoryPerson(person.uid));
+    matches.append(button);
+  });
+  if (found.length > 30) matches.append(document.createTextNode(`נמצאו ${found.length} משתמשים. הוסף אותיות לחיפוש מדויק יותר.`));
+}
 watchAccounts((accounts) => {
   directoryAccounts = accounts.sort((a, b) => (a.name || "").localeCompare(b.name || "", "he"));
   technicians = directoryAccounts.filter((person) => person.role === "technician");
-  updateReportData({ users: technicians }); updateUserSelectors(); refreshTechnicianFilter(); renderDirectory(); renderUsers(); renderIssueLists();
+  updateReportData({ users: technicians }); updateUserSelectors(); refreshTechnicianFilter(); renderDirectory(); renderDirectoryMatches(); renderUsers(); renderIssueLists();
 }, (error) => setStatus("#directory-status", `טעינת הטבלה נכשלה: ${error.message}`, true));
 function renderUsers() {
   const list = document.querySelector("#users-list");
@@ -708,6 +736,7 @@ function renderUsers() {
   const search = document.querySelector("#user-search").value.trim().toLocaleLowerCase("he");
   list.replaceChildren();
   removedList.replaceChildren();
+  if (!search) { list.textContent = "חפש משתמש כדי להציג את החשבון והפעולות שלו."; removedList.textContent = "חפש משתמש שהוסר כדי להציג את הפרטים שלו."; return; }
   if (!technicians.some((person) => person.active && !person.deleted)) list.textContent = "אין טכנאים פעילים. צור משתמש חדש.";
   if (!technicians.some((person) => !person.active && !person.deleted)) removedList.textContent = "אין משתמשים שהוסרו.";
   technicians.forEach((person) => {
@@ -755,7 +784,9 @@ function renderUsers() {
       catch (error) { setStatus("#user-status", `שינוי המשתמש נכשל: ${error.message}`, true); }
       finally { action.disabled = false; }
     });
-    card.append(title, email, personal, view, history, reset, action);
+    const edit = document.createElement("button"); edit.type = "button"; edit.className = "secondary-button"; edit.textContent = "ערוך פרטי טכנאי";
+    edit.addEventListener("click", () => selectDirectoryPerson(person.uid));
+    card.append(title, email, personal, edit, view, history, reset, action);
     if (!person.active) {
       const destroy = document.createElement("button"); destroy.type = "button"; destroy.className = "secondary-button danger-button";
       destroy.textContent = "מחק סופית";
@@ -774,7 +805,8 @@ function renderUsers() {
   if (search && !list.children.length) list.textContent = "לא נמצאו משתמשים פעילים התואמים לחיפוש.";
   if (search && !removedList.children.length) removedList.textContent = "לא נמצאו משתמשים שהוסרו התואמים לחיפוש.";
 }
-document.querySelector("#user-search").addEventListener("input", renderUsers);
+document.querySelector("#user-search").addEventListener("input", () => { selectedDirectoryUid = ""; renderDirectory(); renderDirectoryMatches(); renderUsers(); });
+renderDirectoryMatches();
 function refreshTechnicianFilter() {
   const select = document.querySelector("#fault-technician"), previous = select.value;
   select.replaceChildren(new Option("כל הטכנאים", ""), ...technicians.map((person) => new Option(`${person.name}${person.personalNumber ? ` · ${person.personalNumber}` : ""}`, person.uid)));

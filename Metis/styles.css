@@ -89,6 +89,9 @@
 .directory-table:has(#systems-table) th:last-child, .directory-table:has(#components-table) th:last-child { width: 110px; }
 .directory-table:has(#systems-table) input, .directory-table:has(#components-table) input, .directory-table:has(#components-table) select { min-width: 0; max-width: 100%; }
 .directory-form { margin: 16px 0; align-items: end; }
+.directory-matches { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; color: #40576a; }
+.directory-matches .secondary-button { min-height: 42px; }
+#directory-editor { scroll-margin-top: 100px; }
 @media (max-width: 1500px) {
   .technician-directory-table { min-width: 0; table-layout: auto; }
   .technician-directory-table thead { display: none; }
