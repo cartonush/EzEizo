@@ -1,9 +1,9 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft } from "../firebase-sync.js?v=1.7.2";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.7.2";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.7.2";
-import { attachTimeNow } from "../time-now.js?v=1.7.2";
-import { keyLoadTimeline } from "../lifecycle.js?v=1.7.2";
-import { createEditLock } from "../edit-lock.js?v=1.7.2";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft } from "../firebase-sync.js?v=1.7.3";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.7.3";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.7.3";
+import { attachTimeNow } from "../time-now.js?v=1.7.3";
+import { keyLoadTimeline } from "../lifecycle.js?v=1.7.3";
+import { createEditLock } from "../edit-lock.js?v=1.7.3";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");

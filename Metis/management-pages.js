@@ -1,9 +1,9 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.7.2";
-import { SQUADRONS, SYSTEMS } from "./catalog.js?v=1.7.2";
-import { downloadReportPdf } from "./report-pdf.js?v=1.7.2";
-import { downloadFile } from "./report-pdf.js?v=1.7.2";
-import { createFormPdf } from "./form-pdf.js?v=1.7.2";
-import { zipFiles } from "./zip.js?v=1.7.2";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.7.3";
+import { SQUADRONS, SYSTEMS } from "./catalog.js?v=1.7.3";
+import { downloadReportPdf } from "./report-pdf.js?v=1.7.3";
+import { downloadFile } from "./report-pdf.js?v=1.7.3";
+import { createFormPdf } from "./form-pdf.js?v=1.7.3";
+import { zipFiles } from "./zip.js?v=1.7.3";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";

@@ -1,5 +1,5 @@
-const CACHE_NAME = "ezeizo-mechanic-v1.7.2";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./apple-touch-icon.png", "../styles.css?v=1.7.2", "../app.js?v=1.7.2", "../sheet-data.js?v=1.7.2", "../firebase-sync.js?v=1.7.2", "../signature-canvas.js?v=1.7.2", "../time-now.js?v=1.7.2", "../lifecycle.js?v=1.7.2", "../mechanic-validation.js?v=1.7.2", "../icon.svg", "./keys.html", "../keys/app.js?v=1.7.2", "../keys/data.js?v=1.7.2", "../keys/styles.css?v=1.7.2", "../Metis/catalog.js?v=1.7.2", "../Metis/styles.css?v=1.7.2"];
+const CACHE_NAME = "ezeizo-mechanic-v1.7.3";
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./apple-touch-icon.png", "../styles.css?v=1.7.3", "../app.js?v=1.7.3", "../sheet-data.js?v=1.7.3", "../firebase-sync.js?v=1.7.3", "../signature-canvas.js?v=1.7.3", "../time-now.js?v=1.7.3", "../lifecycle.js?v=1.7.3", "../mechanic-validation.js?v=1.7.3", "../icon.svg", "./keys.html", "../keys/app.js?v=1.7.3", "../keys/data.js?v=1.7.3", "../keys/styles.css?v=1.7.3", "../Metis/catalog.js?v=1.7.3", "../Metis/styles.css?v=1.7.3"];
 const ASSET_URLS = new Set(ASSETS.map((path) => new URL(path, self.location.href).href));
 
 self.addEventListener("install", (event) => {
