@@ -2,7 +2,9 @@ export const RANK_ORDER = ["רסן", "סרן", "סגן", "סגם", "רנג", "ר
 export const REGULAR_RANKS = ["טוראי", "רבט", "סמל", "סמר"];
 export const PERMANENT_RANKS = ["סמר", "סמל", "רסל", "רסר", "רסמ", "רסב", "רנג", "סגם", "סגן", "סרן", "רסן"];
 export const LICENSES = ["אין", "אוטומטי", "ידני"];
-const DEPARTMENTS = ["דרג א", "קשר", "ברקת", "תחקור", "חלון לוגיסטי", "הטסה"];
+export const DEPARTMENTS = ["דרג א", "קשר", "ברקת", "תחקור", "חלון לוגיסטי", "הטסה"];
+export const WORK_STAGES = ["1", "7", "11"];
+export const SERVICE_TYPES = ["חובה", "קבע"];
 const OFFICERS = new Set(["סגם", "סגן", "סרן", "רסן"]);
 const rankIndex = (rank) => { const index = RANK_ORDER.indexOf(rank); return index < 0 ? RANK_ORDER.length : index; };
 const nameSort = (a, b) => (a.name || "").localeCompare(b.name || "", "he");

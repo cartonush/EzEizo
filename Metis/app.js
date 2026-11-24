@@ -9,7 +9,7 @@ import { createEditLock } from "../edit-lock.js?v=1.9.6";
 import { initKeyPages } from "../keys/app.js?v=1.9.6";
 import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.6";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
-import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, permanentService } from "./attendance.js?v=1.9.6";
+import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.7";
 
 const managerUser = await gate("manager");
 initCatalogAdmin();
@@ -682,9 +682,16 @@ function renderDirectory() {
       const td = document.createElement("td"); td.dataset.label = ({ firstName: "שם", lastName: "שם משפחה", personalNumber: "מספר אישי", workStage: "שלב עבודה", department: "מחלקה", serviceType: "סוג שירות", rank: "דרגה", license: "רישיון" })[key];
       if (key === "personalNumber" && person.personalNumber) td.textContent = person.personalNumber;
       else {
-        const input = document.createElement(["rank", "license"].includes(key) ? "select" : "input"); input.value = person[key] || fallback; input.maxLength = key === "personalNumber" ? 7 : 80; input.setAttribute("aria-label", `${td.dataset.label} · ${person.name || person.uid}`);
+        const choices = { workStage: WORK_STAGES, department: DEPARTMENTS, serviceType: SERVICE_TYPES, license: LICENSES };
+        const input = document.createElement(["rank", ...Object.keys(choices)].includes(key) ? "select" : "input");
+        input.maxLength = key === "personalNumber" ? 7 : 80; input.setAttribute("aria-label", `${td.dataset.label} · ${person.name || person.uid}`);
         if (key === "personalNumber") { input.inputMode = "numeric"; input.pattern = "[0-9]{7}"; input.placeholder = "הגדרה חד פעמית"; }
-        if (key === "license") { LICENSES.forEach((value) => input.append(new Option(value, value))); input.value = person.license || "אין"; }
+        if (choices[key]) {
+          const value = person[key] || fallback;
+          input.append(new Option(`בחר ${td.dataset.label}`, ""), ...choices[key].map((item) => new Option(item, item)));
+          if (value && !choices[key].includes(value)) input.append(new Option(`${value} · ערך קודם`, value));
+          input.value = value;
+        } else if (key !== "rank") input.value = person[key] || fallback;
         if (key === "rank") rankSelect = input;
         if (key === "serviceType") serviceInput = input;
         if (key !== "personalNumber") profile[key] = input;
