@@ -204,8 +204,9 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .duties-scroll { width: 100%; overflow-x: auto; padding-bottom: 170px; margin-bottom: -150px; }
 .duties-table { width: 100%; min-width: 980px; border-collapse: separate; border-spacing: 3px; table-layout: fixed; direction: rtl; }
 .duties-table th, .duties-table td { padding: 9px; border: 1px solid #d9e5ea; border-radius: 8px; text-align: center; background: #f8fbfd; }
-.duties-table thead th { background: #e4eff5; color: #173b5d; }
-.duties-table tbody th { width: 145px; background: #eaf3f7; color: #173b5d; }
+.duties-table thead th { width: calc((100% - 145px) / 6); background: #e4eff5; color: #173b5d; }
+.duties-table thead th:first-child { width: 145px; }
+.duties-table tbody th { width: auto; background: #eaf3f7; color: #173b5d; }
 .duty-picker { position: relative; min-width: 0; margin: 2px 0; text-align: right; }
 .duty-picker summary { min-height: 34px; padding: 7px 9px; border: 1px solid #b9d3df; border-radius: 8px; background: #fff; color: #17415f; cursor: pointer; overflow-wrap: anywhere; list-style-position: inside; }
 .duty-picker[open] summary { border-color: #176b96; }
