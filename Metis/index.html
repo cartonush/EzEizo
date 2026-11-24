@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.9.5">
-  <link rel="stylesheet" href="styles.css?v=1.9.5">
+  <link rel="stylesheet" href="../styles.css?v=1.9.6">
+  <link rel="stylesheet" href="styles.css?v=1.9.6">
   <link rel="stylesheet" href="../keys/styles.css?v=1.8.0">
 </head>
 <body>
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.9.5</span>
+      <span class="version-pill">v1.9.6</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -53,6 +53,7 @@
           <a href="#pending" class="manager-home-tile"><strong>תקלות לסגירה</strong><span id="home-review-count">סקירה וחתימת בודק הדף</span></a>
           <a href="#keys" class="manager-home-tile"><strong>מפתחות</strong><span>פתיחת הטענה, מעקב והיסטוריה</span></a>
           <a href="#catalog" class="manager-home-tile"><strong>מערכות ומכלולים</strong><span>כרכים, מערכות ומכלולים לפי שיוך</span></a>
+          <a href="#attendance" class="manager-home-tile"><strong>רשימת נוכחות</strong><span>טכנאים לפי שירות, מחלקה ודרגה</span></a>
           <a href="#management" class="manager-home-tile"><strong>ניהול</strong><span>משתמשים, הפקת דוחות ועדכון קבועים לפי מטוס</span></a>
         </div>
       </div>
@@ -65,6 +66,7 @@
           <p class="copy-status" role="status"></p>
         </section>
       </div>
+      <div id="view-attendance" data-manager-view="attendance" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">צוות</p><h2>רשימת נוכחות</h2></div></div><p>טכנאים פעילים לפי קבוצות. דרגה ורישיון מעדכנים בניהול משתמשים.</p><div id="attendance-groups" aria-live="polite"></div></section></div>
       <nav id="fault-nav" class="review-tabs fault-nav" aria-label="דפי תקלות" hidden>
         <a href="#new" data-fault-link="new">פתיחת תקלה</a><a href="#open" data-fault-link="open">כל התקלות</a><a href="#pending" data-fault-link="pending">לסגירה</a><a href="#history" data-fault-link="history">היסטוריה</a>
       </nav>
@@ -316,7 +318,7 @@
           <div id="directory-matches" class="directory-matches" role="group" aria-label="תוצאות חיפוש משתמשים"></div>
           <div id="directory-editor" hidden>
             <h3 id="directory-editor-title">פרטי טכנאי</h3>
-            <div class="table-wrap"><table class="directory-table technician-directory-table"><thead><tr><th>שם</th><th>שם משפחה</th><th>מספר אישי</th><th>שלב עבודה</th><th>מחלקה</th><th>סוג שירות</th><th>פעולות</th></tr></thead><tbody id="technician-directory"></tbody></table></div>
+            <div class="table-wrap"><table class="directory-table technician-directory-table"><thead><tr><th>שם</th><th>שם משפחה</th><th>מספר אישי</th><th>שלב עבודה</th><th>מחלקה</th><th>סוג שירות</th><th>דרגה</th><th>רישיון</th><th>פעולות</th></tr></thead><tbody id="technician-directory"></tbody></table></div>
           </div>
           <p id="directory-status" class="copy-status" role="status" aria-live="polite"></p>
           <p id="user-status" class="copy-status" role="status" aria-live="polite"></p>
@@ -329,7 +331,9 @@
             <label class="input-field">מספר אישי<input name="personalNumber" required inputmode="numeric" pattern="[0-9]{7}" maxlength="7" title="שבע ספרות" autocomplete="off"></label>
             <label class="input-field">שלב עבודה<input name="workStage" maxlength="80" autocomplete="off"></label>
             <label class="input-field">מחלקה<input name="department" maxlength="80" autocomplete="off"></label>
-            <label class="input-field">סוג שירות<input name="serviceType" maxlength="80" autocomplete="off"></label>
+            <label class="input-field">סוג שירות<select name="serviceType"><option value="חובה">חובה</option><option value="קבע">קבע</option></select></label>
+            <label class="input-field">דרגה<select name="rank"></select></label>
+            <label class="input-field">רישיון<select name="license"><option>אין</option><option>אוטומטי</option><option>ידני</option></select></label>
             <label class="input-field">דואר אלקטרוני<input name="email" type="email" required autocomplete="off"></label>
             <label class="input-field">סיסמה ראשונית · 8 ספרות<input name="password" type="password" inputmode="numeric" pattern="[0-9]{8}" required minlength="8" maxlength="8" autocomplete="new-password"></label>
             <button class="primary-button" type="submit">צור משתמש טכנאי</button>
@@ -340,6 +344,6 @@
       <div id="view-components" data-manager-view="components" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>מכלולים</h2></div></div><form id="component-form" class="directory-form manager-grid"><label class="input-field">שם מכלול<input name="name" required maxlength="80"></label><label class="input-field">מערכת<select name="systemId" required></select></label><button class="primary-button" type="submit">הוסף מכלול</button></form><p id="component-status" class="copy-status" role="status"></p><div class="table-wrap"><table class="directory-table"><thead><tr><th>מכלול</th><th>מערכת</th><th>פעולות</th></tr></thead><tbody id="components-table"></tbody></table></div></section></div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.9.5"></script>
+  <script type="module" src="app.js?v=1.9.6"></script>
 </body>
 </html>

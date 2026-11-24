@@ -1,12 +1,12 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.0";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.6";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
 import { validateTreatment } from "./mechanic-validation.js?v=1.7.6";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.7.6";
-import { createEditLock } from "./edit-lock.js?v=1.9.0";
-import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.5";
-import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.5";
+import { createEditLock } from "./edit-lock.js?v=1.9.6";
+import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.6";
+import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "manager" : "technician");

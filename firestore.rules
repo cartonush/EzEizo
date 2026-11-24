@@ -87,7 +87,7 @@ service cloud.firestore {
     match /roles/{uid} {
       allow get: if (request.auth != null && request.auth.uid == uid) || isManager();
       allow list: if isManager();
-      allow create: if isManager() && request.resource.data.keys().hasOnly(['role', 'name', 'email', 'personalNumber', 'firstName', 'lastName', 'workStage', 'department', 'serviceType', 'active', 'createdAt'])
+      allow create: if isManager() && request.resource.data.keys().hasOnly(['role', 'name', 'email', 'personalNumber', 'firstName', 'lastName', 'workStage', 'department', 'serviceType', 'rank', 'license', 'active', 'createdAt'])
         && request.resource.data.role == 'technician'
         && request.resource.data.active == true
         && request.resource.data.name is string
@@ -104,13 +104,15 @@ service cloud.firestore {
         && request.resource.data.personalNumber.matches('[0-9]{7}')
         && getAfter(/databases/$(database)/documents/personalNumbers/$(request.resource.data.personalNumber)).data.uid == uid;
       allow update: if isManager() && resource.data.role in ['technician', 'manager']
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'firstName', 'lastName', 'workStage', 'department', 'serviceType'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'firstName', 'lastName', 'workStage', 'department', 'serviceType', 'rank', 'license'])
         && request.resource.data.name == request.resource.data.firstName + ' ' + request.resource.data.lastName
         && request.resource.data.get('firstName', '') is string
         && request.resource.data.get('lastName', '') is string
         && request.resource.data.get('workStage', '') is string
         && request.resource.data.get('department', '') is string
-        && request.resource.data.get('serviceType', '') is string;
+        && request.resource.data.get('serviceType', '') is string
+        && request.resource.data.get('rank', '') in ['', 'טוראי', 'רבט', 'סמל', 'סמר', 'רסל', 'רסר', 'רסמ', 'רסב', 'רנג', 'סגם', 'סגן', 'סרן', 'רסן']
+        && request.resource.data.get('license', 'אין') in ['אין', 'אוטומטי', 'ידני'];
       allow delete: if false;
     }
 

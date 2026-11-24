@@ -418,7 +418,7 @@ export async function createTechnician(name, email, password, personalNumber, pr
     await runTransaction(db, async (transaction) => {
       const numberRef = doc(db, "personalNumbers", personalNumber);
       if ((await transaction.get(numberRef)).exists()) throw new Error("המספר האישי כבר משויך למשתמש אחר.");
-      transaction.set(doc(db, "roles", createdUser.uid), { role: "technician", name: name.trim(), email: email.trim(), personalNumber, firstName: profile.firstName || "", lastName: profile.lastName || "", workStage: profile.workStage || "", department: profile.department || "", serviceType: profile.serviceType || "", active: true, createdAt: new Date().toISOString() });
+      transaction.set(doc(db, "roles", createdUser.uid), { role: "technician", name: name.trim(), email: email.trim(), personalNumber, firstName: profile.firstName || "", lastName: profile.lastName || "", workStage: profile.workStage || "", department: profile.department || "", serviceType: profile.serviceType || "", rank: profile.rank || "", license: profile.license || "אין", active: true, createdAt: new Date().toISOString() });
       transaction.set(numberRef, { uid: createdUser.uid });
     });
     return createdUser.uid;
@@ -446,7 +446,7 @@ export async function setTechnicianPersonalNumber(uid, personalNumber) {
 }
 
 export async function updateAccountProfile(uid, profile) {
-  const fields = ["firstName", "lastName", "workStage", "department", "serviceType"];
+  const fields = ["firstName", "lastName", "workStage", "department", "serviceType", "rank", "license"];
   const changes = Object.fromEntries(fields.map((key) => [key, String(profile[key] || "").trim().slice(0, 80)]));
   if (!changes.firstName || !changes.lastName) throw new Error("יש להזין שם ושם משפחה.");
   await updateDoc(doc(db, "roles", uid), { ...changes, name: `${changes.firstName} ${changes.lastName}` });

@@ -88,6 +88,7 @@
 .directory-table:has(#systems-table), .directory-table:has(#components-table) { table-layout: fixed; }
 .directory-table:has(#systems-table) th:last-child, .directory-table:has(#components-table) th:last-child { width: 110px; }
 .directory-table:has(#systems-table) input, .directory-table:has(#components-table) input, .directory-table:has(#components-table) select { min-width: 0; max-width: 100%; }
+.directory-table:has(#systems-table) select { min-width: 0; max-width: 100%; }
 .directory-form { margin: 16px 0; align-items: end; }
 .directory-matches { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; color: #40576a; }
 .directory-matches .secondary-button { min-height: 42px; }
@@ -100,6 +101,13 @@
   .technician-directory-table td::before { content: attr(data-label); font-weight: 700; font-size: 12px; color: #40576a; }
   .technician-directory-table td[data-label="פעולות"] { grid-column: 1 / -1; }
   .technician-directory-table input { width: 100%; min-width: 0; max-width: none; }
+  .directory-table:has(#systems-table) { min-width: 0; table-layout: auto; }
+  .directory-table:has(#systems-table) thead { display: none; }
+  .directory-table:has(#systems-table) tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; padding: 15px; border: 1px solid #dce6eb; border-radius: 12px; }
+  .directory-table:has(#systems-table) td { display: grid; gap: 5px; padding: 0; border: 0; min-width: 0; }
+  .directory-table:has(#systems-table) td::before { content: attr(data-label); font-weight: 700; font-size: 12px; color: #40576a; }
+  .directory-table:has(#systems-table) td[data-label="פעולות"] { grid-column: 1 / -1; }
+  .directory-table:has(#systems-table) input, .directory-table:has(#systems-table) select { width: 100%; min-width: 0; max-width: none; }
 }
 @media (max-width: 620px) {
   .directory-table { min-width: 0; }
@@ -111,6 +119,26 @@
   .directory-table td[data-label="פעולות"] { grid-column: 1 / -1; }
 }
 @media (max-width: 460px) { .technician-directory-table tr { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 460px) { .directory-table:has(#systems-table) tr { grid-template-columns: minmax(0, 1fr); } }
+.attendance-group + .attendance-group { margin-top: 22px; padding-top: 18px; border-top: 2px solid #d9e5ea; }
+.attendance-group h3 { margin: 0 0 10px; color: #173b5d; font-size: 16px; }
+.attendance-table { width: 100%; min-width: 850px; table-layout: fixed; border-collapse: separate; border-spacing: 0 5px; direction: rtl; }
+.attendance-table th { width: auto; padding: 7px 8px; text-align: right; }
+.attendance-table td { padding: 10px 8px; border: 0; text-align: right; overflow-wrap: anywhere; }
+.attendance-table tr td:first-child { border-radius: 0 9px 9px 0; }
+.attendance-table tr td:last-child { border-radius: 9px 0 0 9px; }
+.attendance-trainees td { background: #3177ae; color: white; }
+.attendance-regular td { background: #dbeefa; color: #173b5d; }
+.attendance-officer td { background: #d97c28; color: white; }
+.attendance-permanent td { background: #ffe4c5; color: #63350e; }
+@media (max-width: 620px) {
+  .attendance-table { min-width: 0; }
+  .attendance-table thead { display: none; }
+  .attendance-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 10px; border-radius: 12px; overflow: hidden; }
+  .attendance-table td { display: grid; gap: 3px; padding: 9px; }
+  .attendance-table td::before { content: attr(data-label); font-size: 11px; font-weight: 700; opacity: .8; }
+  .attendance-table tr td:first-child,.attendance-table tr td:last-child { border-radius: 0; }
+}
 .assignee-options { display: grid; gap: 10px; margin-bottom: 12px; }
 .assignee-row { display: flex; align-items: end; gap: 8px; }
 .assignee-row .input-field { flex: 1; min-width: 0; }

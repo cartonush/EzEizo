@@ -1,14 +1,15 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchAccounts, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.0";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchAccounts, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.6";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
-import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.5";
-import { initCatalogView } from "./catalog-view.js?v=1.9.5";
+import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.6";
+import { initCatalogView } from "./catalog-view.js?v=1.9.6";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
-import { createEditLock } from "../edit-lock.js?v=1.9.0";
-import { initKeyPages } from "../keys/app.js?v=1.9.0";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.0";
+import { createEditLock } from "../edit-lock.js?v=1.9.6";
+import { initKeyPages } from "../keys/app.js?v=1.9.6";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.6";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
+import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, permanentService } from "./attendance.js?v=1.9.6";
 
 const managerUser = await gate("manager");
 initCatalogAdmin();
@@ -506,12 +507,12 @@ let keyPagesStarted = false;
 let previousManagerView = "";
 function showManagerView() {
   const requested = window.location.hash.slice(1);
-  const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : requested === "closed" ? "open" : requested === "technicians" ? "users" : ["home", "catalog", "management", "reports", "aircraft-constants", "new", "open", "pending", "history", "users", "systems", "components"].includes(requested) ? requested : "home";
+  const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : requested === "closed" ? "open" : requested === "technicians" ? "users" : ["home", "catalog", "attendance", "management", "reports", "aircraft-constants", "new", "open", "pending", "history", "users", "systems", "components"].includes(requested) ? requested : "home";
   if (requested === "closed") document.querySelector("#fault-mode").value = "closed";
   if (selected === "open" && previousManagerView !== "open" && requested !== "closed") document.querySelector("#fault-mode").value = "open-default";
   previousManagerView = selected;
   document.querySelector("#closed-review-filters").hidden = !["closed"].includes(document.querySelector("#fault-mode").value);
-  document.querySelector("#manager-back").hidden = !["catalog", "users", "systems", "components", "reports", "aircraft-constants"].includes(selected);
+  document.querySelector("#manager-back").hidden = !["catalog", "attendance", "users", "systems", "components", "reports", "aircraft-constants"].includes(selected);
   document.querySelector("#reset-draft").hidden = requested !== "new" && requested !== "keys/create";
   if (selected !== "keys") document.querySelector("#key-back-link").hidden = true;
   document.querySelector("#fault-nav").hidden = !["new", "open", "pending", "history"].includes(selected);
@@ -525,7 +526,7 @@ function showManagerView() {
   if (selected === "keys" && !keyPagesStarted) { keyPagesStarted = true; initKeyPages({ user: managerUser, embedded: true }); }
   if (selected !== "new") renderIssueLists();
 }
-document.querySelector("#manager-back").addEventListener("click", () => { if (location.hash === "#aircraft-constants" && closeConstantsEditor()) return; location.hash = location.hash === "#catalog" ? "home" : "management"; });
+document.querySelector("#manager-back").addEventListener("click", () => { if (location.hash === "#aircraft-constants" && closeConstantsEditor()) return; location.hash = ["#catalog", "#attendance"].includes(location.hash) ? "home" : "management"; });
 window.addEventListener("hashchange", showManagerView);
 function resetFaultDraft() {
   draft = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
@@ -676,17 +677,29 @@ function renderDirectory() {
     if (person.deleted) return;
     const row = document.createElement("tr"), profile = {};
     const parts = (person.name || "").trim().split(/\s+/);
-    for (const [key, fallback] of [["firstName", parts[0] || ""], ["lastName", parts.slice(1).join(" ")], ["personalNumber", ""], ["workStage", ""], ["department", ""], ["serviceType", ""]]) {
-      const td = document.createElement("td"); td.dataset.label = ({ firstName: "שם", lastName: "שם משפחה", personalNumber: "מספר אישי", workStage: "שלב עבודה", department: "מחלקה", serviceType: "סוג שירות" })[key];
+    let rankSelect, serviceInput;
+    for (const [key, fallback] of [["firstName", parts[0] || ""], ["lastName", parts.slice(1).join(" ")], ["personalNumber", ""], ["workStage", ""], ["department", ""], ["serviceType", ""], ["rank", ""], ["license", "אין"]]) {
+      const td = document.createElement("td"); td.dataset.label = ({ firstName: "שם", lastName: "שם משפחה", personalNumber: "מספר אישי", workStage: "שלב עבודה", department: "מחלקה", serviceType: "סוג שירות", rank: "דרגה", license: "רישיון" })[key];
       if (key === "personalNumber" && person.personalNumber) td.textContent = person.personalNumber;
       else {
-        const input = document.createElement("input"); input.value = person[key] || fallback; input.maxLength = key === "personalNumber" ? 7 : 80; input.setAttribute("aria-label", `${td.dataset.label} · ${person.name || person.uid}`);
+        const input = document.createElement(["rank", "license"].includes(key) ? "select" : "input"); input.value = person[key] || fallback; input.maxLength = key === "personalNumber" ? 7 : 80; input.setAttribute("aria-label", `${td.dataset.label} · ${person.name || person.uid}`);
         if (key === "personalNumber") { input.inputMode = "numeric"; input.pattern = "[0-9]{7}"; input.placeholder = "הגדרה חד פעמית"; }
-        else profile[key] = input;
+        if (key === "license") { LICENSES.forEach((value) => input.append(new Option(value, value))); input.value = person.license || "אין"; }
+        if (key === "rank") rankSelect = input;
+        if (key === "serviceType") serviceInput = input;
+        if (key !== "personalNumber") profile[key] = input;
         td.append(input);
       }
       row.append(td);
     }
+    const refreshRank = (current = rankSelect.value || person.rank || "") => {
+      const ranks = permanentService(serviceInput.value) ? PERMANENT_RANKS : REGULAR_RANKS;
+      rankSelect.replaceChildren(new Option("בחר דרגה", ""), ...ranks.map((value) => new Option(value, value)));
+      if (current && !ranks.includes(current)) rankSelect.append(new Option(`${current} · דרגה קודמת`, current));
+      rankSelect.value = current;
+    };
+    refreshRank();
+    serviceInput.addEventListener("change", () => refreshRank(""));
     const actions = document.createElement("td"); actions.dataset.label = "פעולות";
     const save = document.createElement("button"); save.type = "button"; save.className = "secondary-button"; save.textContent = "שמור פרטים";
     save.addEventListener("click", async () => {
@@ -728,7 +741,7 @@ function renderDirectoryMatches() {
 watchAccounts((accounts) => {
   directoryAccounts = accounts.sort((a, b) => (a.name || "").localeCompare(b.name || "", "he"));
   technicians = directoryAccounts.filter((person) => person.role === "technician");
-  updateReportData({ users: technicians }); updateUserSelectors(); refreshTechnicianFilter(); renderDirectory(); renderDirectoryMatches(); renderUsers(); renderIssueLists();
+  updateReportData({ users: technicians }); updateUserSelectors(); refreshTechnicianFilter(); renderDirectory(); renderDirectoryMatches(); renderUsers(); renderAttendance(directoryAccounts); renderIssueLists();
 }, (error) => setStatus("#directory-status", `טעינת הטבלה נכשלה: ${error.message}`, true));
 function renderUsers() {
   const list = document.querySelector("#users-list");
@@ -813,14 +826,22 @@ function refreshTechnicianFilter() {
   select.value = previous;
 }
 const userForm = document.querySelector("#create-user-form");
+function refreshNewUserRanks() {
+  const select = userForm.elements.rank, old = select.value;
+  const ranks = permanentService(userForm.elements.serviceType.value) ? PERMANENT_RANKS : REGULAR_RANKS;
+  select.replaceChildren(new Option("בחר דרגה", ""), ...ranks.map((value) => new Option(value, value)));
+  select.value = ranks.includes(old) ? old : "";
+}
+userForm.elements.serviceType.addEventListener("change", refreshNewUserRanks);
+refreshNewUserRanks();
 userForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = userForm.querySelector('button[type="submit"]'); button.disabled = true;
   setStatus("#user-status", "יוצר משתמש…");
   try {
     const firstName = userForm.elements.firstName.value.trim(), lastName = userForm.elements.lastName.value.trim();
-    await createTechnician(`${firstName} ${lastName}`, userForm.elements.email.value, userForm.elements.password.value, userForm.elements.personalNumber.value.trim(), { firstName, lastName, workStage: userForm.elements.workStage.value.trim(), department: userForm.elements.department.value.trim(), serviceType: userForm.elements.serviceType.value.trim() });
-    userForm.reset(); setStatus("#user-status", "הטכנאי נוצר. מסור לו את פרטי הכניסה בערוץ מתאים.");
+    await createTechnician(`${firstName} ${lastName}`, userForm.elements.email.value, userForm.elements.password.value, userForm.elements.personalNumber.value.trim(), { firstName, lastName, workStage: userForm.elements.workStage.value.trim(), department: userForm.elements.department.value.trim(), serviceType: userForm.elements.serviceType.value.trim(), rank: userForm.elements.rank.value, license: userForm.elements.license.value });
+    userForm.reset(); refreshNewUserRanks(); setStatus("#user-status", "הטכנאי נוצר. מסור לו את פרטי הכניסה בערוץ מתאים.");
   } catch (error) { setStatus("#user-status", `יצירת המשתמש נכשלה: ${error.message}`, true); }
   finally { button.disabled = false; }
 });

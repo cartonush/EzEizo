@@ -1,6 +1,6 @@
-import { watchSystems, watchComponents, saveSystem, saveComponent } from "../firebase-sync.js?v=1.9.0";
+import { watchSystems, watchComponents, saveSystem, saveComponent } from "../firebase-sync.js?v=1.9.6";
 import { SYSTEMS, COMPONENTS_BY_SYSTEM } from "./catalog.js?v=1.9.0";
-import { VOLUMES, DEFAULT_SYSTEMS, DEFAULT_COMPONENTS, mergeCatalog, volumeLabel } from "./catalog-data.js?v=1.9.5";
+import { VOLUMES, DEFAULT_SYSTEMS, DEFAULT_COMPONENTS, mergeCatalog, volumeLabel } from "./catalog-data.js?v=1.9.6";
 
 let savedSystems = [], savedComponents = [];
 const systems = () => mergeCatalog(DEFAULT_SYSTEMS, savedSystems);
