@@ -5,6 +5,13 @@ export const LICENSES = ["אין", "אוטומטי", "ידני"];
 export const DEPARTMENTS = ["דרג א", "קשר", "ברקת", "תחקור", "חלון לוגיסטי", "הטסה"];
 export const WORK_STAGES = ["1", "7", "11"];
 export const SERVICE_TYPES = ["חובה", "קבע"];
+export const ATTENDANCE_STATUSES = [
+  ["נוכח", ""], ["רענון", "#6587cf"], ["גימלים", "#e43228"], ["בדרך", "#e3cf45"],
+  ["שמירות", "#d4a782"], ["הפניה", "#d6aa30"], ["אבט״ש", "#9aacc5"],
+  ["ליווי קבלנים", "#d58c88"], ["רס״ר", "#a95835"], ["יוצא", "#33c8d7"],
+  ["בח״א 10", "#d1d8ad"], ["נהג מנהלות", "#a7c88c"], ["מחוץ ליחידה", "#168ed2"],
+  ["הרצאות", "#079a40"], ["צוות לילה", "#56368e"]
+];
 const OFFICERS = new Set(["סגם", "סגן", "סרן", "רסן"]);
 const rankIndex = (rank) => { const index = RANK_ORDER.indexOf(rank); return index < 0 ? RANK_ORDER.length : index; };
 const nameSort = (a, b) => (a.name || "").localeCompare(b.name || "", "he");
@@ -28,7 +35,7 @@ export function attendanceGroups(accounts) {
   return groups.filter((group) => group.people.length);
 }
 
-export function renderAttendance(accounts) {
+export function renderAttendance(accounts, onStatusChange = () => {}) {
   const root = document.querySelector("#attendance-groups");
   root.replaceChildren();
   const groups = attendanceGroups(accounts);
@@ -40,7 +47,7 @@ export function renderAttendance(accounts) {
     const table = document.createElement("table"); table.className = "attendance-table";
     const thead = document.createElement("thead");
     const head = document.createElement("tr");
-    for (const title of ["שם", "שם משפחה", "מספר אישי", "שלב עבודה", "מחלקה", "סוג שירות", "דרגה", "רישיון"]) {
+    for (const title of ["שם", "שם משפחה", "מספר אישי", "נוכחות", "שלב עבודה", "מחלקה", "סוג שירות", "דרגה", "רישיון"]) {
       const th = document.createElement("th"); th.textContent = title; head.append(th);
     }
     thead.append(head);
@@ -48,11 +55,25 @@ export function renderAttendance(accounts) {
     for (const person of group.people) {
       const row = document.createElement("tr");
       row.className = !permanentService(person.serviceType) && OFFICERS.has(person.rank) ? "attendance-officer" : `attendance-${group.style}`;
+      const status = ATTENDANCE_STATUSES.find(([name]) => name === person.attendanceStatus) || ATTENDANCE_STATUSES[0];
+      if (status[1]) { row.classList.add("attendance-status-row"); if (["גימלים", "רס״ר", "מחוץ ליחידה", "הרצאות", "צוות לילה"].includes(status[0])) row.classList.add("attendance-status-dark"); row.style.setProperty("--attendance-status-color", status[1]); }
       const parts = (person.name || "").trim().split(/\s+/);
-      const values = [person.firstName || parts[0], person.lastName || parts.slice(1).join(" "), person.personalNumber, person.workStage, person.department, person.serviceType, person.rank, person.license || "אין"];
+      const values = [person.firstName || parts[0], person.lastName || parts.slice(1).join(" "), person.personalNumber, null, person.workStage, person.department, person.serviceType, person.rank, person.license || "אין"];
       values.forEach((value, index) => {
         const cell = document.createElement("td"); cell.dataset.label = head.children[index].textContent;
-        cell.textContent = value || "—"; row.append(cell);
+        if (index === 3) {
+          const select = document.createElement("select"); select.setAttribute("aria-label", `נוכחות · ${person.name}`);
+          for (const [name] of ATTENDANCE_STATUSES) select.append(new Option(name, name));
+          select.value = status[0];
+          select.addEventListener("change", async () => {
+            select.disabled = true;
+            try { await onStatusChange(person.uid, select.value); }
+            catch (error) { select.value = status[0]; window.alert(`עדכון הנוכחות נכשל: ${error.message}`); }
+            finally { select.disabled = false; }
+          });
+          cell.append(select);
+        } else cell.textContent = value || "—";
+        row.append(cell);
       });
       body.append(row);
     }

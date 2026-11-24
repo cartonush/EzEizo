@@ -1,5 +1,5 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchAccounts, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.6";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.8";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
 import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.6";
 import { initCatalogView } from "./catalog-view.js?v=1.9.6";
@@ -9,11 +9,13 @@ import { createEditLock } from "../edit-lock.js?v=1.9.6";
 import { initKeyPages } from "../keys/app.js?v=1.9.6";
 import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.6";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
-import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.7";
+import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.8";
+import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.8";
 
 const managerUser = await gate("manager");
 initCatalogAdmin();
 initCatalogView();
+initDuties();
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
 let cloudIssues = [];
 let cloudKeyLoads = [];
@@ -507,12 +509,12 @@ let keyPagesStarted = false;
 let previousManagerView = "";
 function showManagerView() {
   const requested = window.location.hash.slice(1);
-  const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : requested === "closed" ? "open" : requested === "technicians" ? "users" : ["home", "catalog", "attendance", "management", "reports", "aircraft-constants", "new", "open", "pending", "history", "users", "systems", "components"].includes(requested) ? requested : "home";
+  const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : requested === "closed" ? "open" : requested === "technicians" ? "users" : ["home", "catalog", "attendance", "duties", "management", "reports", "aircraft-constants", "new", "open", "pending", "history", "users", "systems", "components"].includes(requested) ? requested : "home";
   if (requested === "closed") document.querySelector("#fault-mode").value = "closed";
   if (selected === "open" && previousManagerView !== "open" && requested !== "closed") document.querySelector("#fault-mode").value = "open-default";
   previousManagerView = selected;
   document.querySelector("#closed-review-filters").hidden = !["closed"].includes(document.querySelector("#fault-mode").value);
-  document.querySelector("#manager-back").hidden = !["catalog", "attendance", "users", "systems", "components", "reports", "aircraft-constants"].includes(selected);
+  document.querySelector("#manager-back").hidden = !["catalog", "attendance", "duties", "users", "systems", "components", "reports", "aircraft-constants"].includes(selected);
   document.querySelector("#reset-draft").hidden = requested !== "new" && requested !== "keys/create";
   if (selected !== "keys") document.querySelector("#key-back-link").hidden = true;
   document.querySelector("#fault-nav").hidden = !["new", "open", "pending", "history"].includes(selected);
@@ -526,7 +528,7 @@ function showManagerView() {
   if (selected === "keys" && !keyPagesStarted) { keyPagesStarted = true; initKeyPages({ user: managerUser, embedded: true }); }
   if (selected !== "new") renderIssueLists();
 }
-document.querySelector("#manager-back").addEventListener("click", () => { if (location.hash === "#aircraft-constants" && closeConstantsEditor()) return; location.hash = ["#catalog", "#attendance"].includes(location.hash) ? "home" : "management"; });
+document.querySelector("#manager-back").addEventListener("click", () => { if (location.hash === "#aircraft-constants" && closeConstantsEditor()) return; location.hash = ["#catalog", "#attendance", "#duties"].includes(location.hash) ? "home" : "management"; });
 window.addEventListener("hashchange", showManagerView);
 function resetFaultDraft() {
   draft = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
@@ -748,7 +750,7 @@ function renderDirectoryMatches() {
 watchAccounts((accounts) => {
   directoryAccounts = accounts.sort((a, b) => (a.name || "").localeCompare(b.name || "", "he"));
   technicians = directoryAccounts.filter((person) => person.role === "technician");
-  updateReportData({ users: technicians }); updateUserSelectors(); refreshTechnicianFilter(); renderDirectory(); renderDirectoryMatches(); renderUsers(); renderAttendance(directoryAccounts); renderIssueLists();
+  updateReportData({ users: technicians }); updateUserSelectors(); refreshTechnicianFilter(); renderDirectory(); renderDirectoryMatches(); renderUsers(); renderAttendance(directoryAccounts, setAttendanceStatus); updateDutyPeople(directoryAccounts); renderIssueLists();
 }, (error) => setStatus("#directory-status", `טעינת הטבלה נכשלה: ${error.message}`, true));
 function renderUsers() {
   const list = document.querySelector("#users-list");

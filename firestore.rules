@@ -27,6 +27,11 @@ service cloud.firestore {
         get(/databases/$(database)/documents/roles/$(uid)).data.role == 'technician' &&
         get(/databases/$(database)/documents/roles/$(uid)).data.active == true;
     }
+    function validDutyPerson(uid) {
+      return uid == '' || (exists(/databases/$(database)/documents/roles/$(uid))
+        && get(/databases/$(database)/documents/roles/$(uid)).data.role in ['technician', 'manager']
+        && get(/databases/$(database)/documents/roles/$(uid)).data.get('active', true) == true);
+    }
     function validEditLease(data, id) {
       return hasRole('technician')
         && data.keys().hasAll(['kind', 'formId', 'serial', 'ownerUid', 'ownerName', 'session', 'expiresAt'])
@@ -98,6 +103,9 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active'])
         && request.resource.data.active is bool;
       allow update: if isManager() && resource.data.role in ['technician', 'manager']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceStatus'])
+        && request.resource.data.attendanceStatus in ['נוכח', 'רענון', 'גימלים', 'בדרך', 'שמירות', 'הפניה', 'אבט״ש', 'ליווי קבלנים', 'רס״ר', 'יוצא', 'בח״א 10', 'נהג מנהלות', 'מחוץ ליחידה', 'הרצאות', 'צוות לילה'];
+      allow update: if isManager() && resource.data.role in ['technician', 'manager']
         && !resource.data.keys().hasAny(['personalNumber'])
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['personalNumber'])
         && request.resource.data.personalNumber is string
@@ -124,6 +132,25 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/roles/$(request.resource.data.uid)).data.personalNumber == number;
       allow delete: if false;
       allow update: if false;
+    }
+
+    match /dutyAssignments/{id} {
+      allow get, list: if isManager();
+      allow create, update: if isManager()
+        && request.resource.data.keys().hasAll(['week', 'day', 'role', 'assignees', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['week', 'day', 'role', 'assignees', 'updatedAt'])
+        && request.resource.data.week is string && request.resource.data.week.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && request.resource.data.day in ['0', '1', '2', '3', '4', '5']
+        && request.resource.data.role in ['morningDriver', 'dayDriver', 'reinforcement', 'morningTools', 'dayTools', 'garageTeam']
+        && id == request.resource.data.week + '_' + request.resource.data.day + '_' + request.resource.data.role
+        && request.resource.data.assignees is list
+        && request.resource.data.assignees.size() == (request.resource.data.role == 'garageTeam' ? 2 : 1)
+        && request.resource.data.assignees[0] is string
+        && validDutyPerson(request.resource.data.assignees[0])
+        && (request.resource.data.role != 'garageTeam' || (request.resource.data.assignees[1] is string && (request.resource.data.assignees[0] == '' || request.resource.data.assignees[0] != request.resource.data.assignees[1])))
+        && (request.resource.data.role != 'garageTeam' || validDutyPerson(request.resource.data.assignees[1]))
+        && request.resource.data.updatedAt is string;
+      allow delete: if false;
     }
 
     match /metadata/{id} {

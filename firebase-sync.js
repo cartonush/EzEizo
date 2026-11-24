@@ -282,6 +282,20 @@ export function watchTechnicians(onChange, onError) {
 export function watchAccounts(onChange, onError) {
   return onSnapshot(collection(db, "roles"), (snapshot) => onChange(snapshot.docs.filter((entry) => ["technician", "manager"].includes(entry.data().role)).map((entry) => ({ uid: entry.id, ...entry.data() }))), onError);
 }
+
+export async function setAttendanceStatus(uid, status) {
+  await updateDoc(doc(db, "roles", uid), { attendanceStatus: status });
+}
+
+export function watchDutyAssignments(week, onChange, onError) {
+  return onSnapshot(query(collection(db, "dutyAssignments"), where("week", "==", week)),
+    (snapshot) => onChange(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }))), onError);
+}
+
+export async function saveDutyAssignment(week, day, role, assignees) {
+  await setDoc(doc(db, "dutyAssignments", `${week}_${day}_${role}`),
+    { week, day, role, assignees, updatedAt: new Date().toISOString() });
+}
 export function watchSystems(onChange, onError) {
   return onSnapshot(collection(db, "systemCatalog"), (snapshot) => onChange(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }))), onError);
 }

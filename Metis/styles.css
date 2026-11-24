@@ -131,6 +131,11 @@
 .attendance-regular td { background: #dbeefa; color: #173b5d; }
 .attendance-officer td { background: #d97c28; color: white; }
 .attendance-permanent td { background: #ffe4c5; color: #63350e; }
+.attendance-status-row td { background: var(--attendance-status-color); color: #172d40; }
+.attendance-status-dark td { color: #fff; }
+.attendance-table td[data-label="נוכחות"] { min-width: 110px; }
+.attendance-table select { width: 100%; min-width: 0; padding: 7px 5px; border: 1px solid #adc4d0; border-radius: 8px; background: #fff; color: #173b5d; font: inherit; }
+.attendance-table select:disabled { opacity: .6; }
 @media (max-width: 620px) {
   .attendance-table { min-width: 0; }
   .attendance-table thead { display: none; }
@@ -192,6 +197,37 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .manager-home-tile strong { font-size: 18px; }
 .manager-home-tile span { color: #607686; font-size: 13px; }
 .manager-home-tile:hover,.manager-home-tile:focus-visible { border-color: #176b96; outline: none; background: #f3f9fc; }
+.duties-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: 12px 0; }
+.duties-toolbar strong { margin-inline: auto; color: #173b5d; }
+#duties-status { min-height: 1.3em; margin: 5px 0; color: #276b50; }
+#duties-status[data-state="error"] { color: #a32932; }
+.duties-scroll { width: 100%; overflow-x: auto; padding-bottom: 170px; margin-bottom: -150px; }
+.duties-table { width: 100%; min-width: 980px; border-collapse: separate; border-spacing: 3px; table-layout: fixed; direction: rtl; }
+.duties-table th, .duties-table td { padding: 9px; border: 1px solid #d9e5ea; border-radius: 8px; text-align: center; background: #f8fbfd; }
+.duties-table thead th { background: #e4eff5; color: #173b5d; }
+.duties-table tbody th { width: 145px; background: #eaf3f7; color: #173b5d; }
+.duty-picker { position: relative; min-width: 0; margin: 2px 0; text-align: right; }
+.duty-picker summary { min-height: 34px; padding: 7px 9px; border: 1px solid #b9d3df; border-radius: 8px; background: #fff; color: #17415f; cursor: pointer; overflow-wrap: anywhere; list-style-position: inside; }
+.duty-picker[open] summary { border-color: #176b96; }
+.duty-saving { opacity: .55; pointer-events: none; }
+.duty-picker-panel { position: absolute; z-index: 30; top: 100%; right: 0; width: min(270px, 80vw); padding: 9px; border: 1px solid #bfd4df; border-radius: 10px; background: #fff; box-shadow: 0 8px 24px #173b5d30; }
+.duty-picker-left .duty-picker-panel { left: 0; right: auto; }
+.duty-picker-panel input { box-sizing: border-box; width: 100%; margin-bottom: 7px; padding: 8px; border: 1px solid #bdcfda; border-radius: 7px; font: inherit; }
+.duty-picker-results { max-height: 205px; overflow-y: auto; }
+.duty-picker-option, .duty-clear { display: block; width: 100%; padding: 8px; border: 0; border-bottom: 1px solid #e4edf1; background: #fff; color: #173b5d; text-align: right; font: inherit; cursor: pointer; }
+.duty-picker-option:hover, .duty-picker-option:focus-visible { background: #eaf5fa; }
+.duty-clear { color: #a32932; }
+@media (max-width: 760px) {
+  .duties-scroll { overflow: visible; padding-bottom: 0; margin-bottom: 0; }
+  .duties-table { min-width: 0; }
+  .duties-table thead { display: none; }
+  .duties-table tr { display: grid; gap: 7px; margin: 0 0 17px; }
+  .duties-table tbody th { width: auto; }
+  .duties-table td { display: grid; grid-template-columns: 85px minmax(0, 1fr); align-items: center; gap: 5px; min-width: 0; text-align: right; }
+  .duties-table td::before { content: attr(data-label); font-size: 12px; font-weight: 700; }
+  .duty-picker { grid-column: 2; }
+  .duty-picker-panel { max-width: calc(100vw - 140px); }
+}
 .manager-note-editor { width: 100%; margin-top: 10px; padding: 10px; border: 1px solid #dbe6ec; border-radius: 9px; }
 .manager-note-editor summary { cursor: pointer; font-weight: 700; color: #17668f; }
 .manager-note-editor textarea { display: block; box-sizing: border-box; width: 100%; min-height: 70px; margin: 9px 0; padding: 9px; border: 1px solid #cbdce5; border-radius: 8px; font: inherit; }
