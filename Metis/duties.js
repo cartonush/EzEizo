@@ -1,4 +1,4 @@
-import { watchDutyAssignments, saveDutyAssignment } from "../firebase-sync.js?v=1.9.8";
+import { watchDutyAssignments, saveDutyAssignment } from "../firebase-sync.js?v=1.9.12";
 
 export const DUTY_DAYS = ["יום ראשון", "יום שני", "יום שלישי", "יום רביעי", "יום חמישי", "יום שישי"];
 export const DUTY_ROLES = [

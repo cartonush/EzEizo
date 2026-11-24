@@ -49,6 +49,14 @@ main { width: min(880px, calc(100% - 32px)); margin: 22px auto 0; }
 .locked-tag, .edit-tag { font-size: 10px; font-weight: 600; border-radius: 20px; padding: 4px 8px; }
 .locked-tag { color: #64798a; background: #eff3f5; }
 .edit-tag { color: #167b69; background: #e8f7f1; }
+.repair-classification { display: flex; flex-wrap: wrap; gap: 9px; margin: 12px 0; padding: 10px 12px; border: 1px solid #d5e5eb; border-radius: 12px; }
+.repair-classification legend { padding: 0 5px; color: #173b5d; font-size: 12px; font-weight: 700; }
+.repair-classification label { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border: 1px solid #c8dce7; border-radius: 9px; background: #f5fafc; cursor: pointer; }
+.repair-classification label:has(input:checked) { color: #fff; border-color: #176b96; background: #176b96; }
+#repair-class-preview { margin: 5px 0; font-weight: 700; color: #176b96; }
+.preflight-dialog { width: min(420px, calc(100% - 32px)); padding: 25px; border: 1px solid #c7dce5; border-radius: 16px; box-shadow: 0 15px 45px #102d4a55; color: #173b5d; text-align: center; }
+.preflight-dialog::backdrop { background: #102d4a8c; }
+.preflight-dialog p { margin: 0 0 18px; font-weight: 700; }
 .text-box { display: block; width: 100%; resize: vertical; min-height: 80px; border: 1px solid #d9e3e9; background: #fbfdfe; border-radius: 12px; color: var(--ink); padding: 12px 14px; line-height: 1.55; outline: none; transition: border-color .15s, box-shadow .15s; }
 .text-box:focus { border-color: #5da8c5; box-shadow: 0 0 0 3px #58a9c51b; }
 .text-box.locked { background: #f4f7f8; color: #3c5366; resize: none; }

@@ -197,6 +197,20 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .manager-home-tile strong { font-size: 18px; }
 .manager-home-tile span { color: #607686; font-size: 13px; }
 .manager-home-tile:hover,.manager-home-tile:focus-visible { border-color: #176b96; outline: none; background: #f3f9fc; }
+main:has(#view-work-status:not([hidden])) { width: min(1460px, calc(100% - 32px)); }
+.work-status-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
+.work-status-lane { min-height: 55vh; padding: 15px; border: 1px solid #d5e4eb; border-radius: 13px; background: #f5fafc; }
+.work-status-lane h3 { margin: 0; font-size: 18px; color: #173b5d; }
+.work-status-lane > p { margin: 6px 0 14px; color: #526b7e; font-size: 12px; }
+.work-status-start { border-top: 5px solid #368bb4; }
+.work-status-progress { border-top: 5px solid #e0a13b; }
+.work-status-finished { border-top: 5px solid #368a6b; }
+.work-status-card { display: grid; gap: 5px; margin: 9px 0; padding: 12px; border: 1px solid #d9e6eb; border-radius: 10px; background: #fff; color: #173b5d; text-decoration: none; overflow-wrap: anywhere; }
+.work-status-card strong { font-size: 15px; }
+.work-status-card span { font-size: 12px; }
+.work-status-card small { color: #176b96; font-weight: 700; }
+.work-status-card:hover,.work-status-card:focus-visible { outline: 2px solid #74b7d1; }
+@media (max-width: 760px) { .work-status-board { grid-template-columns: minmax(0, 1fr); } .work-status-lane { min-height: 0; } }
 .duties-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: 12px 0; }
 .duties-toolbar strong { margin-inline: auto; color: #173b5d; }
 #duties-status { min-height: 1.3em; margin: 5px 0; color: #276b50; }

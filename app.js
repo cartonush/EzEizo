@@ -1,7 +1,7 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.6";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.12";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
-import { validateTreatment } from "./mechanic-validation.js?v=1.7.6";
+import { validateTreatment } from "./mechanic-validation.js?v=1.9.12";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.7.6";
 import { createEditLock } from "./edit-lock.js?v=1.9.6";
@@ -49,6 +49,7 @@ const unitsToggle = document.querySelector("#units-toggle");
 const unitsArea = document.querySelector("#units-area");
 let editLock = null;
 let loadedDraftAt = remoteIssue?.workDraft?.savedAt || "";
+let pendingDraftAt = "";
 if (selectedSheet && !managerClosedView && remoteIssue.status === "open") {
   const notice = document.createElement("section");
   notice.className = "card edit-lock-notice";
@@ -65,9 +66,11 @@ if (selectedSheet && !managerClosedView && remoteIssue.status === "open") {
     document.querySelector("#sheet-form").hidden = true;
     if (held) void getIssue(sheet.id).then((latest) => {
       if (!editLock?.held) return;
-      if ((latest.workDraft?.savedAt || "") !== loadedDraftAt || (latest.definitionUpdatedAt || "") !== (remoteIssue.definitionUpdatedAt || "")) { location.reload(); return; }
+      if (![loadedDraftAt, pendingDraftAt].includes(latest.workDraft?.savedAt || "") || (latest.definitionUpdatedAt || "") !== (remoteIssue.definitionUpdatedAt || "")) { location.reload(); return; }
       document.querySelector("#sheet-form").hidden = false;
       setupSignaturePads();
+      applyPreflightGate();
+      if (!workStarted && state.preflightSaved && state.safetyTechnicianSignature) void beginIssueWork();
     }).catch((error) => { message.textContent = `בדיקת הטיוטה המשותפת נכשלה: ${error.message}`; editLock?.dispose(); });
   } });
   window.addEventListener("pagehide", () => editLock?.dispose());
@@ -104,7 +107,7 @@ const TABLES = {
 const componentNames = () => [...new Set(mergeCatalog(DEFAULT_COMPONENTS, savedUnitComponents).map((item) => item.name.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he"));
 let savedUnitComponents = [];
 const defaultState = {
-  repair: "", technicianNotes: [], actions: ACTIONS.map(() => false), action11Result: "", arrivalTime: "", completionTime: "", closedAt: "",
+  repair: "", repairClassification: "", preflightSaved: false, technicianNotes: [], actions: ACTIONS.map(() => false), action11Result: "", arrivalTime: "", completionTime: "", closedAt: "",
   unitsEnabled: false, removed: [], installed: [], constantsEnabled: false,
   toolsEnabled: false, tools: [], entryEnabled: false, interimEnabled: false, finalEnabled: false,
   takenEnabled: false, taken: [], rejectedEnabled: false, rejected: [],
@@ -115,6 +118,10 @@ const defaultState = {
   finalTechnicianSignature: "", finalInspectorSignature: "", finalLeadSignature: "", takenSignature: ""
 };
 let state = remoteIssue?.status === "open" && remoteIssue.workDraft?.state ? { ...defaultState, ...remoteIssue.workDraft.state } : loadState();
+if (remoteIssue?.workDraft?.state && !("preflightSaved" in remoteIssue.workDraft.state) && state.safetyTechnicianSignature) state.preflightSaved = true;
+if (remoteIssue?.safetySignature && !state.safetyTechnicianSignature) state.safetyTechnicianSignature = remoteIssue.safetySignature;
+let workStarted = Boolean(remoteIssue?.startedAt);
+let safetyStartPending = false;
 if (["closed", "pendingReview"].includes(remoteIssue?.status) && remoteIssue.closed?.state) {
   state = { ...defaultState, ...remoteIssue.closed.state };
 } else if (remoteIssue?.status === "open" && remoteIssue.reopenedAt && state.reopenMarker !== remoteIssue.reopenedAt) {
@@ -147,6 +154,52 @@ function saveState() {
   saveState.timer = window.setTimeout(() => { status.textContent = "נשמר אוטומטית במכשיר"; }, 1400);
 }
 
+const classificationLabels = { verified: "אומת", notVerified: "לא אומת", notFault: "לא תקלה" };
+function repairWithClassification() {
+  const prefix = classificationLabels[state.repairClassification];
+  return prefix ? `${prefix}\n${state.repair.trim()}` : state.repair;
+}
+function renderRepairClassification() {
+  document.querySelectorAll("[data-repair-class]").forEach((box) => { box.checked = box.dataset.repairClass === state.repairClassification; });
+  const fault = document.querySelector("#fault-description");
+  if (fault && !managerClosedView) fault.value = state.repairClassification ? `${classificationLabels[state.repairClassification]}\n${sheet.fault}` : sheet.fault;
+  const preview = document.querySelector("#repair-class-preview");
+  if (preview) { preview.hidden = !state.repairClassification; preview.textContent = state.repairClassification ? `השורה הראשונה בתיאור התיקון: ${classificationLabels[state.repairClassification]}` : ""; }
+}
+document.querySelectorAll("[data-repair-class]").forEach((box) => box.addEventListener("change", () => {
+  state.repairClassification = box.checked ? box.dataset.repairClass : "";
+  renderRepairClassification(); saveState();
+}));
+renderRepairClassification();
+
+function applyPreflightGate() {
+  if (managerClosedView || !selectedSheet || remoteIssue?.status !== "open") return;
+  const started = workStarted || Boolean(state.safetyTechnicianSignature && state.preflightSaved);
+  const unlocked = started && state.preflightSaved;
+  const form = document.querySelector("#sheet-form");
+  for (const selector of [".tools-card", '.parts-card[aria-labelledby="taken-title"]']) form.querySelector(selector).hidden = !started;
+  for (const selector of [".descriptions-card", ".actions-card", ".units-card", ".constants-card", '.parts-card[aria-labelledby="rejected-title"]', ".close-card"]) form.querySelector(selector).hidden = !unlocked;
+  document.querySelector("#save-sheet").disabled = !started || safetyStartPending;
+  document.querySelector('canvas[data-signature="safetyTechnicianSignature"]').style.pointerEvents = workStarted ? "none" : "";
+  document.querySelector('[data-clear-signature="safetyTechnicianSignature"]').disabled = workStarted || safetyStartPending;
+  if (!started) document.querySelector("#shared-save-status").textContent = "חתום על מטוס בטוח לאחזקה כדי להתחיל בעבודה.";
+  else if (!unlocked) document.querySelector("#shared-save-status").textContent = "השלם חתימות כלים וקשיחים במידת הצורך ולחץ שמור לפתיחת שאר הטופס.";
+}
+
+async function beginIssueWork() {
+  if (managerClosedView || workStarted || safetyStartPending || !editLock?.held || remoteIssue?.status !== "open") return;
+  safetyStartPending = true; applyPreflightGate();
+  const feedback = document.querySelector("#safety-start-status"); feedback.textContent = "שומר חתימת בטיחות…";
+  try {
+    await startIssueWork(sheet.id, currentUser.uid, state.safetyTechnicianSignature, editLock.session);
+    workStarted = true; feedback.textContent = "חתימת הבטיחות נשמרה. התקלה בתהליך.";
+    applyPreflightGate();
+    document.querySelector("#preflight-notice").showModal();
+  } catch (error) { feedback.textContent = `שמירת חתימת הבטיחות נכשלה: ${error.message}. נסה לחתום שוב.`; }
+  finally { safetyStartPending = false; applyPreflightGate(); }
+}
+document.querySelector("#preflight-notice-close")?.addEventListener("click", () => document.querySelector("#preflight-notice").close());
+
 function renderSheetDetails() {
   if (managerClosedView) {
     const timeline = document.querySelector("#lifecycle-events");
@@ -173,7 +226,7 @@ function renderSheetDetails() {
   });
   const originDisplay = document.querySelector("#fault-origins-display");
   if (originDisplay) originDisplay.textContent = (sheet.faultOrigins?.length ? sheet.faultOrigins : [sheet.faultOrigin].filter(Boolean)).join(" · ") || "—";
-  document.querySelector("#fault-description").value = sheet.fault;
+  document.querySelector("#fault-description").value = !managerClosedView && state.repairClassification ? `${classificationLabels[state.repairClassification]}\n${sheet.fault}` : sheet.fault;
   document.querySelector("#dispatch-briefing").hidden = !sheet.dispatcherSignature;
   if (sheet.dispatcherSignature) document.querySelector("#dispatcher-signature-display").src = sheet.dispatcherSignature;
   const grid = document.querySelector("#constants-grid");
@@ -343,7 +396,7 @@ function closureRecord() {
     technicians: sheet.technicians, fault: sheet.fault,
     managerNotes: sheet.managerNotes || "", technicianNotes: state.technicianNotes,
     closedAt: state.closedAt, arrivalTime: state.arrivalTime, completionTime: state.completionTime,
-    repair: state.repair.slice(0, 1200),
+    repair: repairWithClassification().slice(0, 1200),
     actionsComplete: state.actions.every(Boolean) && Boolean(state.action11Result),
     removedCount: state.removed.filter((row) => row.name || row.serial).length,
     installedCount: state.installed.filter((row) => row.name || row.serial).length,
@@ -491,15 +544,21 @@ document.querySelector("#close-sheet").addEventListener("click", submitTreatment
 document.querySelector("#save-sheet")?.addEventListener("click", async (event) => {
   const button = event.currentTarget, status = document.querySelector("#shared-save-status");
   if (!editLock?.held || remoteIssue?.status !== "open") { status.textContent = "הטופס אינו נעול לעריכה עבורך. בדוק שוב את הנעילה."; status.dataset.state = "error"; return; }
+  if (!state.safetyTechnicianSignature) { status.textContent = "יש לחתום על מטוס בטוח לאחזקה לפני השמירה."; status.dataset.state = "error"; return; }
   button.disabled = true;
+  const previousPreflight = state.preflightSaved, previousDraftAt = loadedDraftAt;
   try {
+    if (!workStarted) await beginIssueWork();
+    if (!workStarted) throw new Error("חתימת הבטיחות טרם נשמרה בשרת.");
+    state.preflightSaved = true;
     saveState();
-    await saveIssueWorkDraft(sheet.id, currentUser.uid, structuredClone(state), editLock.session);
-    status.textContent = "הטיוטה נשמרה לצוות בשרת."; delete status.dataset.state;
-    await editLock.release();
-    location.replace("./");
-  } catch (error) { status.textContent = `השמירה המשותפת נכשלה: ${error.message}`; status.dataset.state = "error"; }
-  finally { button.disabled = false; }
+    const savedAt = new Date().toISOString(); pendingDraftAt = savedAt;
+    await saveIssueWorkDraft(sheet.id, currentUser.uid, structuredClone(state), editLock.session, savedAt);
+    loadedDraftAt = savedAt; pendingDraftAt = "";
+    status.textContent = "הטיוטה נשמרה לצוות בשרת. אפשר להמשיך לעבוד בדף."; delete status.dataset.state;
+    applyPreflightGate();
+  } catch (error) { state.preflightSaved = previousPreflight; loadedDraftAt = previousDraftAt; pendingDraftAt = ""; status.textContent = `השמירה המשותפת נכשלה: ${error.message}`; status.dataset.state = "error"; }
+  finally { button.disabled = false; applyPreflightGate(); }
 });
 
 watchIssues((issues, partialError = "") => {
@@ -757,6 +816,7 @@ function setupSignaturePads(root = document) {
       drawing = false;
       state[key] = canvas.toDataURL("image/png");
       saveState();
+      if (key === "safetyTechnicianSignature") void beginIssueWork();
     };
     canvas.addEventListener("pointerup", finish);
     canvas.addEventListener("pointercancel", finish);
@@ -767,14 +827,16 @@ function setupSignaturePads(root = document) {
 document.querySelectorAll("[data-clear-signature]").forEach((button) => {
   button.addEventListener("click", () => {
     const key = button.dataset.clearSignature;
+    if (key === "safetyTechnicianSignature" && (workStarted || safetyStartPending)) return;
     state[key] = "";
     const canvas = document.querySelector(`canvas[data-signature="${key}"]`);
     if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
     saveState();
+    if (key === "safetyTechnicianSignature") applyPreflightGate();
   });
 });
 
-repairField.value = state.repair;
+repairField.value = managerClosedView ? repairWithClassification() : state.repair;
 document.querySelector("#repair-count").textContent = `${state.repair.length} / 1200`;
 repairField.addEventListener("input", () => {
   state.repair = repairField.value;
@@ -801,6 +863,7 @@ bindStateFields();
 attachTimeNow();
 revealApp();
 setupSignaturePads();
+applyPreflightGate();
 
 renderIssueList();
 if (selectedSheet && state.closedAt) showClosed();

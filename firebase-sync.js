@@ -537,19 +537,36 @@ export async function submitForReview(id, record, state, session) {
     if (!current.exists() || current.data().status !== "open") throw new Error("התקלה כבר נשלחה לבדיקה או אינה קיימת. רענן את הדף.");
     if (current.data().sheet.serial !== record.serial) throw new Error("מספר התקלה אינו תואם.");
     if (!(current.data().teamUids || [current.data().assigneeUid]).includes(auth.currentUser?.uid)) throw new Error("השיוך לטכנאי השתנה. לא ניתן לשמור את הדף הזה.");
+    if (!current.data().startedAt || !state.preflightSaved || !["verified", "notVerified", "notFault"].includes(state.repairClassification)) throw new Error("יש להשלים את בדיקת הבטיחות ואת סיווג התקלה לפני שליחה לבקרה.");
     transaction.update(issueRef, { status: "pendingReview", closed: { record, state }, workDraft: deleteField() });
   });
 }
 
-export async function saveIssueWorkDraft(id, uid, state, session) {
+export async function startIssueWork(id, uid, signature, session) {
+  if (!signature?.startsWith("data:image/png;base64,") || signature.length < 100) throw new Error("יש לחתום על מטוס בטוח לאחזקה.");
+  const ref = doc(db, "issues", id);
+  return runTransaction(db, async (transaction) => {
+    const issue = await transaction.get(ref);
+    if (!issue.exists() || issue.data().status !== "open" || !(issue.data().teamUids || [issue.data().assigneeUid]).includes(uid)) throw new Error("התקלה אינה זמינה לצוות.");
+    await requireEditLock(transaction, "issue", issue.data().sheet.serial, session, uid);
+    if (issue.data().startedAt) return issue.data().startedAt;
+    const startedAt = new Date().toISOString();
+    transaction.update(ref, { startedAt, startedBy: uid, safetySignature: signature });
+    return startedAt;
+  });
+}
+
+export async function saveIssueWorkDraft(id, uid, state, session, savedAt = new Date().toISOString()) {
   const ref = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {
     const current = await transaction.get(ref);
     if (!current.exists() || current.data().status !== "open") throw new Error("התקלה אינה פתוחה עוד.");
     if (!(current.data().teamUids || [current.data().assigneeUid]).includes(uid)) throw new Error("אינך משויך לצוות התקלה.");
     await requireEditLock(transaction, "issue", current.data().sheet.serial, session, uid);
-    transaction.update(ref, { workDraft: { state, savedAt: new Date().toISOString(), savedBy: uid } });
+    if (state.preflightSaved && !current.data().startedAt) throw new Error("יש לחתום על מטוס בטוח לאחזקה לפני שמירת העבודה.");
+    transaction.update(ref, { workDraft: { state, savedAt, savedBy: uid } });
   });
+  return savedAt;
 }
 
 export async function approveIssue(id, reviewerUid, signature, managerReview = {}) {
