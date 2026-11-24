@@ -201,7 +201,7 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .duties-toolbar strong { margin-inline: auto; color: #173b5d; }
 #duties-status { min-height: 1.3em; margin: 5px 0; color: #276b50; }
 #duties-status[data-state="error"] { color: #a32932; }
-.duties-scroll { width: 100%; overflow-x: auto; padding-bottom: 170px; margin-bottom: -150px; }
+.duties-scroll { width: 100%; overflow: visible; }
 .duties-table { width: 100%; min-width: 830px; border-collapse: separate; border-spacing: 3px; table-layout: fixed; direction: rtl; }
 .duties-table th, .duties-table td { padding: 9px; border: 1px solid #d9e5ea; border-radius: 8px; text-align: center; background: #f8fbfd; }
 .duties-table thead th { width: calc((100% - 130px) / 6); background: #e4eff5; color: #173b5d; }
@@ -210,16 +210,17 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .duty-picker { position: relative; min-width: 0; margin: 2px 0; text-align: right; }
 .duty-picker summary { min-height: 34px; padding: 7px 9px; border: 1px solid #b9d3df; border-radius: 8px; background: #fff; color: #17415f; cursor: pointer; overflow-wrap: anywhere; list-style-position: inside; }
 .duty-picker[open] summary { border-color: #176b96; }
+.duty-picker[open] { z-index: 40; }
 .duty-saving { opacity: .55; pointer-events: none; }
 .duty-picker-panel { position: absolute; z-index: 30; top: 100%; right: 0; width: min(270px, 80vw); padding: 9px; border: 1px solid #bfd4df; border-radius: 10px; background: #fff; box-shadow: 0 8px 24px #173b5d30; }
 .duty-picker-left .duty-picker-panel { left: 0; right: auto; }
+.duties-table tbody tr:nth-last-child(-n+2) .duty-picker-panel { top: auto; bottom: 100%; }
 .duty-picker-panel input { box-sizing: border-box; width: 100%; margin-bottom: 7px; padding: 8px; border: 1px solid #bdcfda; border-radius: 7px; font: inherit; }
 .duty-picker-results { max-height: 205px; overflow-y: auto; }
 .duty-picker-option, .duty-clear { display: block; width: 100%; padding: 8px; border: 0; border-bottom: 1px solid #e4edf1; background: #fff; color: #173b5d; text-align: right; font: inherit; cursor: pointer; }
 .duty-picker-option:hover, .duty-picker-option:focus-visible { background: #eaf5fa; }
 .duty-clear { color: #a32932; }
-@media (max-width: 760px) {
-  .duties-scroll { overflow: visible; padding-bottom: 0; margin-bottom: 0; }
+@media (max-width: 900px) {
   .duties-table { min-width: 0; }
   .duties-table thead { display: none; }
   .duties-table tr { display: grid; gap: 7px; margin: 0 0 17px; }
