@@ -604,14 +604,15 @@ document.querySelector("#refresh-work-status").addEventListener("click", async (
   finally { button.disabled = false; }
 });
 function selectedAssigneeUids() {
-  return [...document.querySelectorAll('#new-assignees .assignee-row')].map((row) => row.dataset.assigneeUid || row.querySelector('select')?.value || '');
+  return [...document.querySelectorAll('#new-assignees .assignee-row')].map((row) => row.dataset.assigneeUid || '');
 }
 function syncAssigneeNames() {
   const selected = selectedAssigneeUids().filter(Boolean);
   const duplicate = selected.length !== new Set(selected).size;
-  document.querySelectorAll('#new-assignees select').forEach((select) => { select.setAttribute('aria-invalid', String(Boolean(select.value && selected.filter((uid) => uid === select.value).length > 1))); });
-  const leader = document.querySelector('#leader-search');
-  if (leader) leader.setAttribute('aria-invalid', String(Boolean(selected[0] && selected.filter((uid) => uid === selected[0]).length > 1)));
+  document.querySelectorAll('#new-assignees .assignee-row').forEach((row) => {
+    const uid = row.dataset.assigneeUid;
+    row.querySelector('input[type="search"]').setAttribute('aria-invalid', String(Boolean(uid && selected.filter((value) => value === uid).length > 1)));
+  });
   setStatus('#assignee-feedback', duplicate ? 'כל טכנאי יכול להיבחר פעם אחת בלבד.' : '', duplicate);
   draft.technicians = selected.map((uid) => technicians.find((person) => person.uid === uid)?.name).filter(Boolean).join(' · ');
   saveDraft();
@@ -623,43 +624,39 @@ function renderAssigneeSelectors(values = selectedAssigneeUids()) {
     const row = document.createElement('div'); row.className = 'assignee-row';
     const roleLabel = index === 0 ? 'מוביל התקלה' : `טכנאי ${index + 1}`;
     const label = document.createElement('label'); label.className = 'input-field'; label.textContent = roleLabel;
+    const picker = document.createElement('div'); picker.className = 'search-picker';
+    const input = document.createElement('input'); input.id = `assignee-search-${index}`; input.type = 'search'; input.autocomplete = 'off'; input.placeholder = index === 0 ? 'חפש ובחר מוביל תקלה' : 'חפש ובחר טכנאי';
+    input.setAttribute('role', 'combobox'); input.setAttribute('aria-autocomplete', 'list'); input.setAttribute('aria-controls', `assignee-options-${index}`); input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-label', roleLabel);
+    const list = document.createElement('div'); list.id = `assignee-options-${index}`; list.className = 'picker-list'; list.setAttribute('role', 'listbox'); list.hidden = true;
+    let check;
     if (index === 0) {
-      const picker = document.createElement('div'); picker.className = 'search-picker';
-      const input = document.createElement('input'); input.id = 'leader-search'; input.type = 'search'; input.autocomplete = 'off'; input.placeholder = 'חפש ובחר מוביל תקלה';
-      input.setAttribute('role', 'combobox'); input.setAttribute('aria-controls', 'leader-options'); input.setAttribute('aria-expanded', 'false');
-      const list = document.createElement('div'); list.id = 'leader-options'; list.className = 'picker-list'; list.setAttribute('role', 'listbox'); list.hidden = true;
       const filter = document.createElement('label'); filter.className = 'leader-inspection-toggle';
-      const check = document.createElement('input'); check.type = 'checkbox'; check.id = 'leader-requires-inspection'; check.checked = Boolean(selections.leaderRequiresInspection);
+      check = document.createElement('input'); check.type = 'checkbox'; check.id = 'leader-requires-inspection'; check.checked = Boolean(selections.leaderRequiresInspection);
       filter.append(check, document.createTextNode('דורש בדיקה'));
-      const eligible = () => technicians.filter((person) => person.active && (!check.checked || Number(person.workStage) >= 11));
-      function setLeader(person) { row.dataset.assigneeUid = person?.uid || ''; input.value = person?.name || ''; list.hidden = true; input.setAttribute('aria-expanded', 'false'); syncAssigneeNames(); }
-      function showOptions(showAll = false) {
-        const term = showAll ? '' : input.value.trim().toLocaleLowerCase('he');
-        list.replaceChildren();
-        const matches = eligible().filter((person) => person.name.toLocaleLowerCase('he').includes(term) || String(person.personalNumber || '').includes(term));
-        for (const person of matches) {
-          const option = document.createElement('button'); option.type = 'button'; option.className = 'picker-option'; option.setAttribute('role', 'option'); option.textContent = person.name;
-          option.addEventListener('pointerdown', (event) => event.preventDefault());
-          option.addEventListener('click', () => setLeader(person)); list.append(option);
-        }
-        if (!matches.length) { const empty = document.createElement('p'); empty.className = 'picker-empty'; empty.textContent = 'לא נמצאו טכנאים מתאימים'; list.append(empty); }
-        list.hidden = false; input.setAttribute('aria-expanded', 'true');
-      }
-      input.addEventListener('focus', () => { input.select(); showOptions(true); });
-      input.addEventListener('input', () => { row.dataset.assigneeUid = ''; syncAssigneeNames(); showOptions(); });
-      input.addEventListener('keydown', (event) => { if (event.key === 'Escape') { list.hidden = true; input.setAttribute('aria-expanded', 'false'); } else if (event.key === 'Enter' && !list.hidden) { event.preventDefault(); list.querySelector('button')?.click(); } });
-      input.addEventListener('blur', () => { setTimeout(() => { if (!picker.contains(document.activeElement)) { list.hidden = true; input.setAttribute('aria-expanded', 'false'); if (!row.dataset.assigneeUid) input.value = ''; } }, 120); });
-      check.addEventListener('change', () => { selections.leaderRequiresInspection = check.checked; if (row.dataset.assigneeUid && !eligible().some((person) => person.uid === row.dataset.assigneeUid)) setLeader(null); else saveDraft(); showOptions(); });
-      picker.append(input, list); label.append(picker); row.append(label, filter);
-      setLeader(eligible().find((person) => person.uid === uid));
-    } else {
-      const select = document.createElement('select'); select.setAttribute('aria-label', roleLabel);
-      select.append(new Option('בחר טכנאי', ''));
-      technicians.filter((person) => person.active).forEach((person) => select.append(new Option(person.name, person.uid)));
-      select.value = uid;
-      select.addEventListener('change', syncAssigneeNames);
-      label.append(select); row.append(label);
+      row.append(filter);
     }
+    const eligible = () => technicians.filter((person) => person.active && (index !== 0 || !check.checked || Number(person.workStage) >= 11));
+    function setAssignee(person) { row.dataset.assigneeUid = person?.uid || ''; input.value = person?.name || ''; list.hidden = true; input.setAttribute('aria-expanded', 'false'); syncAssigneeNames(); }
+    function showOptions(showAll = false) {
+      const term = showAll ? '' : input.value.trim().toLocaleLowerCase('he');
+      list.replaceChildren();
+      const matches = eligible().filter((person) => person.name.toLocaleLowerCase('he').includes(term) || String(person.personalNumber || '').includes(term));
+      for (const person of matches) {
+        const option = document.createElement('button'); option.type = 'button'; option.className = 'picker-option'; option.setAttribute('role', 'option'); option.textContent = person.name;
+        option.addEventListener('pointerdown', (event) => event.preventDefault());
+        option.addEventListener('click', () => setAssignee(person)); list.append(option);
+      }
+      if (!matches.length) { const empty = document.createElement('p'); empty.className = 'picker-empty'; empty.textContent = 'לא נמצאו טכנאים מתאימים'; list.append(empty); }
+      list.hidden = false; input.setAttribute('aria-expanded', 'true');
+    }
+    input.addEventListener('focus', () => { input.select(); showOptions(true); });
+    input.addEventListener('input', () => { row.dataset.assigneeUid = ''; syncAssigneeNames(); showOptions(); });
+    input.addEventListener('keydown', (event) => { if (event.key === 'Escape') { list.hidden = true; input.setAttribute('aria-expanded', 'false'); } else if (event.key === 'Enter' && !list.hidden) { event.preventDefault(); list.querySelector('button')?.click(); } });
+    input.addEventListener('blur', () => { setTimeout(() => { if (!picker.contains(document.activeElement)) { list.hidden = true; input.setAttribute('aria-expanded', 'false'); if (!row.dataset.assigneeUid) input.value = ''; } }, 120); });
+    if (check) check.addEventListener('change', () => { selections.leaderRequiresInspection = check.checked; if (row.dataset.assigneeUid && !eligible().some((person) => person.uid === row.dataset.assigneeUid)) setAssignee(null); else saveDraft(); showOptions(); });
+    picker.append(input, list); label.append(picker); row.prepend(label);
+    setAssignee(eligible().find((person) => person.uid === uid));
     if (index >= 2) {
       const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'secondary-button'; remove.textContent = 'הסר';
       remove.setAttribute('aria-label', `הסר ${roleLabel}`);
