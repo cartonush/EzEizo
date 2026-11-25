@@ -1,11 +1,11 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.16";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.18";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
-import { validateTreatment } from "./mechanic-validation.js?v=1.9.12";
+import { validateTreatment } from "./mechanic-validation.js?v=1.9.18";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.7.6";
-import { createEditLock } from "./edit-lock.js?v=1.9.16";
-import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.16";
+import { createEditLock } from "./edit-lock.js?v=1.9.18";
+import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.18";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
@@ -440,7 +440,7 @@ function showClosed() {
   document.querySelector("#close-sheet").hidden = true;
   const message = document.querySelector("#close-message");
   delete message.dataset.state;
-  message.textContent = remoteIssue?.status === "closed" ? `הדף נסגר ב־${new Date(remoteIssue.reviewedAt || state.closedAt).toLocaleString("he-IL")}. ${managerClosedView ? "המנהל יכול להחזיר אותו לטכנאי לעריכה." : "אי אפשר לערוך אותו."}` : "הדף הועבר לבדיקת בודק הדף וממתין לחתימתו.";
+  message.textContent = remoteIssue?.status === "closed" ? `הדף נסגר ב־${new Date(remoteIssue.reviewedAt || state.closedAt).toLocaleString("he-IL")}. ${managerClosedView ? "המטיס יכול להחזיר אותו לטכנאי לעריכה." : "אי אפשר לערוך אותו."}` : "הדף הועבר לבדיקת בודק הדף וממתין לחתימתו.";
 }
 
 if (managerClosedView && selectedSheet) {

@@ -30,7 +30,7 @@ export async function acquireEditLock(kind, serialOrId, formId, user, session, m
     const [current, form] = await Promise.all([transaction.get(ref), transaction.get(doc(db, kind === "key" ? "keyLoads" : "issues", formId))]);
     if (!form.exists() || form.data().status !== "open") throw new Error("הטופס אינו פתוח לעריכה.");
     if (!manager && (kind === "key" ? !form.data().teamUids.includes(user.uid) : !(form.data().teamUids || [form.data().assigneeUid]).includes(user.uid) || form.data().sheet.serial !== serialOrId)) throw new Error("אינך משויך לטופס הזה.");
-    if (manager && kind !== "issue") throw new Error("עריכת מנהל נתמכת כרגע רק בתקלה.");
+    if (manager && kind !== "issue") throw new Error("עריכת מטיס נתמכת כרגע רק בתקלה.");
     const lock = current.data(), now = Date.now();
     if (lock && lock.expiresAt.toMillis() > now && lock.session !== session) return { held: false, ownerName: lock.ownerName, ownerUid: lock.ownerUid, session: lock.session, expiresAt: lock.expiresAt.toMillis() };
     transaction.set(ref, { kind, formId, serial: serialOrId, ownerUid: user.uid, ownerName: user.name || user.email || "טכנאי", session, expiresAt: Timestamp.fromMillis(now + leaseMillis) });
@@ -116,7 +116,7 @@ export function gate(role) {
     if (reason === "המשתמש אינו מורשה גישה.") { help.hidden = true; return; }
     if (role === "manager" && reason !== "המשתמש אינו מורשה גישה.") {
       const instructions = document.createElement("p");
-      instructions.textContent = "ההזדהות ב־Firebase הצליחה. ודא שקיים מסמך הרשאת מנהל פעיל ב־Firestore עבור ה־UID הזה, פרסם את הכללים המעודכנים ולחץ ״בדוק שוב״. ה־UID שלך:";
+      instructions.textContent = "ההזדהות ב־Firebase הצליחה. ודא שקיים מסמך הרשאת מטיס פעיל ב־Firestore עבור ה־UID הזה, פרסם את הכללים המעודכנים ולחץ ״בדוק שוב״. ה־UID שלך:";
       const uid = document.createElement("code"); uid.textContent = user.uid;
       const copy = document.createElement("button"); copy.type = "button"; copy.className = "secondary-button"; copy.textContent = "העתק UID";
       copy.addEventListener("click", async () => { await navigator.clipboard.writeText(user.uid); copy.textContent = "הועתק"; });
@@ -169,7 +169,7 @@ export function gate(role) {
     let active = false;
     let resetSessionPending = false;
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { if (active) location.reload(); document.querySelector("#app-skeleton")?.remove(); panel.hidden = false; help.hidden = true; panel.querySelector("h2").textContent = "כניסה למערכת"; panel.querySelector("form").hidden = false; panel.querySelector("#password-change-form")?.setAttribute("hidden", ""); status.textContent = resetSessionPending ? "הסיסמה אופסה. התחבר עם הסיסמה הזמנית שקיבלת מהמנהל." : "יש להתחבר כדי לראות תקלות."; resetSessionPending = false; delete status.dataset.state; return; }
+      if (!user) { if (active) location.reload(); document.querySelector("#app-skeleton")?.remove(); panel.hidden = false; help.hidden = true; panel.querySelector("h2").textContent = "כניסה למערכת"; panel.querySelector("form").hidden = false; panel.querySelector("#password-change-form")?.setAttribute("hidden", ""); status.textContent = resetSessionPending ? "הסיסמה אופסה. התחבר עם הסיסמה הזמנית שקיבלת מהמטיס." : "יש להתחבר כדי לראות תקלות."; resetSessionPending = false; delete status.dataset.state; return; }
       status.textContent = "ההזדהות הצליחה. בודק הרשאות Firestore…";
       delete status.dataset.state;
       try {
@@ -384,7 +384,7 @@ export async function approveKeyLoad(id, managerUid, signature, managerReview) {
   const ref = doc(db, "keyLoads", id);
   await runTransaction(db, async (transaction) => {
     const current = await transaction.get(ref);
-    if (!current.exists() || current.data().status !== "pendingReview") throw new Error("ההטענה אינה ממתינה עוד לבדיקת מנהל.");
+    if (!current.exists() || current.data().status !== "pendingReview") throw new Error("ההטענה אינה ממתינה עוד לבדיקת מטיס.");
     if (!signature.startsWith("data:image/png;base64,")) throw new Error("יש לחתום לפני סגירת ההטענה.");
     transaction.update(ref, { status: "closed", reviewedAt: new Date().toISOString(), reviewedBy: managerUid, reviewerSignature: signature, managerReview });
   });
@@ -493,7 +493,7 @@ export async function updateOpenIssueDefinition(id, sheet, team, session) {
     if (!current.exists() || current.data().status !== "open") throw new Error("התקלה כבר אינה פתוחה לעריכה.");
     const issue = current.data();
     const lock = await transaction.get(editLockRef("issue", issue.sheet.serial));
-    if (!lock.exists() || lock.data().ownerUid !== auth.currentUser?.uid || lock.data().session !== session || lock.data().expiresAt.toMillis() <= Date.now()) throw new Error("נעילת המנהל אבדה. פתח את העריכה מחדש.");
+    if (!lock.exists() || lock.data().ownerUid !== auth.currentUser?.uid || lock.data().session !== session || lock.data().expiresAt.toMillis() <= Date.now()) throw new Error("נעילת המטיס אבדה. פתח את העריכה מחדש.");
     transaction.update(ref, {
       sheet: storedSheet({ ...restoredSheet(issue.sheet), ...sheet, id, serial: issue.sheet.serial, technicians: team.map((person) => person.name).join(" · ") }),
       assigneeUid: team[0].uid, assigneeName: team[0].name,

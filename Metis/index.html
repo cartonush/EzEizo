@@ -6,14 +6,14 @@
   <meta name="theme-color" content="#173b5d">
   <meta name="description" content="יצירת דפי תקלה לטכנאים - EzEizo">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Metis מנהל">
-  <title>Metis | מנהל תקלות</title>
+  <meta name="apple-mobile-web-app-title" content="Metis מטיס">
+  <title>Metis | מטיס תקלות</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.9.16">
-  <link rel="stylesheet" href="styles.css?v=1.9.16">
-  <link rel="stylesheet" href="../keys/styles.css?v=1.8.0">
+  <link rel="stylesheet" href="../styles.css?v=1.9.18">
+  <link rel="stylesheet" href="styles.css?v=1.9.18">
+  <link rel="stylesheet" href="../keys/styles.css?v=1.9.18">
 </head>
 <body>
   <div class="app-shell">
@@ -21,10 +21,10 @@
       <div class="brand-mark manager-mark" aria-hidden="true">מ</div>
       <div class="brand-copy">
         <p class="eyebrow">כנף 1 - טייסת תחזוקה</p>
-        <h1>Metis · דף מנהל</h1>
+        <h1>Metis · דף מטיס</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.9.17</span>
+      <span class="version-pill">v1.9.18</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -93,7 +93,7 @@
 <section class="card"><div class="section-heading"><div><p class="section-kicker">תדריך</p><h2>משימות לביצוע</h2></div></div><p>המשימה הראשונה תאושר ותיחתם בידי משלח המשימה בעת פתיחת הדף.</p><label class="replaced-toggle"><input id="key-briefed" type="checkbox"><span class="custom-check" aria-hidden="true"></span><span>תדריך בטיחות וניהול סיכונים ע״י מ״ע המחלקה / משלח המשימה</span></label><div class="signature-field"><span class="field-label">חתימת משלח המשימה</span><canvas id="key-dispatch-signature" class="signature-pad" aria-label="חתימת משלח המשימה"></canvas><button id="key-clear-signature" class="clear-signature" type="button">נקה חתימה</button></div><details class="key-tasks-details"><summary>הצג את 12 המשימות לביצוע</summary><ol id="manager-key-tasks" class="key-task-list"></ol></details></section>
 <button id="create-key-load" class="primary-button" type="button">פתח הטענת מפתחות</button><div id="key-create-loading" class="key-create-loading" role="status" aria-live="polite" hidden><p>הטענת המפתחות נפתחת…</p><div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-line short"></span></div><div class="skeleton-card"><span class="skeleton-line"></span><span class="skeleton-input"></span></div></div><p id="create-status" class="copy-status" role="status" aria-live="polite"></p></section>
 <section id="open-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">מעקב צוות</p><h2>הטענות פתוחות</h2></div></div><label class="input-field list-search">חיפוש לפי מספר הטענה<input id="open-key-search" type="search" inputmode="numeric" placeholder="לדוגמה: 1" autocomplete="off"></label><p class="key-numbering-status copy-status" role="status"></p><div id="open-key-loads" class="issue-list"></div></section>
-<section id="pending-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">בדיקת מנהל</p><h2>הטענות מפתחות לסגירה</h2></div></div><div id="pending-key-loads" class="issue-list"></div></section>
+<section id="pending-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">בדיקת מטיס</p><h2>הטענות מפתחות לסגירה</h2></div></div><div id="pending-key-loads" class="issue-list"></div></section>
 <section id="closed-view" class="card" hidden><div class="section-heading"><div><p class="section-kicker">ארכיון הטענות</p><h2>הטענות סגורות ושילוחים שבוטלו</h2></div></div><label class="input-field list-search">חיפוש לפי מספר הטענה<input id="closed-key-search" type="search" inputmode="numeric" placeholder="לדוגמה: 1" autocomplete="off"></label><p class="key-numbering-status copy-status" role="status"></p><div id="closed-key-loads" class="issue-list"></div></section>
 <section id="work-view" hidden>
 <section id="key-edit-lock-notice" class="card edit-lock-notice" role="status" aria-live="polite" hidden><strong>בודק אם הטופס פנוי לעריכה…</strong><button id="retry-key-edit-lock" type="button" class="secondary-button">בדוק שוב</button></section>
@@ -195,7 +195,7 @@
         </div>
       </section>
 
-</div><section class="card"><button id="save-key-work" type="button" class="secondary-button">שמור וחזור לרשימה</button> <button id="complete-key-load" type="button" class="primary-button">העבר הטענה לבדיקת מנהל</button><p id="work-status" class="copy-status" role="status" aria-live="polite"></p><div id="key-review-panel" class="key-review-panel" hidden></div><button id="reopen-key-load" type="button" class="secondary-button" hidden>החזר את ההטענה לטכנאים לעריכה</button><p id="reopen-key-status" class="copy-status" role="status" aria-live="polite"></p><details id="key-reopen-history" class="key-reopen-history" hidden><summary>היסטוריית הטופס</summary><ol id="key-reopen-events"></ol></details></section>
+</div><section class="card"><button id="save-key-work" type="button" class="secondary-button">שמור וחזור לרשימה</button> <button id="complete-key-load" type="button" class="primary-button">העבר הטענה לבדיקת מטיס</button><p id="work-status" class="copy-status" role="status" aria-live="polite"></p><div id="key-review-panel" class="key-review-panel" hidden></div><button id="reopen-key-load" type="button" class="secondary-button" hidden>החזר את ההטענה לטכנאים לעריכה</button><p id="reopen-key-status" class="copy-status" role="status" aria-live="polite"></p><details id="key-reopen-history" class="key-reopen-history" hidden><summary>היסטוריית הטופס</summary><ol id="key-reopen-events"></ol></details></section>
 </section>
 
       </div></div>
@@ -319,7 +319,7 @@
       <div id="view-users" data-manager-view="users" hidden>
         <section class="card" aria-labelledby="users-title">
           <div class="section-heading"><div><p class="section-kicker">ניהול</p><h2 id="users-title">טכנאים ומשתמשים</h2></div></div>
-          <p>חפש משתמש ובחר אותו כדי לפתוח את פרטי הטכנאי, כולל חשבון המנהל.</p>
+          <p>חפש משתמש ובחר אותו כדי לפתוח את פרטי הטכנאי, כולל חשבון המטיס.</p>
           <label class="input-field list-search">חיפוש משתמש לפי שם או מספר אישי<input id="user-search" type="search" placeholder="שם או שבע ספרות" autocomplete="off"></label>
           <div id="directory-matches" class="directory-matches" role="group" aria-label="תוצאות חיפוש משתמשים"></div>
           <div id="directory-editor" hidden>
@@ -351,6 +351,6 @@
       <div id="view-components" data-manager-view="components" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>מכלולים</h2></div></div><form id="component-form" class="directory-form manager-grid"><label class="input-field">שם מכלול<input name="name" required maxlength="80"></label><label class="input-field">מערכת<select name="systemId" required></select></label><button class="primary-button" type="submit">הוסף מכלול</button></form><p id="component-status" class="copy-status" role="status"></p><div class="table-wrap"><table class="directory-table"><thead><tr><th>מכלול</th><th>מערכת</th><th>פעולות</th></tr></thead><tbody id="components-table"></tbody></table></div></section></div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.9.17"></script>
+  <script type="module" src="app.js?v=1.9.18"></script>
 </body>
 </html>

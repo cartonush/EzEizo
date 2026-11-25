@@ -1,4 +1,4 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.16";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.18";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
 import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, alreadyLoadedForPeriod, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.7.6";
 import { attachTimeNow } from "../time-now.js?v=1.7.6";
@@ -213,7 +213,7 @@ function renderOpen() {
         catch (error) { setMessageOnNode(feedback, `הוספת ההערה נכשלה: ${error.message}`, true); }
         finally { send.disabled = false; }
       });
-      editor.append(make("summary", "הערות מנהל"), make("p", load.managerNotes || "עדיין אין הערות.", "manager-note-text"), note, send, feedback);
+      editor.append(make("summary", "הערות מטיס"), make("p", load.managerNotes || "עדיין אין הערות.", "manager-note-text"), note, send, feedback);
       card.append(editor);
       const cancel = make("details", undefined, "manager-note-editor");
       const reason = document.createElement("textarea"); reason.rows = 2; reason.maxLength = 500; reason.placeholder = "סיבת הביטול (חובה)"; reason.setAttribute("aria-label", `סיבת ביטול הטענה ${load.serial || load.id}`);
@@ -272,7 +272,7 @@ function renderKeyReview(load) {
   panel.hidden = !manager || !["pendingReview", "closed"].includes(load.status);
   if (panel.hidden) return;
   const review = load.managerReview || {};
-  panel.innerHTML = `<div class="section-heading"><div><p class="section-kicker">בדיקת מנהל</p><h2>בקרה וסגירת הטענה</h2></div></div>
+  panel.innerHTML = `<div class="section-heading"><div><p class="section-kicker">בדיקת מטיס</p><h2>בקרה וסגירת הטענה</h2></div></div>
     <div class="review-columns"><fieldset class="review-column"><legend>טיפול בתקלה</legend><label class="replaced-toggle"><input type="checkbox" data-key-review="verified"><span class="custom-check"></span><span>אומת</span></label><label class="replaced-toggle"><input type="checkbox" data-key-review="unitsReplaced"><span class="custom-check"></span><span>הוחלפו יחידות</span></label><label class="replaced-toggle"><input type="checkbox" data-key-review="repairPerformed"><span class="custom-check"></span><span>בוצע תיקון</span></label></fieldset>
     <fieldset class="review-column"><legend>חוזרת</legend><label class="replaced-toggle"><input type="checkbox" data-key-review="missionCancelled"><span class="custom-check"></span><span>ביטול משימה</span></label><label class="replaced-toggle"><input type="checkbox" data-key-review="sortieCancelled"><span class="custom-check"></span><span>ביטול גיחה</span></label><label class="replaced-toggle"><input type="checkbox" data-key-repeat="yes"><span class="custom-check"></span><span>חוזרת: כן</span></label><label class="replaced-toggle"><input type="checkbox" data-key-repeat="no"><span class="custom-check"></span><span>חוזרת: לא</span></label></fieldset>
     <fieldset class="review-column"><legend>היתרים / אישורים</legend><label class="replaced-toggle"><input type="checkbox" data-key-date-toggle="flightPermitUntil"><span class="custom-check"></span><span>היתר לטיסה עד תאריך</span></label><div class="review-date-field" data-key-date-wrap="flightPermitUntil" hidden><label class="input-field">תוקף ההיתר<input type="date" data-key-date="flightPermitUntil"></label><button type="button" class="secondary-button" data-key-today="flightPermitUntil">היום</button></div><label class="replaced-toggle"><input type="checkbox" data-key-review="trackingPermit"><span class="custom-check"></span><span>היתר למעקב</span></label><label class="replaced-toggle"><input type="checkbox" data-key-date-toggle="approvalUntil"><span class="custom-check"></span><span>אישור עד תאריך</span></label><div class="review-date-field" data-key-date-wrap="approvalUntil" hidden><label class="input-field">תוקף האישור<input type="date" data-key-date="approvalUntil"></label><button type="button" class="secondary-button" data-key-today="approvalUntil">היום</button></div></fieldset></div>
@@ -323,7 +323,7 @@ function renderWork() {
   const load = activeLoad, closed = load.status !== "open" || manager || !editLock?.held;
   const lockNotice = $("#key-edit-lock-notice");
   if (lockNotice) lockNotice.hidden = manager || load.status !== "open" || Boolean(editLock?.held);
-  $("#work-summary").textContent = `${load.serial ? `${load.serial} · ` : ""}${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${load.status === "closed" ? " · נסגר" : load.status === "cancelled" ? ` · השילוח בוטל: ${load.cancellationReason || "—"}` : load.status === "pendingReview" ? " · ממתין לבדיקת מנהל" : ""}`;
+  $("#work-summary").textContent = `${load.serial ? `${load.serial} · ` : ""}${load.date.split("-").reverse().join("/")} · ${load.time} · טייסת ${load.squadron} · דת״ק ${load.shelter} · צוות: ${load.teamNames.join(" · ")}${load.status === "closed" ? " · נסגר" : load.status === "cancelled" ? ` · השילוח בוטל: ${load.cancellationReason || "—"}` : load.status === "pendingReview" ? " · ממתין לבדיקת מטיס" : ""}`;
   $("#work-manager-notes").textContent = load.managerNotes || "";
   $("#work-manager-notes").hidden = !load.managerNotes;
   const table = document.createElement("table"); table.className = "work-aircraft-table";
@@ -339,7 +339,7 @@ function renderWork() {
       tr.append(td);
     });
     const notes = make("td", undefined, "key-work-notes");
-    if (row.notes) notes.append(make("p", `מנהל: ${row.notes}`));
+    if (row.notes) notes.append(make("p", `מטיס: ${row.notes}`));
     const technicianNote = document.createElement("textarea");
     technicianNote.className = "key-technician-note"; technicianNote.rows = 2; technicianNote.maxLength = 500;
     technicianNote.placeholder = "הערת טכנאי (לא חובה)";
@@ -383,7 +383,7 @@ function renderWork() {
     $("#key-reopen-history").open = true;
     $("#key-reopen-events").replaceChildren(...keyLoadTimeline(load).map(({ label, at }) => make("li", `${label} · ${new Date(at).toLocaleString("he-IL")}`)));
   }
-  setMessage("#work-status", load.status === "cancelled" ? "השילוח בוטל ונשמר בארכיון. לא ניתן לערוך אותו." : load.status === "closed" ? "ההטענה נסגרה לאחר בדיקת מנהל וההיסטוריה עודכנה." : load.status === "pendingReview" ? "ההטענה ממתינה לבדיקת מנהל; הטכנאים אינם יכולים לערוך אותה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול להגיש את ההטענה לבדיקה." : !editLock?.held ? "העריכה ממתינה לנעילת הטופס. בדוק את ההודעה שמעליו." : "ההתקדמות נשמרת במכשיר ובשרת עד להגשה לבדיקה.");
+  setMessage("#work-status", load.status === "cancelled" ? "השילוח בוטל ונשמר בארכיון. לא ניתן לערוך אותו." : load.status === "closed" ? "ההטענה נסגרה לאחר בדיקת מטיס וההיסטוריה עודכנה." : load.status === "pendingReview" ? "ההטענה ממתינה לבדיקת מטיס; הטכנאים אינם יכולים לערוך אותה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול להגיש את ההטענה לבדיקה." : !editLock?.held ? "העריכה ממתינה לנעילת הטופס. בדוק את ההודעה שמעליו." : "ההתקדמות נשמרת במכשיר ובשרת עד להגשה לבדיקה.");
 }
 const signatures = new Map();
 let signatureLoadId = "";
@@ -475,7 +475,7 @@ $("#reopen-key-load").addEventListener("click", async () => {
     await reopenKeyLoad(activeLoad.id, user.uid);
     location.hash = route("open");
   } catch (error) {
-    const reason = error.code === "permission-denied" ? "יש לפרסם את כללי Firestore המעודכנים כדי לאפשר למנהל להחזיר הטענה לעריכה." : error.message;
+    const reason = error.code === "permission-denied" ? "יש לפרסם את כללי Firestore המעודכנים כדי לאפשר למטיס להחזיר הטענה לעריכה." : error.message;
     setMessage("#reopen-key-status", `החזרת ההטענה נכשלה: ${reason}`, true);
   } finally { button.disabled = false; }
 });

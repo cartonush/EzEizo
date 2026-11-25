@@ -1,17 +1,17 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.16";
+import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.18";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
-import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.16";
-import { initCatalogView } from "./catalog-view.js?v=1.9.16";
+import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.18";
+import { initCatalogView } from "./catalog-view.js?v=1.9.18";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
-import { createEditLock } from "../edit-lock.js?v=1.9.16";
-import { initKeyPages } from "../keys/app.js?v=1.9.16";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.16";
+import { createEditLock } from "../edit-lock.js?v=1.9.18";
+import { initKeyPages } from "../keys/app.js?v=1.9.18";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.18";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
-import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.16";
-import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.16";
-import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.13";
+import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.18";
+import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.18";
+import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.18";
 
 const managerUser = await gate("operations");
 const fullManager = managerUser.isFullManager;
@@ -21,7 +21,7 @@ initCatalogAdmin();
 initCatalogView();
 initDuties();
 document.querySelector(".brand-copy h1").textContent = fullManager ? "Metis · נימר" : "Metis · מג״ת";
-document.querySelector(".manager-home-intro h2").textContent = `שלום ${managerUser.name || (fullManager ? "מנהל" : "מג״ת")}`;
+document.querySelector(".manager-home-intro h2").textContent = `שלום ${managerUser.name || (fullManager ? "מטיס" : "מג״ת")}`;
 let cloudIssues = [];
 let latestServerIssues = [];
 const recentIssues = new Map();
@@ -309,7 +309,7 @@ function addDefinitionEditor(card, issue) {
   const code = makeField("קוד מערכת", document.createElement("input")); code.value = issue.sheet.systemCode || "";
   const category = makeSelect("סיווג תקלה", ["", "בקרי", "קשר", "ל״א", "אישורים והיתרים", "פירוקים והרכבות"], issue.sheet.reviewCategory);
   const fault = makeField("תיאור תקלה", document.createElement("textarea")); fault.rows = 3; fault.value = issue.sheet.fault || "";
-  const notes = makeField("הערות מנהל", document.createElement("textarea")); notes.rows = 2; notes.maxLength = 2000; notes.value = issue.sheet.managerNotes || "";
+  const notes = makeField("הערות מטיס", document.createElement("textarea")); notes.rows = 2; notes.maxLength = 2000; notes.value = issue.sheet.managerNotes || "";
   const refreshLocations = () => {
     const oldShelter = shelter.value, oldAircraft = aircraft.value;
     shelter.replaceChildren(...(SQUADRONS[squadron.value]?.shelters || []).map((value) => new Option(value, value)));
@@ -335,10 +335,10 @@ function addDefinitionEditor(card, issue) {
   const release = () => { if (editLock) { editLock.dispose(); managerEditorLocks.delete(editLock); editLock = null; } form.hidden = true; retryLock.hidden = true; };
   editor.addEventListener("toggle", () => {
     if (!editor.open) { release(); return; }
-    status.textContent = "בודק אם הטופס פנוי ונועל אותו לעריכת המנהל…";
+    status.textContent = "בודק אם הטופס פנוי ונועל אותו לעריכת המטיס…";
     retryLock.hidden = true;
-    editLock = createEditLock({ kind: "issue", serialOrId: issue.sheet.serial, formId: issue.id, user: { uid: managerUser.uid, name: "מנהל" }, manager: true,
-      onChange: ({ held, message }) => { form.hidden = !held; retryLock.hidden = held || !message || message.includes("בודק אם"); status.textContent = held ? "הטופס נעול לעריכת המנהל. הטכנאים יוכלו לערוך לאחר סגירת החלונית." : message; } });
+    editLock = createEditLock({ kind: "issue", serialOrId: issue.sheet.serial, formId: issue.id, user: { uid: managerUser.uid, name: "מטיס" }, manager: true,
+      onChange: ({ held, message }) => { form.hidden = !held; retryLock.hidden = held || !message || message.includes("בודק אם"); status.textContent = held ? "הטופס נעול לעריכת המטיס. הטכנאים יוכלו לערוך לאחר סגירת החלונית." : message; } });
     managerEditorLocks.add(editLock);
     void editLock.acquire();
   });
@@ -402,7 +402,7 @@ function addIssueCard(container, item, mode) {
     assignLabel.append(select);
     card.append(assignLabel, assignFeedback);
     const editor = document.createElement("details"); editor.className = "manager-note-editor";
-    const summary = document.createElement("summary"); summary.textContent = "הערות מנהל";
+    const summary = document.createElement("summary"); summary.textContent = "הערות מטיס";
     const existing = document.createElement("p"); existing.className = "manager-note-text"; existing.textContent = fullIssue?.sheet?.managerNotes || "עדיין אין הערות.";
     const note = document.createElement("textarea"); note.rows = 2; note.maxLength = 500; note.placeholder = "הוסף הערה לטכנאי…"; note.setAttribute("aria-label", `הוסף הערה לתקלה ${item.serial}`);
     const send = document.createElement("button"); send.type = "button"; send.className = "secondary-button"; send.textContent = "הוסף הערה";
@@ -810,7 +810,7 @@ function renderDirectoryMatches() {
   found.slice(0, 30).forEach((person) => {
     const button = document.createElement("button");
     button.type = "button"; button.className = "secondary-button";
-    button.textContent = `${person.name || "משתמש"}${person.personalNumber ? ` · ${person.personalNumber}` : ""}${person.role === "manager" ? " · מנהל" : ""}`;
+    button.textContent = `${person.name || "משתמש"}${person.personalNumber ? ` · ${person.personalNumber}` : ""}${person.role === "manager" ? " · מטיס" : ""}`;
     button.setAttribute("aria-label", `פתח פרטים של ${person.name || person.personalNumber || "משתמש"}`);
     button.addEventListener("click", () => selectDirectoryPerson(person.uid));
     matches.append(button);

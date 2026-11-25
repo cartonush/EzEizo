@@ -8,10 +8,10 @@ initializeApp();
 
 exports.deleteTechnicianPermanently = onCall({ region: "us-central1" }, async (request) => {
   const actor = request.auth;
-  if (!actor || actor.token.email !== "roisuissa6@gmail.com") throw new HttpsError("permission-denied", "רק המנהל מורשה למחוק משתמשים.");
+  if (!actor || actor.token.email !== "roisuissa6@gmail.com") throw new HttpsError("permission-denied", "רק המטיס מורשה למחוק משתמשים.");
   const db = getFirestore();
   const manager = await db.doc(`roles/${actor.uid}`).get();
-  if (manager.data()?.role !== "manager" || manager.data()?.active !== true) throw new HttpsError("permission-denied", "הרשאת המנהל אינה פעילה.");
+  if (manager.data()?.role !== "manager" || manager.data()?.active !== true) throw new HttpsError("permission-denied", "הרשאת המטיס אינה פעילה.");
 
   const uid = request.data?.uid;
   if (typeof uid !== "string" || !/^[a-zA-Z0-9_-]{8,128}$/.test(uid) || uid === actor.uid) throw new HttpsError("invalid-argument", "מזהה משתמש אינו תקין.");
@@ -31,7 +31,7 @@ exports.deleteTechnicianPermanently = onCall({ region: "us-central1" }, async (r
 });
 
 async function requireManager(request) {
-  if (!request.auth) throw new HttpsError("unauthenticated", "יש להתחבר כמנהל.");
+  if (!request.auth) throw new HttpsError("unauthenticated", "יש להתחבר כמטיס.");
   const role = await getFirestore().doc(`roles/${request.auth.uid}`).get();
   if (role.data()?.role !== "manager" || role.data()?.active === false) throw new HttpsError("permission-denied", "המשתמש אינו מורשה גישה.");
 }

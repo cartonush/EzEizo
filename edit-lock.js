@@ -1,4 +1,4 @@
-import { acquireEditLock, releaseEditLock, releaseMyEditLock, watchEditLock } from "./firebase-sync.js?v=1.9.16";
+import { acquireEditLock, releaseEditLock, releaseMyEditLock, watchEditLock } from "./firebase-sync.js?v=1.9.18";
 
 // The lease expires after a crashed window. A live editor renews it regularly.
 export function createEditLock({ kind, serialOrId, formId, user, onChange, manager = false }) {
