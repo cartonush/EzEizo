@@ -11,7 +11,7 @@ import { initReports, updateReportData, initAircraftConstants, constantsForAircr
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
 import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.8";
 import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.8";
-import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.12";
+import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.13";
 
 const managerUser = await gate("manager");
 initCatalogAdmin();

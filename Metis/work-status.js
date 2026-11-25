@@ -4,18 +4,40 @@ export function issueWorkStage(issue) {
   return null;
 }
 
+export function issueStageDate(issue) {
+  const stage = issueWorkStage(issue);
+  if (stage === "start") return issue.createdAt;
+  if (stage === "progress") return issue.startedAt || issue.workDraft?.savedAt;
+  if (stage === "finished") return issue.status === "closed"
+    ? issue.reviewedAt || issue.closed?.state?.closedAt || issue.closed?.record?.closedAt
+    : issue.closed?.state?.closedAt || issue.closed?.record?.closedAt;
+  return null;
+}
+
+export function isToday(value, now = new Date()) {
+  if (!value) return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+}
+
+let midnightRefresh;
 export function renderWorkStatus(issues) {
   const root = document.querySelector("#work-status-board");
   root.replaceChildren();
+  const now = new Date();
+  document.querySelector("#work-status-date").textContent = `תקלות מהיום · ${new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "long", year: "numeric" }).format(now)}`;
+  clearTimeout(midnightRefresh);
+  midnightRefresh = setTimeout(() => renderWorkStatus(issues), new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime() + 1000);
   const bySerial = new Map(), rank = { closed: 3, pendingReview: 2, open: 1 };
-  for (const issue of issues.filter((item) => item.sheet?.serial)) {
+  for (const issue of issues.filter((item) => item.sheet?.serial && isToday(issueStageDate(item), now))) {
     const previous = bySerial.get(issue.sheet.serial);
     if (!previous || (rank[issue.status] || 0) > (rank[previous.status] || 0)) bySerial.set(issue.sheet.serial, issue);
   }
   const unique = [...bySerial.values()];
   for (const [stage, title, hint] of [["start", "תחילת עבודה", "פתוחות · טרם נחתם בטוח לאחזקה"], ["progress", "מהלך עבודה", "חתימת בטיחות נשמרה"], ["finished", "סיום עבודה", "ממתינות לבקרה או סגורות"]]) {
     const lane = document.createElement("section"); lane.className = `work-status-lane work-status-${stage}`;
-    const group = unique.filter((item) => issueWorkStage(item) === stage).sort((a, b) => (b.startedAt || b.createdAt || "").localeCompare(a.startedAt || a.createdAt || ""));
+    const group = unique.filter((item) => issueWorkStage(item) === stage).sort((a, b) => String(issueStageDate(b)).localeCompare(String(issueStageDate(a))));
     const heading = document.createElement("h3"); heading.textContent = `${title} · ${group.length}`;
     const description = document.createElement("p"); description.textContent = hint;
     lane.append(heading, description);
