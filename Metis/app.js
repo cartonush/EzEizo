@@ -1,11 +1,11 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.12";
+import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.14";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
 import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.6";
 import { initCatalogView } from "./catalog-view.js?v=1.9.6";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
-import { createEditLock } from "../edit-lock.js?v=1.9.6";
+import { createEditLock } from "../edit-lock.js?v=1.9.14";
 import { initKeyPages } from "../keys/app.js?v=1.9.6";
 import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.6";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
@@ -19,6 +19,8 @@ initCatalogView();
 initDuties();
 document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
 let cloudIssues = [];
+let latestServerIssues = [];
+const recentIssues = new Map();
 let cloudKeyLoads = [];
 let technicians = [];
 let directoryAccounts = [];
@@ -277,7 +279,10 @@ document.querySelector("#create-link").addEventListener("click", async () => {
   }
   sheet.id = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   try {
-    sheet.serial = await createAssignedIssues(sheet, assignees);
+    const created = await createAssignedIssues(sheet, assignees);
+    sheet.serial = created.serial;
+    recentIssues.set(created.id, { id: created.id, sheet: { ...sheet, id: created.id }, status: "open", createdAt: created.createdAt, assigneeUid: assignees[0].uid, assigneeName: assignees[0].name, teamUids: assignees.map((person) => person.uid), teamNames: assignees.map((person) => person.name) });
+    updateManagerIssues(latestServerIssues);
     resetFaultDraft();
     setStatus("#created-status", `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. הטופס מוכן לפתיחת תקלה חדשה.`);
     window.location.hash = "open";
@@ -570,16 +575,28 @@ document.querySelector("#reset-draft").addEventListener("click", () => {
   else if (window.location.hash === "#keys/create") document.dispatchEvent(new Event("ezeizo:reset-key-draft"));
 });
 
+function updateManagerIssues(issues) {
+  latestServerIssues = issues;
+  for (const issue of issues) recentIssues.delete(issue.id);
+  cloudIssues = [...issues, ...recentIssues.values()];
+  updateReportData({ issues: cloudIssues });
+  document.querySelector("#home-open-count").textContent = `${cloudIssues.filter((item) => issueWorkStage(item) === "start").length} תקלות פתוחות`;
+  document.querySelector("#home-progress-count").textContent = `${cloudIssues.filter((item) => issueWorkStage(item) === "progress").length} תקלות בתהליך`;
+  document.querySelector("#home-review-count").textContent = `${cloudIssues.filter((item) => item.status === "pendingReview").length} ממתינות לסגירה · ${cloudIssues.filter((item) => item.status === "closed").length} סגורות`;
+  renderIssueLists(); renderWorkStatus(cloudIssues); renderUsers();
+}
 watchIssues((issues) => {
-  cloudIssues = issues;
-  updateReportData({ issues });
-  document.querySelector("#home-open-count").textContent = `${issues.filter((item) => issueWorkStage(item) === "start").length} תקלות פתוחות`;
-  document.querySelector("#home-progress-count").textContent = `${issues.filter((item) => issueWorkStage(item) === "progress").length} תקלות בתהליך`;
-  document.querySelector("#home-review-count").textContent = `${issues.filter((item) => item.status === "pendingReview").length} ממתינות לסגירה · ${issues.filter((item) => item.status === "closed").length} סגורות`;
-  renderIssueLists(); renderWorkStatus(issues); renderUsers();
+  updateManagerIssues(issues);
 }, (error) => {
   setStatus("#issued-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
   setStatus("#pending-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
+});
+document.querySelector("#refresh-work-status").addEventListener("click", async (event) => {
+  const button = event.currentTarget, message = document.querySelector("#work-status-refresh-message");
+  button.disabled = true; message.textContent = "מעדכן תקלות מהשרת…"; delete message.dataset.state;
+  try { updateManagerIssues(await refreshManagerIssues()); message.textContent = "הסטטוס עודכן עכשיו."; }
+  catch (error) { message.textContent = `הרענון נכשל: ${error.message}`; message.dataset.state = "error"; }
+  finally { button.disabled = false; }
 });
 function selectedAssigneeUids() {
   return [...document.querySelectorAll('#new-assignees select')].map((select) => select.value);

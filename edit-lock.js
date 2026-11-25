@@ -1,12 +1,20 @@
-import { acquireEditLock, releaseEditLock, watchEditLock } from "./firebase-sync.js?v=1.9.6";
+import { acquireEditLock, releaseEditLock, releaseMyEditLock, watchEditLock } from "./firebase-sync.js?v=1.9.14";
 
 // The lease expires after a crashed window. A live editor renews it regularly.
 export function createEditLock({ kind, serialOrId, formId, user, onChange, manager = false }) {
-  const session = crypto.randomUUID();
+  const sessionKey = `ezeizo-edit-session:${user.uid}:${kind}:${serialOrId}`;
+  let session;
+  try { session = sessionStorage.getItem(sessionKey); } catch { /* Private storage can be unavailable. */ }
+  if (!session) {
+    session = crypto.randomUUID();
+    try { sessionStorage.setItem(sessionKey, session); } catch { /* The current tab can still use its in-memory lease. */ }
+  }
   let held = false, disposed = false, acquiring = false;
-  const emit = (message) => { if (!disposed) onChange({ held, message }); };
+  let currentLock = null;
+  const emit = (message) => { if (!disposed) onChange({ held, message, ownedByMe: !held && currentLock?.ownerUid === user.uid && currentLock?.session !== session }); };
   const unsubscribe = watchEditLock(kind, serialOrId, (lock) => {
-    if (lock?.session === session && lock.expiresAt.toMillis() > Date.now()) {
+    currentLock = lock;
+    if (lock?.session === session && lock.ownerUid === user.uid && lock.formId === formId && lock.expiresAt.toMillis() > Date.now()) {
       if (!held) { held = true; emit(""); }
       return;
     }
@@ -32,6 +40,7 @@ export function createEditLock({ kind, serialOrId, formId, user, onChange, manag
       const result = await acquireEditLock(kind, serialOrId, formId, user, session, manager);
       if (disposed) { if (result.held) await releaseEditLock(kind, serialOrId, session).catch(() => {}); return; }
       held = result.held;
+      if (!result.held) currentLock = { ownerName: result.ownerName, ownerUid: result.ownerUid, session: result.session };
       emit(result.held ? "" : `הטופס נמצא כעת בעריכה של ${result.ownerName}. אפשר לנסות שוב לאחר שיסיים.`);
     } catch (error) {
       held = false;
@@ -51,5 +60,11 @@ export function createEditLock({ kind, serialOrId, formId, user, onChange, manag
     await releaseEditLock(kind, serialOrId, session);
     emit("הטופס נשמר והנעילה שוחררה.");
   }
-  return { acquire, dispose, release, get held() { return held; }, session };
+  async function releaseMine() {
+    if (held || disposed || currentLock?.ownerUid !== user.uid) return;
+    await releaseMyEditLock(kind, serialOrId, formId, user.uid);
+    currentLock = null;
+    await acquire();
+  }
+  return { acquire, dispose, release, releaseMine, get held() { return held; }, session };
 }

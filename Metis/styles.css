@@ -198,6 +198,8 @@ main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .manager-home-tile span { color: #607686; font-size: 13px; }
 .manager-home-tile:hover,.manager-home-tile:focus-visible { border-color: #176b96; outline: none; background: #f3f9fc; }
 main:has(#view-work-status:not([hidden])) { width: min(1460px, calc(100% - 32px)); }
+.work-status-page .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.work-status-page #refresh-work-status { flex: 0 0 auto; }
 .work-status-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
 .work-status-lane { min-height: 55vh; padding: 15px; border: 1px solid #d5e4eb; border-radius: 13px; background: #f5fafc; }
 .work-status-lane h3 { margin: 0; font-size: 18px; color: #173b5d; }

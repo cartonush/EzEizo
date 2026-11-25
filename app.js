@@ -1,10 +1,10 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.12";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.14";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
 import { validateTreatment } from "./mechanic-validation.js?v=1.9.12";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.7.6";
-import { createEditLock } from "./edit-lock.js?v=1.9.6";
+import { createEditLock } from "./edit-lock.js?v=1.9.14";
 import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.6";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 
@@ -58,10 +58,18 @@ if (selectedSheet && !managerClosedView && remoteIssue.status === "open") {
   const message = document.createElement("strong");
   const retry = document.createElement("button"); retry.className = "secondary-button"; retry.type = "button"; retry.textContent = "בדוק שוב";
   retry.addEventListener("click", () => editLock?.acquire());
-  notice.append(message, retry);
+  const releaseMine = document.createElement("button"); releaseMine.className = "secondary-button"; releaseMine.type = "button"; releaseMine.textContent = "שחרר נעילה שלי מהפעלה קודמת"; releaseMine.hidden = true;
+  releaseMine.addEventListener("click", async () => {
+    releaseMine.disabled = true;
+    try { await editLock?.releaseMine(); }
+    catch (error) { message.textContent = `שחרור הנעילה נכשל: ${error.message}`; }
+    finally { releaseMine.disabled = false; }
+  });
+  notice.append(message, retry, releaseMine);
   document.querySelector("#sheet-form").before(notice);
-  editLock = createEditLock({ kind: "issue", serialOrId: sheet.serial, formId: sheet.id, user: { uid: currentUser.uid, name: currentUser.name || remoteIssue.assigneeName }, onChange: ({ held, message: info }) => {
+  editLock = createEditLock({ kind: "issue", serialOrId: sheet.serial, formId: sheet.id, user: { uid: currentUser.uid, name: currentUser.name || remoteIssue.assigneeName }, onChange: ({ held, message: info, ownedByMe }) => {
     notice.hidden = held;
+    releaseMine.hidden = !ownedByMe;
     message.textContent = info;
     document.querySelector("#sheet-form").hidden = true;
     if (held) void getIssue(sheet.id).then((latest) => {
@@ -161,10 +169,8 @@ function repairWithClassification() {
 }
 function renderRepairClassification() {
   document.querySelectorAll("[data-repair-class]").forEach((box) => { box.checked = box.dataset.repairClass === state.repairClassification; });
-  const fault = document.querySelector("#fault-description");
-  if (fault && !managerClosedView) fault.value = state.repairClassification ? `${classificationLabels[state.repairClassification]}\n${sheet.fault}` : sheet.fault;
   const preview = document.querySelector("#repair-class-preview");
-  if (preview) { preview.hidden = !state.repairClassification; preview.textContent = state.repairClassification ? `השורה הראשונה בתיאור התיקון: ${classificationLabels[state.repairClassification]}` : ""; }
+  if (preview) { preview.hidden = !state.repairClassification; preview.textContent = state.repairClassification ? classificationLabels[state.repairClassification] : ""; }
 }
 document.querySelectorAll("[data-repair-class]").forEach((box) => box.addEventListener("change", () => {
   state.repairClassification = box.checked ? box.dataset.repairClass : "";
@@ -179,6 +185,7 @@ function applyPreflightGate() {
   const form = document.querySelector("#sheet-form");
   for (const selector of [".tools-card", '.parts-card[aria-labelledby="taken-title"]']) form.querySelector(selector).hidden = !started;
   for (const selector of [".descriptions-card", ".actions-card", ".units-card", ".constants-card", '.parts-card[aria-labelledby="rejected-title"]', ".close-card"]) form.querySelector(selector).hidden = !unlocked;
+  if (unlocked && !document.querySelector("main").hidden) setupSignaturePads(form);
   document.querySelector("#save-sheet").disabled = !started || safetyStartPending;
   document.querySelector('canvas[data-signature="safetyTechnicianSignature"]').style.pointerEvents = workStarted ? "none" : "";
   document.querySelector('[data-clear-signature="safetyTechnicianSignature"]').disabled = workStarted || safetyStartPending;
@@ -226,7 +233,7 @@ function renderSheetDetails() {
   });
   const originDisplay = document.querySelector("#fault-origins-display");
   if (originDisplay) originDisplay.textContent = (sheet.faultOrigins?.length ? sheet.faultOrigins : [sheet.faultOrigin].filter(Boolean)).join(" · ") || "—";
-  document.querySelector("#fault-description").value = !managerClosedView && state.repairClassification ? `${classificationLabels[state.repairClassification]}\n${sheet.fault}` : sheet.fault;
+  document.querySelector("#fault-description").value = sheet.fault;
   document.querySelector("#dispatch-briefing").hidden = !sheet.dispatcherSignature;
   if (sheet.dispatcherSignature) document.querySelector("#dispatcher-signature-display").src = sheet.dispatcherSignature;
   const grid = document.querySelector("#constants-grid");

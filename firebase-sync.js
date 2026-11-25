@@ -32,7 +32,7 @@ export async function acquireEditLock(kind, serialOrId, formId, user, session, m
     if (!manager && (kind === "key" ? !form.data().teamUids.includes(user.uid) : !(form.data().teamUids || [form.data().assigneeUid]).includes(user.uid) || form.data().sheet.serial !== serialOrId)) throw new Error("אינך משויך לטופס הזה.");
     if (manager && kind !== "issue") throw new Error("עריכת מנהל נתמכת כרגע רק בתקלה.");
     const lock = current.data(), now = Date.now();
-    if (lock && lock.expiresAt.toMillis() > now && lock.session !== session) return { held: false, ownerName: lock.ownerName, expiresAt: lock.expiresAt.toMillis() };
+    if (lock && lock.expiresAt.toMillis() > now && lock.session !== session) return { held: false, ownerName: lock.ownerName, ownerUid: lock.ownerUid, session: lock.session, expiresAt: lock.expiresAt.toMillis() };
     transaction.set(ref, { kind, formId, serial: serialOrId, ownerUid: user.uid, ownerName: user.name || user.email || "טכנאי", session, expiresAt: Timestamp.fromMillis(now + leaseMillis) });
     return { held: true };
   });
@@ -44,6 +44,21 @@ export async function releaseEditLock(kind, serialOrId, session) {
     const current = await transaction.get(ref);
     if (current.exists() && current.data().session === session) transaction.delete(ref);
   });
+}
+
+export async function releaseMyEditLock(kind, serialOrId, formId, uid) {
+  const ref = editLockRef(kind, serialOrId);
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(ref);
+    if (!current.exists()) return;
+    if (current.data().ownerUid !== uid || current.data().formId !== formId) throw new Error("הנעילה כבר שייכת לעורך אחר.");
+    transaction.delete(ref);
+  });
+}
+
+export async function refreshManagerIssues() {
+  const snapshot = await getDocsFromServer(collection(db, "issues"));
+  return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data(), sheet: restoredSheet(entry.data().sheet) }));
 }
 
 async function requireEditLock(transaction, kind, serialOrId, session, uid) {
@@ -265,12 +280,13 @@ export async function createAssignedIssues(sheet, assignees) {
     if (next > 9999999999) throw new Error("מספרי התקלות אזלו.");
     const serial = String(next).padStart(10, "0");
     transaction.set(counterRef, { last: next });
+    const createdAt = new Date().toISOString();
     transaction.set(ref, {
       sheet: storedSheet({ ...sheet, id: ref.id, serial, technicians: assignees.map(({ name }) => name).join(" · ") }),
       status: "open", assigneeUid: assignees[0].uid, assigneeName: assignees[0].name,
-      teamUids: assignees.map(({ uid }) => uid), teamNames: assignees.map(({ name }) => name), createdAt: new Date().toISOString()
+      teamUids: assignees.map(({ uid }) => uid), teamNames: assignees.map(({ name }) => name), createdAt
     });
-    return serial;
+    return { serial, id: ref.id, createdAt };
   });
 }
 
