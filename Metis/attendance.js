@@ -3,7 +3,7 @@ export const REGULAR_RANKS = ["טוראי", "רבט", "סמל", "סמר"];
 export const PERMANENT_RANKS = ["סמר", "סמל", "רסל", "רסר", "רסמ", "רסב", "רנג", "סגם", "סגן", "סרן", "רסן"];
 export const LICENSES = ["אין", "אוטומטי", "ידני"];
 export const DEPARTMENTS = ["דרג א", "קשר", "ברקת", "תחקור", "חלון לוגיסטי", "הטסה"];
-export const WORK_STAGES = ["1", "7", "11"];
+export const WORK_STAGES = ["1", "7", "9", "11"];
 export const SERVICE_TYPES = ["חובה", "קבע"];
 export const ATTENDANCE_STATUSES = [
   ["נוכח", ""], ["רענון", "#6587cf"], ["גימלים", "#e43228"], ["בדרך", "#e3cf45"],
@@ -47,7 +47,7 @@ export function renderAttendance(accounts, onStatusChange = () => {}) {
     const table = document.createElement("table"); table.className = "attendance-table";
     const thead = document.createElement("thead");
     const head = document.createElement("tr");
-    for (const title of ["שם", "שם משפחה", "מספר אישי", "נוכחות", "שלב עבודה", "מחלקה", "סוג שירות", "דרגה", "רישיון"]) {
+    for (const title of ["שם", "שם משפחה", "מספר אישי", "נוכחות", "שלב עבודה / הסמכה", "מחלקה", "סוג שירות", "דרגה", "רישיון"]) {
       const th = document.createElement("th"); th.textContent = title; head.append(th);
     }
     thead.append(head);
@@ -58,7 +58,8 @@ export function renderAttendance(accounts, onStatusChange = () => {}) {
       const status = ATTENDANCE_STATUSES.find(([name]) => name === person.attendanceStatus) || ATTENDANCE_STATUSES[0];
       if (status[1]) { row.classList.add("attendance-status-row"); if (["גימלים", "רס״ר", "מחוץ ליחידה", "הרצאות", "צוות לילה"].includes(status[0])) row.classList.add("attendance-status-dark"); row.style.setProperty("--attendance-status-color", status[1]); }
       const parts = (person.name || "").trim().split(/\s+/);
-      const values = [person.firstName || parts[0], person.lastName || parts.slice(1).join(" "), person.personalNumber, null, person.workStage, person.department, person.serviceType, person.rank, person.license || "אין"];
+      const qualification = [person.workStage ? `שלב ${person.workStage}` : "", person.magatCertified ? "מג״ת" : ""].filter(Boolean).join(" · ");
+      const values = [person.firstName || parts[0], person.lastName || parts.slice(1).join(" "), person.personalNumber, null, qualification, person.department, person.serviceType, person.rank, person.license || "אין"];
       values.forEach((value, index) => {
         const cell = document.createElement("td"); cell.dataset.label = head.children[index].textContent;
         if (index === 3) {

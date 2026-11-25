@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.9.14">
-  <link rel="stylesheet" href="styles.css?v=1.9.14">
+  <link rel="stylesheet" href="../styles.css?v=1.9.15">
+  <link rel="stylesheet" href="styles.css?v=1.9.15">
   <link rel="stylesheet" href="../keys/styles.css?v=1.8.0">
 </head>
 <body>
@@ -24,7 +24,7 @@
         <h1>Metis · דף מנהל</h1>
         <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
       </div>
-      <span class="version-pill">v1.9.14</span>
+      <span class="version-pill">v1.9.15</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -43,7 +43,7 @@
         <a class="manager-nav-link" href="#home" data-view-link="home">בית</a>
         <a class="manager-nav-link" href="#new" data-view-link="faults">תקלות</a>
         <a class="manager-nav-link" href="#keys" data-view-link="keys">מפתחות</a>
-        <a class="manager-nav-link" href="#management" data-view-link="management">ניהול</a>
+        <a class="manager-nav-link" href="#management" data-view-link="management" data-full-manager>ניהול</a>
       </nav>
       <div id="view-home" data-manager-view="home">
         <section class="card manager-home-intro"><div class="section-heading"><div><p class="section-kicker">דף בית</p><h2>שלום נימר</h2></div></div><p>בחר את תחום העבודה כדי לפתוח דף או לעקוב אחר משימות הצוות.</p></section>
@@ -57,7 +57,7 @@
           <a href="#attendance" class="manager-home-tile"><strong>רשימת נוכחות</strong><span>טכנאים לפי שירות, מחלקה ודרגה</span></a>
           <a href="#duties" class="manager-home-tile"><strong>מגתי״ם ונהגים</strong><span>שיבוץ תורנויות לפי יום ותפקיד</span></a>
           <a href="#work-status" class="manager-home-tile"><strong>סטטוס עבודה</strong><span>תחילת עבודה, מהלך עבודה וסיום עבודה</span></a>
-          <a href="#management" class="manager-home-tile"><strong>ניהול</strong><span>משתמשים, הפקת דוחות ועדכון קבועים לפי מטוס</span></a>
+          <a href="#management" class="manager-home-tile" data-full-manager><strong>ניהול</strong><span>משתמשים, הפקת דוחות ועדכון קבועים לפי מטוס</span></a>
         </div>
       </div>
       <div id="view-catalog" data-manager-view="catalog" hidden>
@@ -324,7 +324,7 @@
           <div id="directory-matches" class="directory-matches" role="group" aria-label="תוצאות חיפוש משתמשים"></div>
           <div id="directory-editor" hidden>
             <h3 id="directory-editor-title">פרטי טכנאי</h3>
-            <div class="table-wrap"><table class="directory-table technician-directory-table"><thead><tr><th>שם</th><th>שם משפחה</th><th>מספר אישי</th><th>שלב עבודה</th><th>מחלקה</th><th>סוג שירות</th><th>דרגה</th><th>רישיון</th><th>פעולות</th></tr></thead><tbody id="technician-directory"></tbody></table></div>
+            <div class="table-wrap"><table class="directory-table technician-directory-table"><thead><tr><th>שם</th><th>שם משפחה</th><th>מספר אישי</th><th>שלב עבודה / הסמכה</th><th>מחלקה</th><th>סוג שירות</th><th>דרגה</th><th>רישיון</th><th>פעולות</th></tr></thead><tbody id="technician-directory"></tbody></table></div>
           </div>
           <p id="directory-status" class="copy-status" role="status" aria-live="polite"></p>
           <p id="user-status" class="copy-status" role="status" aria-live="polite"></p>
@@ -335,7 +335,8 @@
             <label class="input-field">שם<input name="firstName" required maxlength="80" autocomplete="off"></label>
             <label class="input-field">שם משפחה<input name="lastName" required maxlength="80" autocomplete="off"></label>
             <label class="input-field">מספר אישי<input name="personalNumber" required inputmode="numeric" pattern="[0-9]{7}" maxlength="7" title="שבע ספרות" autocomplete="off"></label>
-            <label class="input-field">שלב עבודה<select name="workStage"><option value="">בחר שלב</option><option>1</option><option>7</option><option>11</option></select></label>
+            <label class="input-field">שלב עבודה / הסמכה<select name="workStage"><option value="">בחר שלב</option><option value="1">שלב 1</option><option value="7">שלב 7</option><option value="9">שלב 9</option><option value="11">שלב 11</option></select></label>
+            <label class="input-field">הסמכת מג״ת<select name="magatCertified"><option value="false">ללא הסמכה</option><option value="true">מוסמך מג״ת</option></select></label>
             <label class="input-field">מחלקה<select name="department"><option value="">בחר מחלקה</option><option>דרג א</option><option>קשר</option><option>ברקת</option><option>תחקור</option><option>חלון לוגיסטי</option><option>הטסה</option></select></label>
             <label class="input-field">סוג שירות<select name="serviceType"><option value="חובה">חובה</option><option value="קבע">קבע</option></select></label>
             <label class="input-field">דרגה<select name="rank"></select></label>
@@ -350,6 +351,6 @@
       <div id="view-components" data-manager-view="components" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>מכלולים</h2></div></div><form id="component-form" class="directory-form manager-grid"><label class="input-field">שם מכלול<input name="name" required maxlength="80"></label><label class="input-field">מערכת<select name="systemId" required></select></label><button class="primary-button" type="submit">הוסף מכלול</button></form><p id="component-status" class="copy-status" role="status"></p><div class="table-wrap"><table class="directory-table"><thead><tr><th>מכלול</th><th>מערכת</th><th>פעולות</th></tr></thead><tbody id="components-table"></tbody></table></div></section></div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.9.14"></script>
+  <script type="module" src="app.js?v=1.9.15"></script>
 </body>
 </html>

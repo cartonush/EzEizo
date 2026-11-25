@@ -1,4 +1,4 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.9.6";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.9.15";
 import { SQUADRONS, SYSTEMS } from "./catalog.js?v=1.9.0";
 import { downloadReportPdf } from "./report-pdf.js?v=1.7.6";
 import { downloadFile } from "./report-pdf.js?v=1.7.6";

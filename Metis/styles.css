@@ -373,3 +373,4 @@ main:has(#view-work-status:not([hidden])) { width: min(1460px, calc(100% - 32px)
   .report-output #report-period { margin-bottom: 8px; }
   @page { size: A4 portrait; margin: 12mm; }
 }
+.manager-nav-link[data-full-manager][hidden], .manager-home-tile[data-full-manager][hidden] { display: none !important; }

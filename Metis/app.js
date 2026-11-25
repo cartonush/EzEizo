@@ -1,23 +1,27 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.14";
+import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.15";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
-import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.6";
-import { initCatalogView } from "./catalog-view.js?v=1.9.6";
+import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.15";
+import { initCatalogView } from "./catalog-view.js?v=1.9.15";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
-import { createEditLock } from "../edit-lock.js?v=1.9.14";
-import { initKeyPages } from "../keys/app.js?v=1.9.6";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.6";
+import { createEditLock } from "../edit-lock.js?v=1.9.15";
+import { initKeyPages } from "../keys/app.js?v=1.9.15";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.15";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
-import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.8";
-import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.8";
+import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.15";
+import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.15";
 import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.13";
 
-const managerUser = await gate("manager");
+const managerUser = await gate("operations");
+const fullManager = managerUser.isFullManager;
+document.querySelectorAll("[data-full-manager]").forEach((element) => { element.hidden = !fullManager; });
+if (!fullManager) document.querySelectorAll('[data-manager-view="management"], [data-manager-view="users"], [data-manager-view="systems"], [data-manager-view="components"], [data-manager-view="reports"], [data-manager-view="aircraft-constants"]').forEach((view) => { view.inert = true; });
 initCatalogAdmin();
 initCatalogView();
 initDuties();
-document.querySelector(".brand-copy h1").textContent = "Metis · נימר";
+document.querySelector(".brand-copy h1").textContent = fullManager ? "Metis · נימר" : "Metis · מג״ת";
+document.querySelector(".manager-home-intro h2").textContent = `שלום ${managerUser.name || (fullManager ? "מנהל" : "מג״ת")}`;
 let cloudIssues = [];
 let latestServerIssues = [];
 const recentIssues = new Map();
@@ -521,6 +525,7 @@ let previousManagerView = "";
 let previousIssueRoute = "";
 function showManagerView() {
   const requested = window.location.hash.slice(1);
+  if (!fullManager && ["management", "technicians", "users", "systems", "components", "reports", "aircraft-constants"].includes(requested)) { location.replace("#home"); return; }
   const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : requested === "closed" || requested === "in-progress" ? "open" : requested === "technicians" ? "users" : ["home", "catalog", "attendance", "duties", "work-status", "management", "reports", "aircraft-constants", "new", "open", "pending", "history", "users", "systems", "components"].includes(requested) ? requested : "home";
   if (requested === "closed") document.querySelector("#fault-mode").value = "closed";
   if (selected === "open" && requested !== "closed" && (previousIssueRoute !== requested || previousManagerView !== "open")) document.querySelector("#fault-mode").value = requested === "in-progress" ? "open-all" : "open-default";
@@ -543,7 +548,7 @@ function showManagerView() {
   if (selected === "keys" && !keyPagesStarted) { keyPagesStarted = true; initKeyPages({ user: managerUser, embedded: true }); }
   if (selected !== "new") renderIssueLists();
 }
-document.querySelector("#manager-back").addEventListener("click", () => { if (location.hash === "#aircraft-constants" && closeConstantsEditor()) return; location.hash = ["#catalog", "#attendance", "#duties", "#work-status"].includes(location.hash) ? "home" : "management"; });
+document.querySelector("#manager-back").addEventListener("click", () => { if (fullManager && location.hash === "#aircraft-constants" && closeConstantsEditor()) return; location.hash = !fullManager || ["#catalog", "#attendance", "#duties", "#work-status"].includes(location.hash) ? "home" : "management"; });
 window.addEventListener("hashchange", showManagerView);
 function resetFaultDraft() {
   draft = EzEizoData.normalizeSheet(EzEizoData.defaultSheet);
@@ -709,7 +714,7 @@ function renderDirectory() {
     const parts = (person.name || "").trim().split(/\s+/);
     let rankSelect, serviceInput;
     for (const [key, fallback] of [["firstName", parts[0] || ""], ["lastName", parts.slice(1).join(" ")], ["personalNumber", ""], ["workStage", ""], ["department", ""], ["serviceType", ""], ["rank", ""], ["license", "אין"]]) {
-      const td = document.createElement("td"); td.dataset.label = ({ firstName: "שם", lastName: "שם משפחה", personalNumber: "מספר אישי", workStage: "שלב עבודה", department: "מחלקה", serviceType: "סוג שירות", rank: "דרגה", license: "רישיון" })[key];
+      const td = document.createElement("td"); td.dataset.label = ({ firstName: "שם", lastName: "שם משפחה", personalNumber: "מספר אישי", workStage: "שלב עבודה / הסמכה", department: "מחלקה", serviceType: "סוג שירות", rank: "דרגה", license: "רישיון" })[key];
       if (key === "personalNumber" && person.personalNumber) td.textContent = person.personalNumber;
       else {
         const choices = { workStage: WORK_STAGES, department: DEPARTMENTS, serviceType: SERVICE_TYPES, license: LICENSES };
@@ -718,7 +723,7 @@ function renderDirectory() {
         if (key === "personalNumber") { input.inputMode = "numeric"; input.pattern = "[0-9]{7}"; input.placeholder = "הגדרה חד פעמית"; }
         if (choices[key]) {
           const value = person[key] || fallback;
-          input.append(new Option(`בחר ${td.dataset.label}`, ""), ...choices[key].map((item) => new Option(item, item)));
+          input.append(new Option(`בחר ${td.dataset.label}`, ""), ...choices[key].map((item) => new Option(key === "workStage" ? `שלב ${item}` : item, item)));
           if (value && !choices[key].includes(value)) input.append(new Option(`${value} · ערך קודם`, value));
           input.value = value;
         } else if (key !== "rank") input.value = person[key] || fallback;
@@ -726,6 +731,13 @@ function renderDirectory() {
         if (key === "serviceType") serviceInput = input;
         if (key !== "personalNumber") profile[key] = input;
         td.append(input);
+        if (key === "workStage") {
+          const certification = document.createElement("select"); certification.setAttribute("aria-label", `הסמכת מג״ת · ${person.name || person.uid}`);
+          certification.append(new Option("ללא הסמכה", "false"), new Option("מוסמך מג״ת", "true"));
+          certification.value = person.magatCertified === true ? "true" : "false";
+          profile.magatCertified = certification;
+          td.append(certification);
+        }
       }
       row.append(td);
     }
@@ -744,7 +756,7 @@ function renderDirectory() {
       try {
         const number = row.querySelector('td[data-label="מספר אישי"] input')?.value.trim();
         if (number) await setTechnicianPersonalNumber(person.uid, number);
-        await updateAccountProfile(person.uid, Object.fromEntries(Object.entries(profile).map(([key, input]) => [key, input.value])));
+        await updateAccountProfile(person.uid, Object.fromEntries(Object.entries(profile).map(([key, input]) => [key, key === "magatCertified" ? input.value === "true" : input.value])));
         setStatus("#directory-status", `פרטי ${person.name || "המשתמש"} נשמרו.`);
       } catch (error) { setStatus("#directory-status", `שמירת הפרטים נכשלה: ${error.message}`, true); }
       finally { save.disabled = false; }
@@ -877,14 +889,14 @@ userForm.addEventListener("submit", async (event) => {
   setStatus("#user-status", "יוצר משתמש…");
   try {
     const firstName = userForm.elements.firstName.value.trim(), lastName = userForm.elements.lastName.value.trim();
-    await createTechnician(`${firstName} ${lastName}`, userForm.elements.email.value, userForm.elements.password.value, userForm.elements.personalNumber.value.trim(), { firstName, lastName, workStage: userForm.elements.workStage.value.trim(), department: userForm.elements.department.value.trim(), serviceType: userForm.elements.serviceType.value.trim(), rank: userForm.elements.rank.value, license: userForm.elements.license.value });
+    await createTechnician(`${firstName} ${lastName}`, userForm.elements.email.value, userForm.elements.password.value, userForm.elements.personalNumber.value.trim(), { firstName, lastName, workStage: userForm.elements.workStage.value.trim(), magatCertified: userForm.elements.magatCertified.value === "true", department: userForm.elements.department.value.trim(), serviceType: userForm.elements.serviceType.value.trim(), rank: userForm.elements.rank.value, license: userForm.elements.license.value });
     userForm.reset(); refreshNewUserRanks(); setStatus("#user-status", "הטכנאי נוצר. מסור לו את פרטי הכניסה בערוץ מתאים.");
   } catch (error) { setStatus("#user-status", `יצירת המשתמש נכשלה: ${error.message}`, true); }
   finally { button.disabled = false; }
 });
 const locallyClosed = new Set(EzEizoData.readClosed().map((item) => item.id));
 const legacy = EzEizoData.readIssues().filter((item) => item?.id && item.id !== "example" && !locallyClosed.has(item.id));
-if (legacy.length) {
+if (fullManager && legacy.length) {
   setStatus("#legacy-status", `נמצאו ${legacy.length} תקלות מקומיות ישנות. מעביר אותן למסד המשותף…`);
   let imported = 0;
   for (const item of legacy) {
@@ -893,7 +905,7 @@ if (legacy.length) {
   }
   if (imported === legacy.length) setStatus("#legacy-status", `${imported} תקלות מקומיות הועברו למסד המשותף.`);
 }
-initReports();
+if (fullManager) initReports();
 let initialProfilesApplied = false;
 initAircraftConstants({ user: managerUser, onProfilesLoaded: () => {
   if (!initialProfilesApplied && selections.squadron && selections.aircraft) {

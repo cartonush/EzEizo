@@ -1,4 +1,4 @@
-import { watchSystems, watchComponents } from "../firebase-sync.js?v=1.9.6";
+import { watchSystems, watchComponents } from "../firebase-sync.js?v=1.9.15";
 import { VOLUMES, DEFAULT_SYSTEMS, DEFAULT_COMPONENTS, mergeCatalog, volumeLabel } from "./catalog-data.js?v=1.9.6";
 
 function cell(row, content, span = 1) {

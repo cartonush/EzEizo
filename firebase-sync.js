@@ -178,7 +178,8 @@ export function gate(role) {
           getDoc(roleRef),
           new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 15000))
         ]);
-        if (roleDoc.data()?.role !== role || roleDoc.data()?.active === false) {
+        const allowed = role === "operations" ? roleDoc.data()?.role === "manager" || (roleDoc.data()?.role === "technician" && roleDoc.data()?.magatCertified === true) : roleDoc.data()?.role === role;
+        if (!allowed || roleDoc.data()?.active === false) {
           panel.hidden = false;
           showSetup(user, "המשתמש אינו מורשה גישה.");
           return;
@@ -198,9 +199,10 @@ export function gate(role) {
         if (headerActions) headerActions.append(logout);
         else document.querySelector(".topbar").append(logout);
         onSnapshot(doc(db, "roles", user.uid), (snapshot) => {
-          if (!snapshot.exists() || snapshot.data().active === false || snapshot.data().role !== role || snapshot.data().passwordResetRequired === true) location.reload();
+          const stillAllowed = role === "operations" ? snapshot.data()?.role === "manager" || (snapshot.data()?.role === "technician" && snapshot.data()?.magatCertified === true) : snapshot.data()?.role === role;
+          if (!snapshot.exists() || snapshot.data().active === false || !stillAllowed || snapshot.data().passwordResetRequired === true || (role === "operations" && (snapshot.data().role === "manager") !== (roleDoc.data().role === "manager"))) location.reload();
         }, () => { main.hidden = true; location.reload(); });
-        resolve(user);
+        resolve(role === "operations" ? { uid: user.uid, email: user.email, name: roleDoc.data().name || "", isFullManager: roleDoc.data().role === "manager" } : user);
       } catch (error) {
         panel.hidden = false;
         showSetup(user, error.code === "permission-denied" ? "הסיסמה נכונה, אבל כללי Firestore עדיין חוסמים את בדיקת ההרשאה." : error.message === "timeout" ? "ההזדהות הצליחה, אך בדיקת ההרשאה מתעכבת. בדוק חיבור אינטרנט או נסה שוב." : `לא ניתן לבדוק הרשאה: ${error.message}`);
@@ -448,7 +450,7 @@ export async function createTechnician(name, email, password, personalNumber, pr
     await runTransaction(db, async (transaction) => {
       const numberRef = doc(db, "personalNumbers", personalNumber);
       if ((await transaction.get(numberRef)).exists()) throw new Error("המספר האישי כבר משויך למשתמש אחר.");
-      transaction.set(doc(db, "roles", createdUser.uid), { role: "technician", name: name.trim(), email: email.trim(), personalNumber, firstName: profile.firstName || "", lastName: profile.lastName || "", workStage: profile.workStage || "", department: profile.department || "", serviceType: profile.serviceType || "", rank: profile.rank || "", license: profile.license || "אין", active: true, createdAt: new Date().toISOString() });
+      transaction.set(doc(db, "roles", createdUser.uid), { role: "technician", name: name.trim(), email: email.trim(), personalNumber, firstName: profile.firstName || "", lastName: profile.lastName || "", workStage: profile.workStage || "", magatCertified: profile.magatCertified === true, department: profile.department || "", serviceType: profile.serviceType || "", rank: profile.rank || "", license: profile.license || "אין", active: true, createdAt: new Date().toISOString() });
       transaction.set(numberRef, { uid: createdUser.uid });
     });
     return createdUser.uid;
@@ -479,7 +481,8 @@ export async function updateAccountProfile(uid, profile) {
   const fields = ["firstName", "lastName", "workStage", "department", "serviceType", "rank", "license"];
   const changes = Object.fromEntries(fields.map((key) => [key, String(profile[key] || "").trim().slice(0, 80)]));
   if (!changes.firstName || !changes.lastName) throw new Error("יש להזין שם ושם משפחה.");
-  await updateDoc(doc(db, "roles", uid), { ...changes, name: `${changes.firstName} ${changes.lastName}` });
+  if (!["", "1", "7", "9", "11"].includes(changes.workStage)) throw new Error("שלב העבודה אינו תקין.");
+  await updateDoc(doc(db, "roles", uid), { ...changes, magatCertified: profile.magatCertified === true, name: `${changes.firstName} ${changes.lastName}` });
 }
 
 export async function updateOpenIssueDefinition(id, sheet, team, session) {

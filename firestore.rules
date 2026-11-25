@@ -10,6 +10,13 @@ service cloud.firestore {
     function isManager() {
       return hasRole('manager');
     }
+    function isMagat() {
+      return hasRole('technician')
+        && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.get('magatCertified', false) == true;
+    }
+    function isOperator() {
+      return isManager() || isMagat();
+    }
     function validManagerReview(data) {
       return data is map
         && data.keys().hasAll(['verified', 'unitsReplaced', 'repairPerformed', 'recurrent', 'recurrentAnswer', 'missionCancelled', 'sortieCancelled', 'inspectionPermitUntil', 'flightPermitUntil', 'trackingPermit', 'approvalUntil'])
@@ -55,7 +62,7 @@ service cloud.firestore {
         );
     }
     function validManagerLease(data, id) {
-      return isManager()
+      return isOperator()
         && data.keys().hasAll(['kind', 'formId', 'serial', 'ownerUid', 'ownerName', 'session', 'expiresAt'])
         && data.keys().hasOnly(['kind', 'formId', 'serial', 'ownerUid', 'ownerName', 'session', 'expiresAt'])
         && data.kind == 'issue'
@@ -80,29 +87,31 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/editLocks/$(lockId)).data.formId == issueId;
     }
     match /editLocks/{id} {
-      allow get: if isManager() || hasRole('technician');
+      allow get: if isOperator() || hasRole('technician');
       allow list: if false;
       allow create: if validEditLease(request.resource.data, id) || validManagerLease(request.resource.data, id);
       allow update: if (validEditLease(request.resource.data, id) || validManagerLease(request.resource.data, id))
         && (resource.data.expiresAt <= request.time
           || (resource.data.ownerUid == request.auth.uid && resource.data.session == request.resource.data.session));
-      allow delete: if (hasRole('technician') || isManager()) && resource.data.ownerUid == request.auth.uid;
+      allow delete: if (hasRole('technician') || isOperator()) && resource.data.ownerUid == request.auth.uid;
     }
 
     match /roles/{uid} {
-      allow get: if (request.auth != null && request.auth.uid == uid) || isManager();
-      allow list: if isManager();
-      allow create: if isManager() && request.resource.data.keys().hasOnly(['role', 'name', 'email', 'personalNumber', 'firstName', 'lastName', 'workStage', 'department', 'serviceType', 'rank', 'license', 'active', 'createdAt'])
+      allow get: if (request.auth != null && request.auth.uid == uid) || isOperator();
+      allow list: if isOperator();
+      allow create: if isManager() && request.resource.data.keys().hasOnly(['role', 'name', 'email', 'personalNumber', 'firstName', 'lastName', 'workStage', 'magatCertified', 'department', 'serviceType', 'rank', 'license', 'active', 'createdAt'])
         && request.resource.data.role == 'technician'
         && request.resource.data.active == true
         && request.resource.data.name is string
+        && request.resource.data.get('workStage', '') in ['', '1', '7', '9', '11']
+        && request.resource.data.get('magatCertified', false) is bool
         && request.resource.data.email is string
         && (!request.resource.data.keys().hasAny(['personalNumber']) || (request.resource.data.personalNumber is string && request.resource.data.personalNumber.matches('[0-9]{7}')))
         && request.resource.data.createdAt is string;
       allow update: if isManager() && resource.data.role == 'technician'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active'])
         && request.resource.data.active is bool;
-      allow update: if isManager() && resource.data.role in ['technician', 'manager']
+      allow update: if isOperator() && resource.data.role in ['technician', 'manager']
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceStatus'])
         && request.resource.data.attendanceStatus in ['נוכח', 'רענון', 'גימלים', 'בדרך', 'שמירות', 'הפניה', 'אבט״ש', 'ליווי קבלנים', 'רס״ר', 'יוצא', 'בח״א 10', 'נהג מנהלות', 'מחוץ ליחידה', 'הרצאות', 'צוות לילה'];
       allow update: if isManager() && resource.data.role in ['technician', 'manager']
@@ -112,11 +121,12 @@ service cloud.firestore {
         && request.resource.data.personalNumber.matches('[0-9]{7}')
         && getAfter(/databases/$(database)/documents/personalNumbers/$(request.resource.data.personalNumber)).data.uid == uid;
       allow update: if isManager() && resource.data.role in ['technician', 'manager']
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'firstName', 'lastName', 'workStage', 'department', 'serviceType', 'rank', 'license'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'firstName', 'lastName', 'workStage', 'magatCertified', 'department', 'serviceType', 'rank', 'license'])
         && request.resource.data.name == request.resource.data.firstName + ' ' + request.resource.data.lastName
         && request.resource.data.get('firstName', '') is string
         && request.resource.data.get('lastName', '') is string
-        && request.resource.data.get('workStage', '') is string
+        && request.resource.data.get('workStage', '') in ['', '1', '7', '9', '11']
+        && request.resource.data.get('magatCertified', false) is bool
         && request.resource.data.get('department', '') is string
         && request.resource.data.get('serviceType', '') is string
         && request.resource.data.get('rank', '') in ['', 'טוראי', 'רבט', 'סמל', 'סמר', 'רסל', 'רסר', 'רסמ', 'רסב', 'רנג', 'סגם', 'סגן', 'סרן', 'רסן']
@@ -135,8 +145,8 @@ service cloud.firestore {
     }
 
     match /dutyAssignments/{id} {
-      allow get, list: if isManager();
-      allow create, update: if isManager()
+      allow get, list: if isOperator();
+      allow create, update: if isOperator()
         && request.resource.data.keys().hasAll(['week', 'day', 'role', 'assignees', 'updatedAt'])
         && request.resource.data.keys().hasOnly(['week', 'day', 'role', 'assignees', 'updatedAt'])
         && request.resource.data.week is string && request.resource.data.week.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
@@ -154,9 +164,9 @@ service cloud.firestore {
     }
 
     match /metadata/{id} {
-      allow get: if id in ['serial', 'keySerial'] && isManager();
+      allow get: if id in ['serial', 'keySerial'] && isOperator();
       allow list: if false;
-      allow create, update: if id in ['serial', 'keySerial'] && isManager()
+      allow create, update: if id in ['serial', 'keySerial'] && isOperator()
         && request.resource.data.keys().hasOnly(['last'])
         && request.resource.data.last is int
         && request.resource.data.last >= 1
@@ -166,7 +176,7 @@ service cloud.firestore {
     }
 
     match /aircraftConstants/{id} {
-      allow get, list: if isManager();
+      allow get, list: if isOperator();
       allow create, update: if isManager()
         && request.resource.data.keys().hasOnly(['squadron', 'aircraft', 'constants', 'updatedAt', 'updatedBy'])
         && request.resource.data.squadron in ['101', '105', '109', 'מנ״ט']
@@ -200,8 +210,8 @@ service cloud.firestore {
     }
 
     match /keyLoads/{id} {
-      allow get, list: if isManager() || (hasRole('technician') && request.auth.uid in resource.data.teamUids);
-      allow create: if isManager()
+      allow get, list: if isOperator() || (hasRole('technician') && request.auth.uid in resource.data.teamUids);
+      allow create: if isOperator()
         && request.resource.data.keys().hasOnly(['date', 'time', 'squadron', 'shelter', 'teamUids', 'teamNames', 'rows', 'aircraftIds', 'period', 'dispatcherSignature', 'status', 'createdAt', 'serial'])
         && request.resource.data.serial is string
         && request.resource.data.serial.matches('K-[0-9]{9}')
@@ -213,7 +223,7 @@ service cloud.firestore {
         && request.resource.data.aircraftIds.size() == request.resource.data.rows.size()
         && request.resource.data.dispatcherSignature is string
         && request.resource.data.dispatcherSignature.size() > 100;
-      allow update: if isManager()
+      allow update: if isOperator()
         && !('serial' in resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['serial'])
         && request.resource.data.serial is string
@@ -236,7 +246,7 @@ service cloud.firestore {
         && request.resource.data.work.actions is list
         && request.resource.data.work.actions.size() == 12
         && request.resource.data.work.actions.hasOnly([true]);
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status == 'open'
         && request.resource.data.status == 'cancelled'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt', 'cancelledBy', 'cancellationReason'])
@@ -245,7 +255,7 @@ service cloud.firestore {
         && request.resource.data.cancellationReason is string
         && request.resource.data.cancellationReason.size() > 0
         && request.resource.data.cancellationReason.size() <= 500;
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status == 'pendingReview'
         && request.resource.data.status == 'closed'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'reviewerSignature', 'managerReview'])
@@ -254,20 +264,20 @@ service cloud.firestore {
         && request.resource.data.reviewerSignature is string
         && request.resource.data.reviewerSignature.size() > 100
         && validManagerReview(request.resource.data.managerReview);
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status in ['pendingReview', 'closed']
         && request.resource.data.status == resource.data.status
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['managerReview', 'reviewUpdatedAt', 'reviewUpdatedBy'])
         && request.resource.data.reviewUpdatedBy == request.auth.uid
         && request.resource.data.reviewUpdatedAt is string
         && validManagerReview(request.resource.data.managerReview);
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status == 'open'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['managerNotes'])
         && request.resource.data.managerNotes is string
         && request.resource.data.managerNotes.size() > resource.data.get('managerNotes', '').size()
         && request.resource.data.managerNotes.size() <= 2000;
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status in ['closed', 'pendingReview']
         && request.resource.data.status == 'open'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reopenedAt', 'reopenedBy', 'reopenEvents'])
@@ -283,7 +293,7 @@ service cloud.firestore {
     }
 
     match /keyHistory/{id} {
-      allow get, list: if isManager();
+      allow get, list: if isOperator();
       allow create, update: if hasRole('technician')
         && request.resource.data.keys().hasOnly(['squadron', 'aircraft', 'date', 'period', 'completedAt', 'loadId'])
         && (!exists(/databases/$(database)/documents/keyHistory/$(id)) || request.resource.data.completedAt > resource.data.completedAt)
@@ -301,8 +311,8 @@ service cloud.firestore {
     }
 
     match /issues/{id} {
-      allow get, list: if isManager() || (hasRole('technician') && (resource.data.assigneeUid == request.auth.uid || request.auth.uid in resource.data.get('teamUids', [])));
-      allow create: if isManager()
+      allow get, list: if isOperator() || (hasRole('technician') && (resource.data.assigneeUid == request.auth.uid || request.auth.uid in resource.data.get('teamUids', [])));
+      allow create: if isOperator()
         && request.resource.data.keys().hasOnly(['sheet', 'status', 'createdAt', 'assigneeUid', 'assigneeName', 'teamUids', 'teamNames'])
         && request.resource.data.status == 'open'
         && request.resource.data.assigneeUid is string
@@ -318,13 +328,13 @@ service cloud.firestore {
         && request.resource.data.sheet.serial.matches('[0-9]{10}')
         && request.resource.data.sheet.actions.size() == 12
         && request.resource.data.createdAt is string;
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status == 'open'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assigneeUid', 'assigneeName'])
         && request.resource.data.assigneeUid is string
         && request.resource.data.assigneeName is string
         && activeTechnician(request.resource.data.assigneeUid);
-      allow update: if isManager() && resource.data.status == 'open'
+      allow update: if isOperator() && resource.data.status == 'open'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sheet', 'assigneeUid', 'assigneeName', 'teamUids', 'teamNames', 'definitionUpdatedAt'])
         && request.resource.data.diff(resource.data).affectedKeys().hasAll(['definitionUpdatedAt'])
         && request.resource.data.sheet.id == id
@@ -338,7 +348,7 @@ service cloud.firestore {
         && request.resource.data.definitionUpdatedAt is string
         && ownsEditLock('issue_' + resource.data.sheet.serial)
         && get(/databases/$(database)/documents/editLocks/$("issue_" + resource.data.sheet.serial)).data.formId == id;
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status == 'open'
         && request.resource.data.status == 'cancelled'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt', 'cancelledBy', 'cancellationReason'])
@@ -347,7 +357,7 @@ service cloud.firestore {
         && request.resource.data.cancellationReason is string
         && request.resource.data.cancellationReason.size() > 0
         && request.resource.data.cancellationReason.size() <= 500;
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status == 'open'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sheet'])
         && request.resource.data.sheet.diff(resource.data.sheet).affectedKeys().hasOnly(['managerNotes'])
@@ -403,7 +413,7 @@ service cloud.firestore {
         && request.resource.data.closed.state.arrivalTime.matches('([01][0-9]|2[0-3]):[0-5][0-9]')
         && request.resource.data.closed.state.completionTime is string
         && request.resource.data.closed.state.completionTime.matches('([01][0-9]|2[0-3]):[0-5][0-9]');
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status == 'pendingReview'
         && request.resource.data.status == 'closed'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'reviewerSignature', 'managerReview'])
@@ -412,21 +422,21 @@ service cloud.firestore {
         && request.resource.data.reviewedAt is string
         && request.resource.data.reviewerSignature is string
         && request.resource.data.reviewerSignature.size() > 100;
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status == 'pendingReview'
         && request.resource.data.status == 'pendingReview'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['managerReview', 'reviewUpdatedAt', 'reviewUpdatedBy'])
         && validManagerReview(request.resource.data.managerReview)
         && request.resource.data.reviewUpdatedBy == request.auth.uid
         && request.resource.data.reviewUpdatedAt is string;
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status == 'closed'
         && request.resource.data.status == 'closed'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['managerReview', 'reviewUpdatedAt', 'reviewUpdatedBy'])
         && validManagerReview(request.resource.data.managerReview)
         && request.resource.data.reviewUpdatedBy == request.auth.uid
         && request.resource.data.reviewUpdatedAt is string;
-      allow update: if isManager()
+      allow update: if isOperator()
         && resource.data.status in ['closed', 'pendingReview']
         && request.resource.data.status == 'open'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reopenedAt', 'reopenedBy', 'reopenEvents'])
