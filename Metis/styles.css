@@ -149,6 +149,10 @@
 .assignee-row .input-field { flex: 1; min-width: 0; }
 .assignee-row .secondary-button { flex: 0 0 auto; }
 .assignee-row select[aria-invalid="true"] { border-color: #dc2626; box-shadow: 0 0 0 2px #dc262633; }
+.assignee-row input[aria-invalid="true"] { border-color: #dc2626; box-shadow: 0 0 0 2px #dc262633; }
+.leader-inspection-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 43px; padding: 8px 10px; border: 1px solid #c8dce7; border-radius: 9px; background: #f3f8fb; color: #173b5d; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.leader-inspection-toggle input { width: 18px; height: 18px; accent-color: #176b96; }
+@media (max-width: 440px) { .assignee-row:has(.leader-inspection-toggle) { align-items: stretch; flex-wrap: wrap; } .leader-inspection-toggle { flex: 0 0 auto; } }
 .manager-constant-row { display: flex; flex-direction: column; gap: 4px; }
 .manager-constant-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .manager-constant-row span { color: #647b8b; font-size: 10px; font-weight: 700; direction: ltr; text-align: left; }

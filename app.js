@@ -1,11 +1,11 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.15";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.16";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
 import { validateTreatment } from "./mechanic-validation.js?v=1.9.12";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.7.6";
-import { createEditLock } from "./edit-lock.js?v=1.9.15";
-import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.15";
+import { createEditLock } from "./edit-lock.js?v=1.9.16";
+import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.16";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
@@ -26,10 +26,22 @@ const sheet = EzEizoData.normalizeSheet(remoteIssue?.sheet || EzEizoData.default
 const selectedSheet = Boolean(remoteIssue && (managerClosedView ? ["closed", "pendingReview"].includes(remoteIssue.status) : remoteIssue.status !== "cancelled" && (remoteIssue.teamUids || [remoteIssue.assigneeUid]).includes(currentUser.uid)));
 if (!managerClosedView) {
   initCatalogView();
-  const catalog = document.querySelector("#catalog-view"), tile = document.querySelector("#open-catalog"), queue = document.querySelector(".queue-card");
+  const catalog = document.querySelector("#catalog-view"), tile = document.querySelector("#open-catalog"), queue = document.querySelector(".queue-card"), greeting = document.querySelector("#technician-greeting");
+  function updateGreeting() {
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date());
+    const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
+    const minute = Number(parts.find((part) => part.type === "minute")?.value || 0);
+    const time = hour * 60 + minute;
+    const phrase = time >= 360 && time <= 660 ? "בוקר טוב" : time > 660 && time <= 960 ? "צהריים טובים" : time > 960 && time <= 1260 ? "ערב טוב" : "לילה טוב";
+    greeting.querySelector("h2").textContent = `${phrase}, ${currentUser.name || "טכנאי"}`;
+  }
+  updateGreeting();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) updateGreeting(); });
+  setInterval(updateGreeting, 60_000);
   function showCatalog() {
     const open = !selectedSheet && location.hash === "#catalog";
     catalog.hidden = !open;
+    greeting.hidden = open || selectedSheet;
     tile.hidden = open || selectedSheet;
     queue.hidden = open || selectedSheet;
   }
@@ -130,6 +142,7 @@ if (remoteIssue?.workDraft?.state && !("preflightSaved" in remoteIssue.workDraft
 if (remoteIssue?.safetySignature && !state.safetyTechnicianSignature) state.safetyTechnicianSignature = remoteIssue.safetySignature;
 let workStarted = Boolean(remoteIssue?.startedAt);
 let safetyStartPending = false;
+let savingTechnicianDraft = false;
 if (["closed", "pendingReview"].includes(remoteIssue?.status) && remoteIssue.closed?.state) {
   state = { ...defaultState, ...remoteIssue.closed.state };
 } else if (remoteIssue?.status === "open" && remoteIssue.reopenedAt && state.reopenMarker !== remoteIssue.reopenedAt) {
@@ -186,11 +199,13 @@ function applyPreflightGate() {
   for (const selector of [".tools-card", '.parts-card[aria-labelledby="taken-title"]']) form.querySelector(selector).hidden = !started;
   for (const selector of [".descriptions-card", ".actions-card", ".units-card", ".constants-card", '.parts-card[aria-labelledby="rejected-title"]', ".close-card"]) form.querySelector(selector).hidden = !unlocked;
   if (unlocked && !document.querySelector("main").hidden) setupSignaturePads(form);
-  document.querySelector("#save-sheet").disabled = !started || safetyStartPending;
+  document.querySelectorAll("#save-sheet, #save-sheet-bottom").forEach((button) => { button.disabled = !started || safetyStartPending || savingTechnicianDraft; });
   document.querySelector('canvas[data-signature="safetyTechnicianSignature"]').style.pointerEvents = workStarted ? "none" : "";
   document.querySelector('[data-clear-signature="safetyTechnicianSignature"]').disabled = workStarted || safetyStartPending;
-  if (!started) document.querySelector("#shared-save-status").textContent = "חתום על מטוס בטוח לאחזקה כדי להתחיל בעבודה.";
-  else if (!unlocked) document.querySelector("#shared-save-status").textContent = "השלם חתימות כלים וקשיחים במידת הצורך ולחץ שמור לפתיחת שאר הטופס.";
+  if (document.querySelector("#shared-save-status")?.dataset.state !== "error") {
+    if (!started) setSharedSaveStatus("חתום על מטוס בטוח לאחזקה כדי להתחיל בעבודה.");
+    else if (!unlocked && !savingTechnicianDraft) setSharedSaveStatus("השלם חתימות כלים וקשיחים במידת הצורך ולחץ שמור לפתיחת שאר הטופס.");
+  }
 }
 
 async function beginIssueWork() {
@@ -416,8 +431,7 @@ function closureRecord() {
 function showClosed() {
   if (!selectedSheet) return;
   document.querySelector("#sheet-form").classList.add("is-closed");
-  const saveToolbar = document.querySelector(".sheet-save-toolbar");
-  if (saveToolbar) saveToolbar.hidden = true;
+  document.querySelectorAll(".sheet-save-toolbar").forEach((toolbar) => { toolbar.hidden = true; });
   document.querySelector("#sheet-form").querySelectorAll("input, textarea, select, button").forEach((element) => {
     if (element.closest("#review-panel")) return;
     element.disabled = true;
@@ -534,6 +548,7 @@ async function submitTreatment() {
   for (const [type, fields] of Object.entries(TABLES)) closingState[type] = compactRows(state[type], fields);
   const record = { ...closureRecord(), closedAt, actionsComplete: true };
   try {
+    await editLock.renew();
     await submitForReview(sheet.id, record, closingState, editLock.session);
     Object.assign(state, closingState);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* The transaction has already saved the form on the server. */ }
@@ -542,19 +557,24 @@ async function submitTreatment() {
     document.querySelector("#close-title").scrollIntoView({ behavior: "smooth", block: "center" });
   } catch (error) {
     const message = document.querySelector("#close-message");
-    message.textContent = `השמירה נכשלה: ${error.message}. נסה שוב.`;
+    message.textContent = error.code === "permission-denied" ? "השרת דחה את שליחת הדף. הטיוטה נשמרה במכשיר; בדוק שהתקלה עדיין משויכת אליך ולחץ על ״בדוק שוב״ בנעילה. אם התקלה חוזרת, שלח צילום של ההודעה לבדיקה." : `השמירה נכשלה: ${error.message}. נסה שוב.`;
     message.dataset.state = "error";
     button.disabled = false;
   }
 }
 document.querySelector("#close-sheet").addEventListener("click", submitTreatment);
-document.querySelector("#save-sheet")?.addEventListener("click", async (event) => {
-  const button = event.currentTarget, status = document.querySelector("#shared-save-status");
-  if (!editLock?.held || remoteIssue?.status !== "open") { status.textContent = "הטופס אינו נעול לעריכה עבורך. בדוק שוב את הנעילה."; status.dataset.state = "error"; return; }
-  if (!state.safetyTechnicianSignature) { status.textContent = "יש לחתום על מטוס בטוח לאחזקה לפני השמירה."; status.dataset.state = "error"; return; }
-  button.disabled = true;
+function setSharedSaveStatus(message, error = false) {
+  document.querySelectorAll("#shared-save-status, #shared-save-status-bottom").forEach((status) => { status.textContent = message; if (error) status.dataset.state = "error"; else delete status.dataset.state; });
+}
+async function saveTechnicianDraft() {
+  if (savingTechnicianDraft) return;
+  if (!editLock?.held || remoteIssue?.status !== "open") { setSharedSaveStatus("הטופס אינו נעול לעריכה עבורך. בדוק שוב את הנעילה.", true); return; }
+  if (!state.safetyTechnicianSignature) { setSharedSaveStatus("יש לחתום על מטוס בטוח לאחזקה לפני השמירה.", true); return; }
+  savingTechnicianDraft = true; applyPreflightGate();
+  setSharedSaveStatus("שומר טיוטה בשרת…");
   const previousPreflight = state.preflightSaved, previousDraftAt = loadedDraftAt;
   try {
+    await editLock.renew();
     if (!workStarted) await beginIssueWork();
     if (!workStarted) throw new Error("חתימת הבטיחות טרם נשמרה בשרת.");
     state.preflightSaved = true;
@@ -562,11 +582,12 @@ document.querySelector("#save-sheet")?.addEventListener("click", async (event) =
     const savedAt = new Date().toISOString(); pendingDraftAt = savedAt;
     await saveIssueWorkDraft(sheet.id, currentUser.uid, structuredClone(state), editLock.session, savedAt);
     loadedDraftAt = savedAt; pendingDraftAt = "";
-    status.textContent = "הטיוטה נשמרה לצוות בשרת. אפשר להמשיך לעבוד בדף."; delete status.dataset.state;
+    setSharedSaveStatus("הטיוטה נשמרה לצוות בשרת. אפשר להמשיך לעבוד בדף.");
     applyPreflightGate();
-  } catch (error) { state.preflightSaved = previousPreflight; loadedDraftAt = previousDraftAt; pendingDraftAt = ""; status.textContent = `השמירה המשותפת נכשלה: ${error.message}`; status.dataset.state = "error"; }
-  finally { button.disabled = false; applyPreflightGate(); }
-});
+  } catch (error) { state.preflightSaved = previousPreflight; loadedDraftAt = previousDraftAt; pendingDraftAt = ""; setSharedSaveStatus(`השמירה המשותפת נכשלה: ${error.message}`, true); }
+  finally { savingTechnicianDraft = false; applyPreflightGate(); }
+}
+document.querySelectorAll("#save-sheet, #save-sheet-bottom").forEach((button) => button.addEventListener("click", saveTechnicianDraft));
 
 watchIssues((issues, partialError = "") => {
   cloudIssues = issues;

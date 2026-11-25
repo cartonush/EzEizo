@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.9.15">
+  <link rel="stylesheet" href="../styles.css?v=1.9.16">
 </head>
 <body>
   <div class="app-shell">
@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.9.15</span>
+      <span class="version-pill">v1.9.16</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
       <div class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./" aria-label="חזרה לרשימת המשימות" hidden>→ חזרה</a></div>
     </header>
@@ -34,6 +34,7 @@
       <div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-input"></span><span class="skeleton-input"></span></div>
     </div>
     <main hidden>
+      <section id="technician-greeting" class="card technician-greeting" aria-live="polite"><p class="section-kicker">המשמרת שלך</p><h2 id="greeting-text">שלום</h2></section>
       <div id="catalog-view" class="card catalog-view" hidden>
         <div class="section-heading"><div><p class="section-kicker">מידע לצוות</p><h2>מערכות ומכלולים</h2></div><button id="close-catalog" type="button" class="secondary-button">חזרה למשימות</button></div>
         <div class="catalog-section"><h3>כרכים</h3><div class="table-wrap"><table class="catalog-table"><thead><tr><th>כרך</th><th>מערכת</th></tr></thead><tbody id="catalog-volumes"></tbody></table></div></div>
@@ -260,10 +261,11 @@
         <p id="close-message" class="section-note" role="status" aria-live="polite">חתום על ההצהרה, בדוק את הפרטים ולחץ על ״העבר לבדיקת בודק הדף״. שדות החובה ייבדקו לפני השליחה.</p>
         <button id="close-sheet" type="button" class="primary-button">העבר לבדיקת בודק הדף</button>
       </section>
+      <div class="card sheet-save-toolbar sheet-save-bottom"><button id="save-sheet-bottom" type="button" class="primary-button">שמור טיוטה</button><span id="shared-save-status-bottom" role="status" aria-live="polite">שמור את העבודה כדי להמשיך מכל מכשיר בצוות.</span></div>
       <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span>טיוטה נשמרת במכשיר; הסגירה נשלחת למסד המשותף</span></footer>
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.9.15"></script>
+  <script type="module" src="../app.js?v=1.9.16"></script>
 </body>
 </html>

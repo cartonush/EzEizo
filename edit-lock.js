@@ -1,4 +1,4 @@
-import { acquireEditLock, releaseEditLock, releaseMyEditLock, watchEditLock } from "./firebase-sync.js?v=1.9.15";
+import { acquireEditLock, releaseEditLock, releaseMyEditLock, watchEditLock } from "./firebase-sync.js?v=1.9.16";
 
 // The lease expires after a crashed window. A live editor renews it regularly.
 export function createEditLock({ kind, serialOrId, formId, user, onChange, manager = false }) {
@@ -48,6 +48,11 @@ export function createEditLock({ kind, serialOrId, formId, user, onChange, manag
       emit(error.code === "permission-denied" ? "לא ניתן לנעול את הטופס. יש לפרסם את כללי Firestore המעודכנים." : `אבדה התקשורת עם השרת או שנעילת העריכה נכשלה: ${error.message}. נסה להפעיל מחדש את האפליקציה או את המכשיר.`);
     } finally { acquiring = false; }
   }
+  async function renew() {
+    if (!held || disposed) throw new Error("נעילת העריכה אינה פעילה. לחץ על בדוק שוב.");
+    const result = await acquireEditLock(kind, serialOrId, formId, user, session, manager);
+    if (!result.held) { held = false; emit(`הטופס נמצא כעת בעריכה של ${result.ownerName}.`); throw new Error("נעילת העריכה הועברה לעורך אחר."); }
+  }
   function dispose() {
     if (disposed) return;
     disposed = true; clearInterval(timer); unsubscribe();
@@ -66,5 +71,5 @@ export function createEditLock({ kind, serialOrId, formId, user, onChange, manag
     currentLock = null;
     await acquire();
   }
-  return { acquire, dispose, release, releaseMine, get held() { return held; }, session };
+  return { acquire, renew, dispose, release, releaseMine, get held() { return held; }, session };
 }

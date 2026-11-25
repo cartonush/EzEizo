@@ -202,7 +202,7 @@ export function gate(role) {
           const stillAllowed = role === "operations" ? snapshot.data()?.role === "manager" || (snapshot.data()?.role === "technician" && snapshot.data()?.magatCertified === true) : snapshot.data()?.role === role;
           if (!snapshot.exists() || snapshot.data().active === false || !stillAllowed || snapshot.data().passwordResetRequired === true || (role === "operations" && (snapshot.data().role === "manager") !== (roleDoc.data().role === "manager"))) location.reload();
         }, () => { main.hidden = true; location.reload(); });
-        resolve(role === "operations" ? { uid: user.uid, email: user.email, name: roleDoc.data().name || "", isFullManager: roleDoc.data().role === "manager" } : user);
+        resolve({ uid: user.uid, email: user.email, name: roleDoc.data().name || "", isFullManager: roleDoc.data().role === "manager" });
       } catch (error) {
         panel.hidden = false;
         showSetup(user, error.code === "permission-denied" ? "הסיסמה נכונה, אבל כללי Firestore עדיין חוסמים את בדיקת ההרשאה." : error.message === "timeout" ? "ההזדהות הצליחה, אך בדיקת ההרשאה מתעכבת. בדוק חיבור אינטרנט או נסה שוב." : `לא ניתן לבדוק הרשאה: ${error.message}`);

@@ -216,6 +216,9 @@ td input:focus { border-color: #5da8c5; }
 @media (max-width: 500px) { .catalog-table th, .catalog-table td { padding: 9px 7px; font-size: 12px; } }
 .sheet-save-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .sheet-save-toolbar span { min-width: 0; flex: 1 1 180px; color: var(--muted); font-size: 12px; }
+.sheet-save-bottom { position: sticky; bottom: max(8px, env(safe-area-inset-bottom)); z-index: 12; box-shadow: 0 8px 24px #102e4433; }
+.technician-greeting { margin-bottom: 16px; }
+.technician-greeting h2 { margin: 4px 0 0; color: #173b5d; font-size: clamp(19px, 4vw, 26px); }
 .transfer-panel { display: grid; justify-items: start; gap: 8px; margin-top: 18px; }
 .transfer-panel .section-note { margin: 0; }
 .file-button { cursor: pointer; }
