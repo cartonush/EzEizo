@@ -48,7 +48,7 @@ export function renderWorkStatus(issues) {
       const serial = document.createElement("strong"); serial.textContent = `תקלה ${issue.sheet.serial}`;
       const aircraft = document.createElement("span"); aircraft.textContent = `מטוס ${issue.sheet.aircraft || "—"} · טייסת ${issue.sheet.squadron || "—"}`;
       const team = document.createElement("span"); team.textContent = (issue.teamNames || [issue.assigneeName].filter(Boolean)).join(" · ") || "צוות טרם שובץ";
-      const state = document.createElement("small"); state.textContent = issue.status === "closed" ? "סגורה" : issue.status === "pendingReview" ? "ממתינה לבקרת מנהל" : stage === "progress" ? "בתהליך" : "פתוחה";
+      const state = document.createElement("small"); state.textContent = issue.status === "closed" ? "סגורה" : issue.status === "pendingReview" ? "ממתינה לבקרת מטיס" : stage === "progress" ? "בתהליך" : "פתוחה";
       card.append(serial, aircraft, team, state); lane.append(card);
     }
     root.append(lane);

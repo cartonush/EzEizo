@@ -2,7 +2,7 @@ export function validateTreatment(sheet, state, tables) {
   const missing = (message, selector) => ({ message, selector });
   const filled = (value) => String(value ?? "").trim().length > 0;
 
-  if (!filled(sheet.fault)) return missing("לא ניתן לסגור: המנהל חייב למלא תיאור תקלה.", "#fault-description");
+  if (!filled(sheet.fault)) return missing("לא ניתן לסגור: המטיס חייב למלא תיאור תקלה.", "#fault-description");
   if (!filled(state.safetyTechnicianSignature)) return missing("חובה לחתום על בדיקת בטיחות המטוס לפני שליחת הדף.", 'canvas[data-signature="safetyTechnicianSignature"]');
   if (!state.preflightSaved) return missing("יש לשמור את שלב בדיקת הבטיחות לפני סגירת הדף.", "#save-sheet");
   if (!["verified", "notVerified", "notFault"].includes(state.repairClassification)) return missing("יש לבחור אומת, לא אומת או לא תקלה.", "[data-repair-class]");

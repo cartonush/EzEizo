@@ -18,8 +18,8 @@ export function keyLoadTimeline(load) {
     events.push({ label: "נסגר", at: reopen.priorCompletedAt });
     events.push({ label: "נפתח לעריכה", at: reopen.at });
   }
-  if (["pendingReview", "closed"].includes(load.status)) events.push({ label: "הוגש לבדיקת מנהל", at: load.completedAt });
-  if (load.status === "closed") events.push({ label: "נסגר בחתימת מנהל", at: load.reviewedAt || load.completedAt });
+  if (["pendingReview", "closed"].includes(load.status)) events.push({ label: "הוגש לבדיקת מטיס", at: load.completedAt });
+  if (load.status === "closed") events.push({ label: "נסגר בחתימת מטיס", at: load.reviewedAt || load.completedAt });
   if (load.status === "cancelled") events.push({ label: `שילוח בוטל: ${load.cancellationReason || "—"}`, at: load.cancelledAt });
   return events.filter((event) => event.at);
 }

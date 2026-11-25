@@ -187,7 +187,7 @@ async function issuePdf(issue) {
   pdf.heading("תקלה ותיקון");
   if (issue.status === "open") pdf.paragraph("הטופס פתוח. נתונים שהטכנאי הזין ונשמרו במכשירו בלבד יופיעו כאן לאחר סגירת הטופס.");
   if (issue.status === "cancelled") pdf.paragraph(`שילוח המשימה בוטל: ${issue.cancellationReason || "—"}`);
-  pdf.text("תיאור תקלה", sheet.fault); pdf.text("הערות מנהל", sheet.managerNotes);
+  pdf.text("תיאור תקלה", sheet.fault); pdf.text("הערות מטיס", sheet.managerNotes);
   for (const note of state.technicianNotes || []) pdf.text("הערות טכנאי", note);
   pdf.text("תיאור תיקון", state.repair);
   pdf.heading("פעולות לביצוע");
@@ -214,16 +214,16 @@ async function issuePdf(issue) {
 
 async function keyPdf(load) {
   const state = load.work || {};
-  const pdf = pdfPages(`הטענת מפתחות ${show(load.serial)}`, `${load.status === "cancelled" ? "שילוח בוטל" : load.status === "closed" ? "סגור" : load.status === "pendingReview" ? "ממתין לבדיקת מנהל" : "פתוח"} · טייסת ${load.squadron}`);
+  const pdf = pdfPages(`הטענת מפתחות ${show(load.serial)}`, `${load.status === "cancelled" ? "שילוח בוטל" : load.status === "closed" ? "סגור" : load.status === "pendingReview" ? "ממתין לבדיקת מטיס" : "פתוח"} · טייסת ${load.squadron}`);
   pdf.heading("פרטי הטענה");
   for (const [label, value] of [["מספר הטענה", load.serial], ["תאריך", load.date], ["שעה", load.time], ["טייסת", load.squadron], ["דת״ק", load.shelter], ["צוות", (load.teamNames || []).join(" · ")], ["נפתחה", dateTime(load.createdAt)], ["הוגשה לבדיקה", dateTime(load.completedAt)], ["נסגרה", dateTime(load.reviewedAt)]]) if (value) pdf.text(label, value);
   if (load.status === "open") pdf.paragraph("ההטענה פתוחה. נתונים שהטכנאי הזין ונשמרו במכשירו בלבד יופיעו כאן לאחר סגירת הטופס.");
   if (load.status === "cancelled") pdf.paragraph(`שילוח ההטענה בוטל: ${load.cancellationReason || "—"}`);
   pdf.rows("רשימת הטענה", (load.rows || []).map((entry, index) => {
     const done = state.aircraft?.[index] || {};
-    return { aircraft: entry.aircraft, blue: entry.blue ? checked(done.blueDone) : "לא נדרש", shach: entry.shach ? checked(done.shachDone) : "לא נדרש", notes: [entry.notes && `מנהל: ${entry.notes}`, done.technicianNote && `טכנאי: ${done.technicianNote}`].filter(Boolean).join(" · ") };
+    return { aircraft: entry.aircraft, blue: entry.blue ? checked(done.blueDone) : "לא נדרש", shach: entry.shach ? checked(done.shachDone) : "לא נדרש", notes: [entry.notes && `מטיס: ${entry.notes}`, done.technicianNote && `טכנאי: ${done.technicianNote}`].filter(Boolean).join(" · ") };
   }), [["מס׳ מטוס", "aircraft"], ["ארז כחול", "blue"], ["שחק", "shach"], ["הערות", "notes"]], [1.6, 1.5, 1.2, 4]);
-  if (load.managerNotes) pdf.text("הערות מנהל", load.managerNotes);
+  if (load.managerNotes) pdf.text("הערות מטיס", load.managerNotes);
   pdf.heading("הנחיות עבודה");
   pdf.paragraph(`אחזקה נדרשת לביצוע: הטענת מטוסים במסגרת ביצוע שינוי מפתחות לחודשים ${load.period}.`);
   pdf.paragraph("יש לוודא כי לא מופיעות תקלות: EREZ 78 לאחר טעינה ולאחר שידור PTT בארז, SAK 7 / 34 בשחק.");
@@ -234,7 +234,7 @@ async function keyPdf(load) {
   await materials(pdf, state);
   if (load.status === "closed") {
     const review = load.managerReview || {};
-    pdf.heading("בקרת מנהל");
+    pdf.heading("בקרת מטיס");
     for (const [label, key] of [["אומת", "verified"], ["הוחלפו יחידות", "unitsReplaced"], ["בוצע תיקון", "repairPerformed"], ["חוזרת", "recurrent"], ["ביטול משימה", "missionCancelled"], ["ביטול גיחה", "sortieCancelled"], ["היתר למעקב", "trackingPermit"]]) pdf.text(label, checked(review[key]));
     for (const [label, key] of [["היתר לטיסה עד", "flightPermitUntil"], ["אישור עד", "approvalUntil"]]) if (review[key]) pdf.text(label, review[key]);
     await pdf.signature("חתימת בודק הדף", load.reviewerSignature);
