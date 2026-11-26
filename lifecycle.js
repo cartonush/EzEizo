@@ -5,7 +5,7 @@ export function issueTimeline(issue) {
     events.push({ label: "נסגר", at: reopen.priorReviewedAt || reopen.priorClosedAt });
     events.push({ label: "נפתח לעריכה", at: reopen.at });
   }
-  if (issue.status === "closed") events.push({ label: (issue.reopenEvents || []).length ? "נסגר לאחר עריכה" : "נסגר", at: issue.reviewedAt || issue.closed?.state?.closedAt });
+  if (issue.status === "closed") events.push({ label: issue.paperClosure ? "נסגר על סמך טופס מודפס" : (issue.reopenEvents || []).length ? "נסגר לאחר עריכה" : "נסגר", at: issue.reviewedAt || issue.closed?.state?.closedAt });
   if (issue.status === "pendingReview") events.push({ label: (issue.reopenEvents || []).length ? "הוגש לסגירה לאחר עריכה" : "הוגש לסגירה", at: issue.closed?.state?.closedAt });
   if (issue.status === "cancelled") events.push({ label: `שילוח בוטל: ${issue.cancellationReason || "—"}`, at: issue.cancelledAt });
   return events.filter((event) => event.at);

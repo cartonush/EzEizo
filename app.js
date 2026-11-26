@@ -1,11 +1,11 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.18";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.20";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
 import { validateTreatment } from "./mechanic-validation.js?v=1.9.18";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
-import { issueTimeline } from "./lifecycle.js?v=1.7.6";
-import { createEditLock } from "./edit-lock.js?v=1.9.18";
-import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.18";
+import { issueTimeline } from "./lifecycle.js?v=1.9.20";
+import { createEditLock } from "./edit-lock.js?v=1.9.20";
+import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.20";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 
@@ -53,6 +53,15 @@ if (!managerClosedView) {
 }
 if (selectedId && !managerClosedView && !selectedSheet && !selectedIssueError) selectedIssueError = remoteIssue ? "התקלה אינה משויכת לחשבון זה או שהשילוח בוטל." : "התקלה לא נמצאה. חזור לרשימה ורענן משימות.";
 document.querySelector("#sheet-form").hidden = !selectedSheet || (!managerClosedView && remoteIssue?.status === "open");
+if (selectedSheet && remoteIssue?.paperClosure) {
+  const notice = document.createElement("section");
+  notice.className = "card paper-form-notice";
+  const title = document.createElement("strong"); title.textContent = "נסגר באמצעות דף תקלה מודפס";
+  const details = document.createElement("p");
+  details.textContent = `${remoteIssue.closed?.state?.paper ? "הדף מולא ונשמר על נייר; פרטי הטיפול והחתימות אינם מתועדים בדף הדיגיטלי." : "הסגירה אושרה לפי טופס נייר. נתונים שהוגשו קודם לכן בידי הטכנאי נשמרו בדף הדיגיטלי."} מועד הסגירה במערכת: ${new Date(remoteIssue.paperClosure.at).toLocaleString("he-IL")}.`;
+  notice.append(title, details);
+  document.querySelector("#sheet-form").prepend(notice);
+}
 document.querySelector("#mechanic-back").hidden = !selectedId && !managerClosedView;
 document.querySelector(".queue-card").hidden = selectedSheet || (!managerClosedView && location.hash === "#catalog");
 const ACTIONS = sheet.actions;
@@ -445,7 +454,7 @@ function showClosed() {
   document.querySelector("#close-sheet").hidden = true;
   const message = document.querySelector("#close-message");
   delete message.dataset.state;
-  message.textContent = remoteIssue?.status === "closed" ? `הדף נסגר ב־${new Date(remoteIssue.reviewedAt || state.closedAt).toLocaleString("he-IL")}. ${managerClosedView ? "המטיס יכול להחזיר אותו לטכנאי לעריכה." : "אי אפשר לערוך אותו."}` : "הדף הועבר לבדיקת בודק הדף וממתין לחתימתו.";
+  message.textContent = remoteIssue?.paperClosure ? "התקלה נסגרה במערכת על סמך טופס נייר. המידע הידני נשמר מחוץ לאפליקציה." : remoteIssue?.status === "closed" ? `הדף נסגר ב־${new Date(remoteIssue.reviewedAt || state.closedAt).toLocaleString("he-IL")}. ${managerClosedView ? "המטיס יכול להחזיר אותו לטכנאי לעריכה." : "אי אפשר לערוך אותו."}` : "הדף הועבר לבדיקת בודק הדף וממתין לחתימתו.";
 }
 
 if (managerClosedView && selectedSheet) {
@@ -498,9 +507,9 @@ if (managerClosedView && selectedSheet) {
     while (node && node !== reviewPanel) { const next = node.nextElementSibling; details.append(node); node = next; }
     reviewPanel.before(details);
   }
-  reviewPanel.hidden = false;
+  reviewPanel.hidden = Boolean(remoteIssue.paperClosure);
   const saveClosed = document.querySelector("#save-closed-review");
-  saveClosed.hidden = false;
+  saveClosed.hidden = Boolean(remoteIssue.paperClosure);
   saveClosed.textContent = remoteIssue.status === "pendingReview" ? "שמור בקרה להמשך" : "שמור עדכון בקרה";
   saveClosed.addEventListener("click", async () => {
     try {

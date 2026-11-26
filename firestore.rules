@@ -422,6 +422,35 @@ service cloud.firestore {
         && request.resource.data.reviewedAt is string
         && request.resource.data.reviewerSignature is string
         && request.resource.data.reviewerSignature.size() > 100;
+      allow update: if isManager()
+        && resource.data.status in ['open', 'pendingReview']
+        && request.resource.data.status == 'closed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['status', 'reviewedAt', 'reviewedBy', 'paperClosure'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'paperClosure', 'closed'])
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedAt is string
+        && request.resource.data.paperClosure is map
+        && request.resource.data.paperClosure.keys().hasOnly(['at', 'by', 'template'])
+        && request.resource.data.paperClosure.keys().hasAll(['at', 'by', 'template'])
+        && request.resource.data.paperClosure.at == request.resource.data.reviewedAt
+        && request.resource.data.paperClosure.by == request.auth.uid
+        && request.resource.data.paperClosure.template == 'v1.9.20'
+        && (
+          (resource.data.status == 'pendingReview' && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['closed']))
+          || (resource.data.status == 'open'
+            && request.resource.data.diff(resource.data).affectedKeys().hasAll(['closed'])
+            && request.resource.data.closed.keys().hasOnly(['record', 'state'])
+            && request.resource.data.closed.keys().hasAll(['record', 'state'])
+            && request.resource.data.closed.record.keys().hasOnly(['id', 'serial', 'aircraft', 'location', 'fault', 'closedAt', 'actionsComplete', 'paper'])
+            && request.resource.data.closed.record.id == id
+            && request.resource.data.closed.record.serial == resource.data.sheet.serial
+            && request.resource.data.closed.record.closedAt == request.resource.data.reviewedAt
+            && request.resource.data.closed.record.actionsComplete == false
+            && request.resource.data.closed.record.paper == true
+            && request.resource.data.closed.state.keys().hasOnly(['closedAt', 'paper'])
+            && request.resource.data.closed.state.closedAt == request.resource.data.reviewedAt
+            && request.resource.data.closed.state.paper == true)
+        );
       allow update: if isOperator()
         && resource.data.status == 'pendingReview'
         && request.resource.data.status == 'pendingReview'
@@ -439,7 +468,8 @@ service cloud.firestore {
       allow update: if isOperator()
         && resource.data.status in ['closed', 'pendingReview']
         && request.resource.data.status == 'open'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reopenedAt', 'reopenedBy', 'reopenEvents'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reopenedAt', 'reopenedBy', 'reopenEvents', 'paperClosure'])
+        && (!resource.data.keys().hasAny(['paperClosure']) || !request.resource.data.keys().hasAny(['paperClosure']))
         && request.resource.data.reopenedBy == request.auth.uid
         && request.resource.data.reopenedAt is string
         && request.resource.data.reopenEvents is list

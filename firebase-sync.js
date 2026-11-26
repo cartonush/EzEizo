@@ -598,6 +598,30 @@ export async function approveIssue(id, reviewerUid, signature, managerReview = {
   });
 }
 
+// A paper form is an explicit alternative to the technician's digital closure.
+// The transaction checks the form the operator saw before it changes its state.
+export async function closePrintedIssue(id, operatorUid, serial, expectedStatus, expectedReopenedAt = "", expectedDefinitionUpdatedAt = "") {
+  const issueRef = doc(db, "issues", id);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(issueRef);
+    if (!snapshot.exists()) throw new Error("התקלה לא נמצאה. רענן את הרשימה.");
+    const issue = snapshot.data();
+    if (issue.status !== expectedStatus || !["open", "pendingReview"].includes(issue.status) || issue.sheet.serial !== serial || (issue.reopenedAt || "") !== expectedReopenedAt || (issue.definitionUpdatedAt || "") !== expectedDefinitionUpdatedAt) {
+      throw new Error("מצב התקלה השתנה מאז ההדפסה. בדוק אותה מחדש לפני סגירה.");
+    }
+    if (auth.currentUser?.uid !== operatorUid) throw new Error("יש להתחבר שוב כדי לסגור את התקלה.");
+    const at = new Date().toISOString();
+    const changes = { status: "closed", reviewedAt: at, reviewedBy: operatorUid, paperClosure: { at, by: operatorUid, template: "v1.9.20" } };
+    if (issue.status === "open") {
+      changes.closed = {
+        record: { id, serial, aircraft: issue.sheet.aircraft || "", location: issue.sheet.location || "", fault: issue.sheet.fault || "", closedAt: at, actionsComplete: false, paper: true },
+        state: { closedAt: at, paper: true }
+      };
+    }
+    transaction.update(issueRef, changes);
+  });
+}
+
 export async function updateClosedIssueReview(id, reviewerUid, managerReview) {
   const issueRef = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {
@@ -617,7 +641,8 @@ export async function reopenIssue(id, managerUid) {
     const reopenedAt = new Date().toISOString();
     transaction.update(issueRef, {
       status: "open", reopenedAt, reopenedBy: managerUid,
-      reopenEvents: [...(issue.reopenEvents || []), { at: reopenedAt, by: managerUid, priorClosedAt: issue.closed.state.closedAt, priorReviewedAt: issue.reviewedAt || null }]
+      reopenEvents: [...(issue.reopenEvents || []), { at: reopenedAt, by: managerUid, priorClosedAt: issue.closed.state.closedAt, priorReviewedAt: issue.reviewedAt || null }],
+      ...(issue.paperClosure ? { paperClosure: deleteField() } : {})
     });
   });
 }

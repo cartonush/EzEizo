@@ -1,6 +1,12 @@
 .manager-topbar { background: radial-gradient(circle at 90% 0%, #316c88 0, transparent 36%), linear-gradient(110deg, #10364f, #125278); }
 @media (min-width: 800px) { #reset-draft:not([hidden]) { position: absolute; left: 50%; transform: translateX(-50%); } }
 .manager-mark { background: #fff; }
+.paper-print-access { display: flex; align-items: center; justify-content: center; gap: 9px; flex-wrap: wrap; padding: 7px 12px; background: #e8f2f4; color: #234960; font-size: 12px; }
+.paper-print-access .secondary-button { min-height: 32px; padding: 5px 10px; border-radius: 8px; background: #fff; color: #164d69; text-decoration: none; font-weight: 700; }
+.paper-closure-panel { margin-top: 10px; padding: 10px; border: 1px solid #cbdce5; border-radius: 10px; background: #f7fafc; }
+.paper-closure-panel summary { cursor: pointer; font-weight: 700; }
+.paper-closure-panel label { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0; font-size: 13px; }
+.paper-closure-panel .copy-status { margin-bottom: 0; }
 .picker-option.squadron-option { display: flex; align-items: center; gap: 10px; }
 .squadron-preview { display: flex; align-items: center; gap: 9px; margin-top: 7px; font-size: 13px; font-weight: 700; color: #234960; }
 .squadron-preview[hidden] { display: none; }
