@@ -569,7 +569,7 @@ export async function startIssueWork(id, uid, signature, session) {
     if (!issue.exists() || issue.data().status !== "open" || !(issue.data().teamUids || [issue.data().assigneeUid]).includes(uid)) throw new Error("התקלה אינה זמינה לצוות.");
     await requireEditLock(transaction, "issue", issue.data().sheet.serial, session, uid);
     if (issue.data().startedAt) return issue.data().startedAt;
-    if (!issue.data().intake) throw new Error("יש לשמור את קליטת הכלים והקשיחים לפני חתימת בטיחות המטוס.");
+    if (!issue.data().intake && issue.data().createdAt >= "2026-11-26T21:33:53.000Z") throw new Error("יש לשמור את קליטת הכלים והקשיחים לפני חתימת בטיחות המטוס.");
     const startedAt = new Date().toISOString();
     transaction.update(ref, { startedAt, startedBy: uid, safetySignature: signature });
     return startedAt;

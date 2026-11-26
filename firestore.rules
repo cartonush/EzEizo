@@ -376,7 +376,7 @@ service cloud.firestore {
         && request.resource.data.safetySignature is string
         && request.resource.data.safetySignature.matches('data:image/png;base64,.*')
         && request.resource.data.safetySignature.size() > 100
-        && resource.data.keys().hasAny(['intake']);
+        && (resource.data.keys().hasAny(['intake']) || resource.data.createdAt < '2026-11-26T21:33:53.000Z');
       allow update: if hasRole('technician')
         && resource.data.status == 'open'
         && request.auth.uid in resource.data.get('teamUids', [resource.data.assigneeUid])
