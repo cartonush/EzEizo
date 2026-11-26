@@ -12,6 +12,7 @@ import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-
 import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.18";
 import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.18";
 import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.18";
+import { makeSquadronEmblem } from "../squadron-emblems.js?v=1.9.19";
 
 const managerUser = await gate("operations");
 const fullManager = managerUser.isFullManager;
@@ -20,7 +21,7 @@ if (!fullManager) document.querySelectorAll('[data-manager-view="management"], [
 initCatalogAdmin();
 initCatalogView();
 initDuties();
-document.querySelector(".brand-copy h1").textContent = fullManager ? "Metis · נימר" : "Metis · מג״ת";
+document.querySelector("#connected-user").textContent = managerUser.name || (fullManager ? "מטיס" : "מג״ת");
 document.querySelector(".manager-home-intro h2").textContent = `שלום ${managerUser.name || (fullManager ? "מטיס" : "מג״ת")}`;
 let cloudIssues = [];
 let latestServerIssues = [];
@@ -117,10 +118,14 @@ function renderOptions(key) {
     const option = document.createElement("button");
     option.type = "button";
     option.id = `option-${key}-${index}`;
-    option.className = "picker-option";
+    option.className = key === "squadron" ? "picker-option squadron-option" : "picker-option";
     option.setAttribute("role", "option");
     option.setAttribute("aria-selected", String(value === selections[key]));
-    option.textContent = value;
+    if (key === "squadron") {
+      const emblem = makeSquadronEmblem(value);
+      if (emblem) option.append(emblem);
+    }
+    option.append(document.createTextNode(value));
     option.addEventListener("pointerdown", (event) => event.preventDefault());
     option.addEventListener("click", () => choosePicker(key, value));
     picker.list.append(option);
@@ -138,6 +143,11 @@ function refreshPickers() {
     picker.input.value = selections[key] || "";
     closePicker(key);
   }
+  const preview = document.querySelector("#selected-squadron-emblem");
+  const emblem = makeSquadronEmblem(selections.squadron);
+  preview.replaceChildren();
+  if (emblem) preview.append(emblem, document.createTextNode(selections.squadron));
+  preview.hidden = !emblem;
   document.querySelector('[data-sheet-field="systemCode"]').value = draft.systemCode;
   const ewSelect = document.querySelector("#ew-system-select");
   document.querySelector("#ew-system-field").hidden = !selections.aircraft;

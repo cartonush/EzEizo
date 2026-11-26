@@ -7,9 +7,11 @@ import { issueTimeline } from "./lifecycle.js?v=1.7.6";
 import { createEditLock } from "./edit-lock.js?v=1.9.18";
 import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.18";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
+import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");
+if (managerClosedView) document.querySelector("#connected-user").textContent = currentUser.name || "מטיס";
 let cloudIssues = [];
 let keyLoads = [];
 let keyLoadError = "";
@@ -246,6 +248,9 @@ function renderSheetDetails() {
   document.querySelectorAll("[data-sheet-field]").forEach((element) => {
     element.textContent = sheet[element.dataset.sheetField] || "—";
   });
+  const squadronField = document.querySelector('[data-sheet-field="squadron"]');
+  const emblem = makeSquadronEmblem(sheet.squadron);
+  if (emblem) squadronField.prepend(emblem);
   const originDisplay = document.querySelector("#fault-origins-display");
   if (originDisplay) originDisplay.textContent = (sheet.faultOrigins?.length ? sheet.faultOrigins : [sheet.faultOrigin].filter(Boolean)).join(" · ") || "—";
   document.querySelector("#fault-description").value = sheet.fault;
@@ -444,7 +449,6 @@ function showClosed() {
 }
 
 if (managerClosedView && selectedSheet) {
-  document.querySelector(".brand-copy h1").textContent = remoteIssue.status === "pendingReview" ? "Metis · תקלה לסגירה" : "Metis · דף תקלה סגורה";
   document.querySelector("#mechanic-back").href = remoteIssue.status === "pendingReview" ? "./#pending" : "./#closed";
   const panel = document.querySelector("#manager-edit-panel");
   panel.hidden = false;

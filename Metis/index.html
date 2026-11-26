@@ -11,20 +11,20 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.9.18">
-  <link rel="stylesheet" href="styles.css?v=1.9.18">
+  <link rel="stylesheet" href="../styles.css?v=1.9.19">
+  <link rel="stylesheet" href="styles.css?v=1.9.19">
   <link rel="stylesheet" href="../keys/styles.css?v=1.9.18">
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar manager-topbar">
-      <div class="brand-mark manager-mark" aria-hidden="true">מ</div>
+      <img class="brand-mark manager-mark" src="../assets/emblems/avionics-combat.jpeg" alt="" aria-hidden="true">
       <div class="brand-copy">
         <p class="eyebrow">כנף 1 - טייסת תחזוקה</p>
-        <h1>Metis · דף מטיס</h1>
-        <p class="header-subtitle">יצירת דפי תקלה לטכנאים</p>
+        <h1>גף אוויוניקה קרב</h1>
+        <p class="header-subtitle">משתמש מחובר: <span id="connected-user">—</span></p>
       </div>
-      <span class="version-pill">v1.9.18</span>
+      <span class="version-pill">v1.9.19</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -233,7 +233,7 @@
       <section class="card" aria-labelledby="manager-details-title">
         <div class="section-heading"><div><p class="section-kicker">פרטי אירוע</p><h2 id="manager-details-title">נתוני התקלה</h2></div><span class="step-badge">02</span></div>
         <div class="manager-grid">
-          <div class="input-field"><label for="picker-squadron">טייסת</label><div class="search-picker" data-picker="squadron"><input id="picker-squadron" data-sheet-field="squadron" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-squadron" placeholder="חפש ובחר טייסת" autocomplete="off"><div id="options-squadron" class="picker-list" role="listbox" hidden></div></div></div>
+          <div class="input-field"><label for="picker-squadron">טייסת</label><div class="search-picker" data-picker="squadron"><input id="picker-squadron" data-sheet-field="squadron" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-squadron" placeholder="חפש ובחר טייסת" autocomplete="off"><div id="options-squadron" class="picker-list" role="listbox" hidden></div></div><div id="selected-squadron-emblem" class="squadron-preview" hidden></div></div>
           <div class="input-field"><label for="picker-shelter">דת״ק</label><div class="search-picker" data-picker="shelter"><input id="picker-shelter" data-sheet-field="shelter" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-shelter" placeholder="בחר טייסת תחילה" autocomplete="off" disabled><div id="options-shelter" class="picker-list" role="listbox" hidden></div></div></div>
           <div id="workshop-field" class="input-field" hidden><label for="picker-workshop">מוסך</label><div class="search-picker" data-picker="workshop"><input id="picker-workshop" data-sheet-field="workshop" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-workshop" placeholder="חפש ובחר מוסך" autocomplete="off" disabled><div id="options-workshop" class="picker-list" role="listbox" hidden></div></div></div>
           <div class="input-field"><label for="picker-aircraft">מספר מטוס</label><div class="search-picker" data-picker="aircraft"><input id="picker-aircraft" data-sheet-field="aircraft" type="search" inputmode="numeric" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="options-aircraft" placeholder="בחר טייסת תחילה" autocomplete="off" disabled><div id="options-aircraft" class="picker-list" role="listbox" hidden></div></div></div>
@@ -351,6 +351,6 @@
       <div id="view-components" data-manager-view="components" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>מכלולים</h2></div></div><form id="component-form" class="directory-form manager-grid"><label class="input-field">שם מכלול<input name="name" required maxlength="80"></label><label class="input-field">מערכת<select name="systemId" required></select></label><button class="primary-button" type="submit">הוסף מכלול</button></form><p id="component-status" class="copy-status" role="status"></p><div class="table-wrap"><table class="directory-table"><thead><tr><th>מכלול</th><th>מערכת</th><th>פעולות</th></tr></thead><tbody id="components-table"></tbody></table></div></section></div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.9.18"></script>
+  <script type="module" src="app.js?v=1.9.19"></script>
 </body>
 </html>
