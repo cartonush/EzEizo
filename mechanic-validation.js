@@ -53,6 +53,7 @@ export function validateTreatment(sheet, state, tables) {
   if (state.toolsEnabled) {
     const error = checkRows("tools", "כלים");
     if (error) return error;
+    if (!state.finalEnabled) return missing("חובה לבצע ביקורת יציאה על כל הכלים שנקלטו.", "#final-check");
     if (state.entryEnabled) {
       const entry = checkFields([
         ["entryTechnicianSignature", "חתימת הטכנאי בביקורת כניסה", true],

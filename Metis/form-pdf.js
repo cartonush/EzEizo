@@ -188,6 +188,12 @@ async function issuePdf(issue) {
   pdf.heading("תדריך ובדיקת בטיחות");
   pdf.paragraph('תדריך בטיחות וניהול סיכונים: יועבר ע״י מ״ע התקלה / משלח המשימה וייחתם על ידו.');
   await pdf.signature("חתימת משלח המשימה", sheet.dispatcherSignature);
+  if (issue.intake) {
+    pdf.heading("קליטה וביקורת כניסה");
+    pdf.text("מועד קליטה", dateTime(issue.intake.at));
+    pdf.text("כלים שנקלטו בתחילה", String(issue.intake.tools?.length || 0));
+    pdf.text("קשיחים שנקלטו בתחילה", String(issue.intake.taken?.length || 0));
+  }
   pdf.paragraph('בדיקת המטוס בטוח לאחזקה טרם התהליך: אין קסטות מוץ / נורים וכפט״ים מורכבים על המטוס.');
   await pdf.signature("חתימת הטכנאי על בדיקת בטיחות", state.safetyTechnicianSignature);
   pdf.heading("תקלה ותיקון");
@@ -204,6 +210,13 @@ async function issuePdf(issue) {
     for (const [group, entries] of Object.entries(sheet.constants || {})) pdf.row([group, ...(entries || []).map(([key, value]) => `${key}: ${value}`)]);
   }
   await materials(pdf, state);
+  for (const batch of issue.toolIntakes || []) {
+    pdf.heading(`קליטת כלים נוספת · ${dateTime(batch.at)}`);
+    pdf.rows("כלים שנוספו", batch.tools, columns.tools);
+    pdf.text("מספר אישי של הבודק", batch.inspectorNumber);
+    await pdf.signature("חתימת הטכנאי בביקורת הכניסה הנוספת", batch.technicianSignature);
+    await pdf.signature("חתימת הבודק בביקורת הכניסה הנוספת", batch.inspectorSignature);
+  }
   pdf.heading("אישור סיום");
   pdf.paragraph("הנני מאשר שכל הפרטים הרשומים שלמים נכונים ומדויקים. הנני מאשר שעדכנתי במערכות ממוכנות / בספר המטוס את מספרי המכשירים שפורקו והורכבו. הנני מאשר שהעברתי את המכשירים התקולים בצירוף תגי בר תיקון ממולאים בצורה מושלמת. הדף הוא בלשון זכר אך מתייחס לשני המינים.");
   await pdf.signature("חתימת הטכנאי", state.technicianDeclarationSignature);

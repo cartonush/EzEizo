@@ -6,7 +6,7 @@ export function issueWorkStage(issue) {
 
 export function issueStageDate(issue) {
   const stage = issueWorkStage(issue);
-  if (stage === "start") return issue.createdAt;
+  if (stage === "start") return issue.intake?.at || issue.createdAt;
   if (stage === "progress") return issue.startedAt || issue.workDraft?.savedAt;
   if (stage === "finished") return issue.status === "closed"
     ? issue.reviewedAt || issue.closed?.state?.closedAt || issue.closed?.record?.closedAt
@@ -43,13 +43,30 @@ export function renderWorkStatus(issues) {
     lane.append(heading, description);
     if (!group.length) { const empty = document.createElement("p"); empty.className = "work-status-empty"; empty.textContent = "אין תקלות בשלב זה."; lane.append(empty); }
     for (const issue of group) {
-      const card = document.createElement("a"); card.className = "work-status-card";
-      card.href = issue.status === "closed" ? `./closed.html?id=${encodeURIComponent(issue.id)}` : stage === "finished" ? "#pending" : stage === "progress" ? "#in-progress" : "#open";
+      const card = document.createElement("article"); card.className = "work-status-card";
+      const toggle = document.createElement("button"); toggle.type = "button"; toggle.className = "work-status-toggle";
+      toggle.setAttribute("aria-expanded", "false"); toggle.setAttribute("aria-label", `הצג פרטי תקלה ${issue.sheet.serial}`);
       const serial = document.createElement("strong"); serial.textContent = `תקלה ${issue.sheet.serial}`;
       const aircraft = document.createElement("span"); aircraft.textContent = `מטוס ${issue.sheet.aircraft || "—"} · טייסת ${issue.sheet.squadron || "—"}`;
       const team = document.createElement("span"); team.textContent = (issue.teamNames || [issue.assigneeName].filter(Boolean)).join(" · ") || "צוות טרם שובץ";
       const state = document.createElement("small"); state.textContent = issue.status === "closed" ? "סגורה" : issue.status === "pendingReview" ? "ממתינה לבקרת מטיס" : stage === "progress" ? "בתהליך" : "פתוחה";
-      card.append(serial, aircraft, team, state); lane.append(card);
+      const legacy = issue.closed?.state || issue.workDraft?.state;
+      const tools = issue.acceptedTools || (legacy?.entryInspectorSignature && legacy?.entryTechnicianSignature ? (legacy.tools || []).filter((row) => row.toolName && row.toolNumber) : []);
+      toggle.append(serial, aircraft, team, state);
+      if (tools.length) { const count = document.createElement("span"); count.textContent = `כלים שנצרכו: ${tools.length}`; toggle.append(count); }
+      const details = document.createElement("div"); details.className = "work-status-details"; details.hidden = true;
+      for (const [label, value] of [["מיקום", issue.sheet.location || issue.sheet.shelter], ["תיאור תקלה", issue.sheet.fault], ["סוג התקלה", (issue.sheet.faultOrigins?.length ? issue.sheet.faultOrigins : [issue.sheet.faultOrigin].filter(Boolean)).join(" · ") || issue.sheet.reviewCategory]]) {
+        const line = document.createElement("p"); const title = document.createElement("strong"); title.textContent = `${label}: `;
+        line.append(title, document.createTextNode(value || "—")); details.append(line);
+      }
+      if (tools.length) { const heading = document.createElement("strong"); heading.textContent = "כלים שנקלטו בביקורת כניסה"; const list = document.createElement("ul");
+        tools.forEach((tool) => { const item = document.createElement("li"); item.textContent = `${tool.toolName} – ${tool.toolNumber}`; list.append(item); });
+        details.append(heading, list); }
+      const link = document.createElement("a"); link.className = "secondary-button";
+      link.href = issue.status === "closed" ? `./closed.html?id=${encodeURIComponent(issue.id)}` : stage === "finished" ? "#pending" : stage === "progress" ? "#in-progress" : "#open";
+      link.textContent = "פתח את דף התקלה"; details.append(link);
+      toggle.addEventListener("click", () => { details.hidden = !details.hidden; toggle.setAttribute("aria-expanded", String(!details.hidden)); });
+      card.append(toggle, details); lane.append(card);
     }
     root.append(lane);
   }

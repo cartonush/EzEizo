@@ -569,9 +569,51 @@ export async function startIssueWork(id, uid, signature, session) {
     if (!issue.exists() || issue.data().status !== "open" || !(issue.data().teamUids || [issue.data().assigneeUid]).includes(uid)) throw new Error("התקלה אינה זמינה לצוות.");
     await requireEditLock(transaction, "issue", issue.data().sheet.serial, session, uid);
     if (issue.data().startedAt) return issue.data().startedAt;
+    if (!issue.data().intake && issue.data().createdAt >= "2026-11-26T21:33:53.000Z") throw new Error("יש לשמור את קליטת הכלים והקשיחים לפני חתימת בטיחות המטוס.");
     const startedAt = new Date().toISOString();
     transaction.update(ref, { startedAt, startedBy: uid, safetySignature: signature });
     return startedAt;
+  });
+}
+
+export async function saveInitialIntake(id, uid, intake, session) {
+  const ref = doc(db, "issues", id);
+  return runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if (!snap.exists() || snap.data().status !== "open" || snap.data().startedAt || snap.data().intake) throw new Error("שלב הקליטה כבר נשמר או שהתקלה אינה פתוחה.");
+    if (!(snap.data().teamUids || [snap.data().assigneeUid]).includes(uid)) throw new Error("אינך משויך לצוות התקלה.");
+    await requireEditLock(transaction, "issue", snap.data().sheet.serial, session, uid);
+    if (!["yes", "no"].includes(intake.choice)) throw new Error("יש לבחור אם נלקחו כלים או קשיחים.");
+    const tools = intake.tools || [], taken = intake.taken || [];
+    if (intake.choice === "no" && (tools.length || taken.length)) throw new Error("סומנה קליטה ללא ציוד אך קיימים פריטים.");
+    if (intake.choice === "yes" && !tools.length && !taken.length) throw new Error("יש למלא לפחות כלי או קשיח אחד.");
+    if (tools.some((row) => !row.toolName?.trim() || !row.toolNumber?.trim()) ||
+        taken.some((row) => !row.description?.trim() || !row.quantityIn || Number(row.quantityIn) <= 0)) throw new Error("יש להשלים פרטי כל כלי וקשיח שנקלטו.");
+    if (new Set(tools.map((row) => row.toolNumber)).size !== tools.length) throw new Error("מספר כלי מופיע יותר מפעם אחת.");
+    if (tools.length && (!intake.entryTechnicianSignature?.startsWith("data:image/png;base64,") || !intake.entryInspectorSignature?.startsWith("data:image/png;base64,") || !/^[0-9]{1,7}$/.test(intake.entryInspectorNumber || ""))) throw new Error("יש להשלים ביקורת כניסה לכלים.");
+    if (taken.length && (!intake.takenSignature?.startsWith("data:image/png;base64,") || !intake.takenFullName?.trim() || !/^[0-9]{1,7}$/.test(intake.takenPersonalNumber || "") || !intake.takenRank?.trim())) throw new Error("יש להשלים חתימה על קשיחים שנלקחו.");
+    const at = new Date().toISOString();
+    transaction.update(ref, { intake: { ...intake, at, by: uid }, acceptedTools: tools });
+    return at;
+  });
+}
+
+export async function addToolIntake(id, uid, batch, session) {
+  const ref = doc(db, "issues", id);
+  return runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if (!snap.exists() || snap.data().status !== "open" || !snap.data().startedAt || !snap.data().intake) throw new Error("אפשר להוסיף כלים רק לתקלה במהלך עבודה.");
+    if (!(snap.data().teamUids || [snap.data().assigneeUid]).includes(uid)) throw new Error("אינך משויך לצוות התקלה.");
+    await requireEditLock(transaction, "issue", snap.data().sheet.serial, session, uid);
+    const tools = batch.tools || [];
+    if (!tools.length || tools.some((row) => !row.toolName?.trim() || !row.toolNumber?.trim())) throw new Error("יש למלא שם ומספר לכל כלי חדש.");
+    if (!batch.technicianSignature?.startsWith("data:image/png;base64,") || !batch.inspectorSignature?.startsWith("data:image/png;base64,") || !/^[0-9]{1,7}$/.test(batch.inspectorNumber || "")) throw new Error("יש להשלים ביקורת כניסה חדשה.");
+    const accepted = snap.data().acceptedTools || [];
+    if (new Set(tools.map((row) => row.toolNumber)).size !== tools.length) throw new Error("לא ניתן לקלוט פעמיים את אותו מספר כלי.");
+    if (tools.some((row) => accepted.some((old) => old.toolNumber === row.toolNumber))) throw new Error("מספר כלי זה כבר נקלט בתקלה.");
+    const at = new Date().toISOString();
+    transaction.update(ref, { acceptedTools: [...accepted, ...tools], toolIntakes: [...(snap.data().toolIntakes || []), { ...batch, at, by: uid }] });
+    return at;
   });
 }
 
