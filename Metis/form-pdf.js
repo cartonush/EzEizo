@@ -1,5 +1,5 @@
 import { CONTENT_WIDTH, MARGIN, PAGE_HEIGHT, PAGE_WIDTH, pageCanvas, pdfFromJpegs, wrapped } from "./report-pdf.js?v=1.7.6";
-import { KEY_TASKS, KEY_TABLES } from "../keys/data.js?v=1.7.6";
+import { KEY_TASKS, KEY_TABLES } from "../keys/data.js?v=1.9.0";
 
 const left = MARGIN, right = PAGE_WIDTH - MARGIN;
 const dateTime = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -179,6 +179,12 @@ async function issuePdf(issue) {
   const pdf = pdfPages(`טופס תקלה ${show(sheet.serial)}`, `${issue.status === "cancelled" ? "שילוח בוטל" : issue.status === "closed" ? "סגור" : issue.status === "pendingReview" ? "ממתין לסגירה" : "פתוח"} · מטוס ${show(sheet.aircraft)}`);
   pdf.heading("פרטי התקלה");
   for (const [label, value] of [["מספר תקלה", sheet.serial], ["טייסת", sheet.squadron], ["דת״ק", sheet.shelter], ["מוסך", sheet.workshop], ["מספר מטוס", sheet.aircraft], ["שם מערכת", sheet.systemName], ["קוד מערכת", sheet.systemCode], ["חליפת ל״א", sheet.ewSystem], ["מקור התקלה", (sheet.faultOrigins?.length ? sheet.faultOrigins : [sheet.faultOrigin].filter(Boolean)).join(" · ")], ["תחום לסגירה", sheet.reviewCategory], ["מוביל התקלה", issue.assigneeName], ["שעת פתיחה", dateTime(issue.createdAt)], ["שעת סגירה", dateTime(state.closedAt || issue.reviewedAt)]]) if (value) pdf.text(label, value);
+  if (issue.paperClosure) {
+    pdf.heading("סגירה באמצעות דף מודפס");
+    pdf.paragraph("התקלה נסגרה במערכת על סמך טופס נייר. הפרטים והחתימות שהושלמו ידנית נשמרים על העותק המודפס, ולא בקובץ הדיגיטלי.");
+    pdf.text("מועד סגירה", dateTime(issue.paperClosure.at));
+    if (state.paper) return pdf.blob();
+  }
   pdf.heading("תדריך ובדיקת בטיחות");
   pdf.paragraph('תדריך בטיחות וניהול סיכונים: יועבר ע״י מ״ע התקלה / משלח המשימה וייחתם על ידו.');
   await pdf.signature("חתימת משלח המשימה", sheet.dispatcherSignature);
@@ -201,7 +207,7 @@ async function issuePdf(issue) {
   pdf.heading("אישור סיום");
   pdf.paragraph("הנני מאשר שכל הפרטים הרשומים שלמים נכונים ומדויקים. הנני מאשר שעדכנתי במערכות ממוכנות / בספר המטוס את מספרי המכשירים שפורקו והורכבו. הנני מאשר שהעברתי את המכשירים התקולים בצירוף תגי בר תיקון ממולאים בצורה מושלמת. הדף הוא בלשון זכר אך מתייחס לשני המינים.");
   await pdf.signature("חתימת הטכנאי", state.technicianDeclarationSignature);
-  if (issue.status === "closed") {
+  if (issue.status === "closed" && !issue.paperClosure) {
     const review = issue.managerReview || {};
     pdf.heading("בקרה וניהול");
     for (const [label, key] of [["לא אומת", "notVerified"], ["התקלה אומתה", "verified"], ["הוחלפו יחידות", "unitsReplaced"], ["בוצע תיקון", "repairPerformed"], ["תקלה חוזרת", "recurrent"], ["ביטול משימה", "missionCancelled"], ["ביטול גיחה", "sortieCancelled"], ["היתר למעקב", "trackingPermit"]]) pdf.text(label, checked(review[key]));

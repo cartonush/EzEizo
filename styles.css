@@ -25,6 +25,8 @@ button, textarea, input, select { font: inherit; }
 .brand-mark.manager-mark { border-radius: 50%; object-fit: cover; background: #fff; }
 .squadron-emblem { display: inline-block; flex: none; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; vertical-align: middle; }
 .detail-item strong[data-sheet-field="squadron"] { display: inline-flex; align-items: center; gap: 8px; }
+.paper-form-notice { border-color: #c8d9e3; background: #f0f6fa; }
+.paper-form-notice p { margin-bottom: 0; line-height: 1.5; }
 .brand-copy { flex: 1; min-width: 0; }
 .eyebrow, .section-kicker { margin: 0 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .08em; opacity: .7; }
 .topbar h1 { margin: 0; font-size: 19px; letter-spacing: -.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,16 +1,16 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.18";
+import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch, closePrintedIssue } from "../firebase-sync.js?v=1.9.20";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
-import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.18";
-import { initCatalogView } from "./catalog-view.js?v=1.9.18";
+import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.20";
+import { initCatalogView } from "./catalog-view.js?v=1.9.20";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
-import { createEditLock } from "../edit-lock.js?v=1.9.18";
-import { initKeyPages } from "../keys/app.js?v=1.9.18";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.18";
+import { createEditLock } from "../edit-lock.js?v=1.9.20";
+import { initKeyPages } from "../keys/app.js?v=1.9.20";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.20";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
 import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.18";
-import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.18";
+import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.20";
 import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.18";
 import { makeSquadronEmblem } from "../squadron-emblems.js?v=1.9.19";
 
@@ -22,7 +22,53 @@ initCatalogAdmin();
 initCatalogView();
 initDuties();
 document.querySelector("#connected-user").textContent = managerUser.name || (fullManager ? "מטיס" : "מג״ת");
-document.querySelector(".manager-home-intro h2").textContent = `שלום ${managerUser.name || (fullManager ? "מטיס" : "מג״ת")}`;
+function updateManagerGreeting() {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jerusalem", hour: "2-digit", hourCycle: "h23" }).formatToParts(new Date());
+  const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
+  const phrase = hour >= 6 && hour < 11 ? "בוקר טוב" : hour >= 11 && hour < 16 ? "צהריים טובים" : hour >= 16 && hour < 21 ? "ערב טוב" : "לילה טוב";
+  document.querySelector(".manager-home-intro h2").textContent = `${phrase}, ${managerUser.name || (fullManager ? "מטיס" : "מג״ת")}`;
+}
+updateManagerGreeting();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) updateManagerGreeting(); });
+setInterval(updateManagerGreeting, 60_000);
+
+const PAPER_QUEUE_KEY = "ezeizo-paper-closures-v1";
+let syncingPaper = false;
+function paperQueue() {
+  try { const items = JSON.parse(localStorage.getItem(PAPER_QUEUE_KEY) || "[]"); return Array.isArray(items) ? items : []; }
+  catch { return []; }
+}
+function savePaperQueue(items) { localStorage.setItem(PAPER_QUEUE_KEY, JSON.stringify(items)); updatePaperSyncStatus(); }
+function paperPending(id) { return paperQueue().some((item) => item.id === id && item.uid === managerUser.uid); }
+function updatePaperSyncStatus(message = "", error = false) {
+  const count = paperQueue().filter((item) => item.uid === managerUser.uid).length;
+  const status = document.querySelector("#paper-sync-status");
+  status.textContent = message || (count ? `${count} סגירות טופס מודפס ממתינות לאישור השרת. אין לראות בהן סגורות עד לסנכרון.` : "");
+  if (error) status.dataset.state = "error"; else delete status.dataset.state;
+  document.querySelector("#paper-sync-retry").hidden = !count;
+}
+async function syncPaperClosures() {
+  if (!fullManager || syncingPaper || !navigator.onLine || !paperQueue().some((item) => item.uid === managerUser.uid)) return;
+  syncingPaper = true;
+  let failed = false;
+  try {
+    for (const item of paperQueue().filter((entry) => entry.uid === managerUser.uid)) {
+      try {
+        await closePrintedIssue(item.id, item.uid, item.serial, item.status, item.reopenedAt, item.definitionUpdatedAt);
+        savePaperQueue(paperQueue().filter((entry) => !(entry.id === item.id && entry.uid === item.uid)));
+        updatePaperSyncStatus(`תקלה ${item.serial} נסגרה בשרת.`, false);
+      } catch (error) {
+        updatePaperSyncStatus(`תקלה ${item.serial} עדיין ממתינה: ${error.message}`, true);
+        failed = true;
+        break;
+      }
+    }
+  } finally { syncingPaper = false; if (!failed) updatePaperSyncStatus(); renderIssueLists(); }
+}
+document.querySelector("#paper-sync-retry").addEventListener("click", () => void syncPaperClosures());
+window.addEventListener("online", () => void syncPaperClosures());
+document.addEventListener("visibilitychange", () => { if (!document.hidden) void syncPaperClosures(); });
+updatePaperSyncStatus();
 let cloudIssues = [];
 let latestServerIssues = [];
 const recentIssues = new Map();
@@ -441,6 +487,45 @@ function addIssueCard(container, item, mode) {
     });
     cancel.append(summary, reason, confirm, feedback); card.append(cancel);
   }
+  if (fullManager && fullIssue && ["open", "pendingReview"].includes(mode)) {
+    const panel = document.createElement("details"); panel.className = "paper-closure-panel";
+    const heading = document.createElement("summary"); heading.textContent = "הדפסה וסגירה בטופס נייר";
+    const print = document.createElement("a"); print.className = "secondary-button";
+    print.href = "./printable-fault-form.pdf"; print.target = "_blank"; print.rel = "noopener";
+    print.textContent = "פתח טופס להדפסה";
+    const label = document.createElement("label");
+    const checked = document.createElement("input"); checked.type = "checkbox";
+    label.append(checked, document.createTextNode("אני מאשר שהטופס הודפס ומולא ידנית. העותק המודפס נשמר מחוץ לאפליקציה."));
+    const close = document.createElement("button"); close.type = "button"; close.className = "secondary-button"; close.textContent = "סגור תקלה לאחר הדפסה";
+    const feedback = document.createElement("p"); feedback.className = "copy-status"; feedback.setAttribute("role", "status");
+    if (paperPending(fullIssue.id)) {
+      close.disabled = true;
+      feedback.textContent = "הסגירה ממתינה לאישור השרת; התקלה עדיין אינה סגורה במערכת.";
+      const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "secondary-button"; cancel.textContent = "בטל סגירה ממתינה";
+      cancel.addEventListener("click", () => { savePaperQueue(paperQueue().filter((entry) => !(entry.id === fullIssue.id && entry.uid === managerUser.uid))); renderIssueLists(); });
+      panel.append(heading, print, label, close, cancel, feedback);
+    } else panel.append(heading, print, label, close, feedback);
+    close.addEventListener("click", async () => {
+      if (!checked.checked) { feedback.textContent = "יש לאשר שהטופס הודפס ומולא ידנית."; feedback.dataset.state = "error"; return; }
+      if (!window.confirm(`לסגור את תקלה ${fullIssue.sheet.serial} על סמך טופס הנייר? הפרטים שמולאו ידנית לא יועברו לדף הדיגיטלי.`)) return;
+      close.disabled = true; delete feedback.dataset.state;
+      const item = { id: fullIssue.id, uid: managerUser.uid, serial: fullIssue.sheet.serial, status: fullIssue.status, reopenedAt: fullIssue.reopenedAt || "", definitionUpdatedAt: fullIssue.definitionUpdatedAt || "" };
+      if (!navigator.onLine) {
+        try { savePaperQueue([...paperQueue(), item]); feedback.textContent = "הבקשה נשמרה במכשיר וממתינה לחיבור לשרת. התקלה עדיין פתוחה במערכת. אין למחוק את נתוני האפליקציה עד לסנכרון."; renderIssueLists(); }
+        catch (error) { close.disabled = false; feedback.textContent = `לא ניתן לשמור בקשה במכשיר: ${error.message}`; feedback.dataset.state = "error"; }
+        return;
+      }
+      try { await closePrintedIssue(item.id, item.uid, item.serial, item.status, item.reopenedAt, item.definitionUpdatedAt); feedback.textContent = "התקלה נסגרה בשרת על סמך טופס מודפס."; }
+      catch (error) {
+        if (["unavailable", "deadline-exceeded"].includes(error.code)) {
+          try { savePaperQueue([...paperQueue(), item]); feedback.textContent = "השרת אינו זמין. הבקשה נשמרה במכשיר וממתינה לסנכרון."; renderIssueLists(); return; }
+          catch (storageError) { feedback.textContent = `שמירה במכשיר נכשלה: ${storageError.message}`; }
+        } else feedback.textContent = `הסגירה נכשלה: ${error.message}`;
+        feedback.dataset.state = "error"; close.disabled = false;
+      }
+    });
+    card.append(panel);
+  }
   container.append(card);
 }
 
@@ -602,6 +687,7 @@ function updateManagerIssues(issues) {
 }
 watchIssues((issues) => {
   updateManagerIssues(issues);
+  void syncPaperClosures();
 }, (error) => {
   setStatus("#issued-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
   setStatus("#pending-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
