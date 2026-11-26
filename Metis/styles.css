@@ -225,6 +225,9 @@ main:has(#view-work-status:not([hidden])) { width: min(1460px, calc(100% - 32px)
 .work-status-card span { font-size: 12px; }
 .work-status-card small { color: #176b96; font-weight: 700; }
 .work-status-card:hover,.work-status-card:focus-visible { outline: 2px solid #74b7d1; }
+.work-status-toggle { display: grid; gap: 5px; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: right; font: inherit; cursor: pointer; }
+.work-status-details { border-top: 1px solid #d9e6eb; margin-top: 10px; padding-top: 10px; }
+.work-status-details p { margin: 6px 0; }
 @media (max-width: 760px) { .work-status-board { grid-template-columns: minmax(0, 1fr); } .work-status-lane { min-height: 0; } }
 .duties-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: 12px 0; }
 .duties-toolbar strong { margin-inline: auto; color: #173b5d; }

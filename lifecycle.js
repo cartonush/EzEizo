@@ -1,6 +1,8 @@
 export function issueTimeline(issue) {
   if (!issue) return [];
   const events = [{ label: "נפתח", at: issue.createdAt }];
+  if (issue.intake?.at) events.push({ label: "קליטת כלים וקשיחים לפני עבודה", at: issue.intake.at });
+  for (const batch of issue.toolIntakes || []) events.push({ label: `נקלטו ${batch.tools?.length || 0} כלים נוספים בביקורת כניסה`, at: batch.at });
   for (const reopen of issue.reopenEvents || []) {
     events.push({ label: "נסגר", at: reopen.priorReviewedAt || reopen.priorClosedAt });
     events.push({ label: "נפתח לעריכה", at: reopen.at });

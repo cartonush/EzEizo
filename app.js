@@ -1,11 +1,11 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.20";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, saveInitialIntake, addToolIntake, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.21";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
-import { validateTreatment } from "./mechanic-validation.js?v=1.9.18";
+import { validateTreatment } from "./mechanic-validation.js?v=1.9.21";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
-import { issueTimeline } from "./lifecycle.js?v=1.9.20";
-import { createEditLock } from "./edit-lock.js?v=1.9.20";
-import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.20";
+import { issueTimeline } from "./lifecycle.js?v=1.9.21";
+import { createEditLock } from "./edit-lock.js?v=1.9.21";
+import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.21";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 
@@ -101,6 +101,7 @@ if (selectedSheet && !managerClosedView && remoteIssue.status === "open") {
       document.querySelector("#sheet-form").hidden = false;
       setupSignaturePads();
       applyPreflightGate();
+      document.dispatchEvent(new Event("ezeizo:edit-ready"));
       if (!workStarted && state.preflightSaved && state.safetyTechnicianSignature) void beginIssueWork();
     }).catch((error) => { message.textContent = `בדיקת הטיוטה המשותפת נכשלה: ${error.message}`; editLock?.dispose(); });
   } });
@@ -149,6 +150,19 @@ const defaultState = {
   finalTechnicianSignature: "", finalInspectorSignature: "", finalLeadSignature: "", takenSignature: ""
 };
 let state = remoteIssue?.status === "open" && remoteIssue.workDraft?.state ? { ...defaultState, ...remoteIssue.workDraft.state } : loadState();
+if (remoteIssue?.status === "open" && remoteIssue?.intake && !remoteIssue?.workDraft?.state) {
+  const saved = remoteIssue.intake;
+  Object.assign(state, { toolsEnabled: saved.tools.length > 0, tools: saved.tools, entryEnabled: saved.tools.length > 0,
+    takenEnabled: saved.taken.length > 0, taken: saved.taken,
+    entryTechnicianSignature: saved.entryTechnicianSignature || "", entryInspectorSignature: saved.entryInspectorSignature || "",
+    entryInspectorNumber: saved.entryInspectorNumber || "", takenSignature: saved.takenSignature || "",
+    takenFullName: saved.takenFullName || "", takenPersonalNumber: saved.takenPersonalNumber || "", takenRank: saved.takenRank || "" });
+}
+if (remoteIssue?.acceptedTools) state.tools = remoteIssue.acceptedTools;
+if (remoteIssue?.intake) { state.toolsEnabled = state.tools.length > 0; state.entryEnabled = remoteIssue.intake.tools.length > 0; state.takenEnabled = remoteIssue.intake.taken.length > 0; }
+let intakeChoice = remoteIssue?.intake?.choice || "";
+let intakeSaved = Boolean(remoteIssue?.intake || remoteIssue?.startedAt);
+let intakePending = false;
 if (remoteIssue?.workDraft?.state && !("preflightSaved" in remoteIssue.workDraft.state) && state.safetyTechnicianSignature) state.preflightSaved = true;
 if (remoteIssue?.safetySignature && !state.safetyTechnicianSignature) state.safetyTechnicianSignature = remoteIssue.safetySignature;
 let workStarted = Boolean(remoteIssue?.startedAt);
@@ -207,31 +221,94 @@ function applyPreflightGate() {
   const started = workStarted || Boolean(state.safetyTechnicianSignature && state.preflightSaved);
   const unlocked = started && state.preflightSaved;
   const form = document.querySelector("#sheet-form");
-  for (const selector of [".tools-card", '.parts-card[aria-labelledby="taken-title"]']) form.querySelector(selector).hidden = !started;
+  document.querySelector("#intake-choice").hidden = intakeSaved;
+  document.querySelector("#intake-save").hidden = intakeSaved;
+  document.querySelector("#intake-save").disabled = intakePending || !editLock?.held;
+  for (const selector of [".tools-card", '.parts-card[aria-labelledby="taken-title"]']) form.querySelector(selector).hidden = !intakeSaved && intakeChoice !== "yes";
+  document.querySelector(".safety-card").hidden = !intakeSaved;
+  const toolsLocked = intakeSaved && Boolean(remoteIssue?.intake);
+  document.querySelector("#tools-toggle").disabled = toolsLocked;
+  document.querySelector("#entry-check").disabled = toolsLocked;
+  document.querySelectorAll("#tools-rows input, #tools-rows button, #entry-fields input, #entry-fields button").forEach((el) => { el.disabled = toolsLocked; });
+  document.querySelectorAll('[data-signature="entryTechnicianSignature"], [data-signature="entryInspectorSignature"]').forEach((canvas) => { canvas.style.pointerEvents = toolsLocked ? "none" : ""; });
+  document.querySelector("#taken-toggle").disabled = intakeSaved && !started;
+  document.querySelector("#add-tools-link").hidden = !started || !remoteIssue?.intake;
   for (const selector of [".descriptions-card", ".actions-card", ".units-card", ".constants-card", '.parts-card[aria-labelledby="rejected-title"]', ".close-card"]) form.querySelector(selector).hidden = !unlocked;
   if (unlocked && !document.querySelector("main").hidden) setupSignaturePads(form);
   document.querySelectorAll("#save-sheet, #save-sheet-bottom").forEach((button) => { button.disabled = !started || safetyStartPending || savingTechnicianDraft; });
   document.querySelector('canvas[data-signature="safetyTechnicianSignature"]').style.pointerEvents = workStarted ? "none" : "";
   document.querySelector('[data-clear-signature="safetyTechnicianSignature"]').disabled = workStarted || safetyStartPending;
   if (document.querySelector("#shared-save-status")?.dataset.state !== "error") {
-    if (!started) setSharedSaveStatus("חתום על מטוס בטוח לאחזקה כדי להתחיל בעבודה.");
-    else if (!unlocked && !savingTechnicianDraft) setSharedSaveStatus("השלם חתימות כלים וקשיחים במידת הצורך ולחץ שמור לפתיחת שאר הטופס.");
+    if (!intakeSaved) setSharedSaveStatus("בחר אם נלקחו כלים או קשיחים ושמור את ביקורת הכניסה לפני בדיקת בטיחות המטוס.");
+    else if (!started) setSharedSaveStatus("הקליטה נשמרה. חתום על מטוס בטוח לאחזקה כדי להתחיל בעבודה.");
+    else if (!unlocked && !savingTechnicianDraft) setSharedSaveStatus("שמור את חתימת בטיחות המטוס כדי לפתוח את שאר הטופס.");
   }
 }
 
 async function beginIssueWork() {
-  if (managerClosedView || workStarted || safetyStartPending || !editLock?.held || remoteIssue?.status !== "open") return;
+  if (managerClosedView || workStarted || safetyStartPending || !intakeSaved || !editLock?.held || remoteIssue?.status !== "open") return;
   safetyStartPending = true; applyPreflightGate();
   const feedback = document.querySelector("#safety-start-status"); feedback.textContent = "שומר חתימת בטיחות…";
   try {
     await startIssueWork(sheet.id, currentUser.uid, state.safetyTechnicianSignature, editLock.session);
-    workStarted = true; feedback.textContent = "חתימת הבטיחות נשמרה. התקלה בתהליך.";
+    workStarted = true;
+    state.preflightSaved = true;
+    const savedAt = new Date().toISOString(); pendingDraftAt = savedAt;
+    try {
+      await saveIssueWorkDraft(sheet.id, currentUser.uid, { ...structuredClone(state), tools: remoteIssue.acceptedTools || [] }, editLock.session, savedAt);
+      loadedDraftAt = savedAt; pendingDraftAt = "";
+    } catch (error) {
+      state.preflightSaved = false; pendingDraftAt = "";
+      feedback.textContent = `חתימת הבטיחות נשמרה, אך הטיוטה לא נשמרה: ${error.message}. לחץ ״שמור טיוטה״ שוב.`;
+      applyPreflightGate(); return;
+    }
+    feedback.textContent = "חתימת הבטיחות נשמרה. התקלה בתהליך עבודה.";
     applyPreflightGate();
     document.querySelector("#preflight-notice").showModal();
   } catch (error) { feedback.textContent = `שמירת חתימת הבטיחות נכשלה: ${error.message}. נסה לחתום שוב.`; }
   finally { safetyStartPending = false; applyPreflightGate(); }
 }
 document.querySelector("#preflight-notice-close")?.addEventListener("click", () => document.querySelector("#preflight-notice").close());
+
+if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
+  const form = document.querySelector("#sheet-form"), safety = form.querySelector(".safety-card");
+  form.insertBefore(form.querySelector(".tools-card"), safety);
+  form.insertBefore(form.querySelector('[aria-labelledby="taken-title"]'), safety);
+  document.querySelectorAll('[name="initial-intake"]').forEach((radio) => radio.addEventListener("change", () => {
+    intakeChoice = radio.value;
+    if (radio.value === "no") {
+      state.toolsEnabled = false; state.takenEnabled = false;
+      document.querySelector("#tools-toggle").checked = false; document.querySelector("#taken-toggle").checked = false;
+      document.querySelector("#tools-area").hidden = true; document.querySelector("#taken-area").hidden = true;
+    }
+    applyPreflightGate();
+  }));
+  document.querySelector("#intake-save").addEventListener("click", async () => {
+    const feedback = document.querySelector("#intake-status"), button = document.querySelector("#intake-save");
+    const tools = state.toolsEnabled ? compactRows(state.tools, TABLES.tools) : [];
+    const taken = state.takenEnabled ? compactRows(state.taken, TABLES.taken) : [];
+    if (!intakeChoice) { feedback.textContent = "יש לבחור כן או לא."; return; }
+    if (intakeChoice === "yes" && !tools.length && !taken.length) { feedback.textContent = "יש למלא לפחות כלי או קשיח אחד."; return; }
+    if (intakeChoice === "no" && (tools.length || taken.length)) { feedback.textContent = "יש להסיר את הפריטים לפני בחירה בלא."; return; }
+    const intake = { choice: intakeChoice, tools, taken,
+      entryTechnicianSignature: state.entryTechnicianSignature, entryInspectorSignature: state.entryInspectorSignature,
+      entryInspectorNumber: state.entryInspectorNumber, takenSignature: state.takenSignature,
+      takenFullName: state.takenFullName, takenPersonalNumber: state.takenPersonalNumber, takenRank: state.takenRank };
+    button.disabled = true; intakePending = true; feedback.textContent = "שומר ביקורת כניסה בשרת…";
+    try {
+      await editLock.renew();
+      const at = await saveInitialIntake(sheet.id, currentUser.uid, intake, editLock.session);
+      remoteIssue.intake = { ...intake, at, by: currentUser.uid };
+      remoteIssue.acceptedTools = tools; state.tools = tools; state.toolsEnabled = tools.length > 0;
+      state.entryEnabled = tools.length > 0; state.takenEnabled = taken.length > 0;
+      document.querySelector("#entry-check").checked = state.entryEnabled;
+      document.querySelector("#entry-fields").hidden = !state.entryEnabled;
+      intakeSaved = true; feedback.textContent = "הקליטה נשמרה. כעת אפשר לחתום על בטיחות המטוס.";
+      applyPreflightGate(); saveState();
+    } catch (error) { feedback.textContent = `הקליטה לא נשמרה: ${error.message}`; feedback.dataset.state = "error"; }
+    finally { intakePending = false; if (!intakeSaved) button.disabled = false; }
+  });
+}
 
 function renderSheetDetails() {
   if (managerClosedView) {
@@ -421,7 +498,13 @@ function renderIssueList() {
     const info = document.createElement("span");
     info.textContent = type === "keys" ? `מטוסים: ${item.aircraftIds.join(", ")} · ${item.date.split("-").reverse().join("/")} · פתוחה` : `${item.fault || "ללא תיאור"} · פתוחה`;
     card.append(title, info);
-    list.append(card);
+    const row = document.createElement("div"); row.className = "technician-task-row"; row.append(card);
+    if (type === "issue" && cloudIssues.find((issue) => issue.id === item.id)?.intake && cloudIssues.find((issue) => issue.id === item.id)?.startedAt) {
+      const add = document.createElement("a"); add.className = "secondary-button";
+      add.href = `?id=${encodeURIComponent(item.id)}#add-tools`; add.textContent = "הוסף כלי חדש";
+      row.append(add);
+    }
+    list.append(row);
   });
 }
 
@@ -582,7 +665,7 @@ function setSharedSaveStatus(message, error = false) {
 async function saveTechnicianDraft() {
   if (savingTechnicianDraft) return;
   if (!editLock?.held || remoteIssue?.status !== "open") { setSharedSaveStatus("הטופס אינו נעול לעריכה עבורך. בדוק שוב את הנעילה.", true); return; }
-  if (!state.safetyTechnicianSignature) { setSharedSaveStatus("יש לחתום על מטוס בטוח לאחזקה לפני השמירה.", true); return; }
+  if (!intakeSaved || !state.safetyTechnicianSignature) { setSharedSaveStatus("יש להשלים קליטה ובדיקת בטיחות המטוס לפני שמירת טיוטת העבודה.", true); return; }
   savingTechnicianDraft = true; applyPreflightGate();
   setSharedSaveStatus("שומר טיוטה בשרת…");
   const previousPreflight = state.preflightSaved, previousDraftAt = loadedDraftAt;
@@ -593,7 +676,7 @@ async function saveTechnicianDraft() {
     state.preflightSaved = true;
     saveState();
     const savedAt = new Date().toISOString(); pendingDraftAt = savedAt;
-    await saveIssueWorkDraft(sheet.id, currentUser.uid, structuredClone(state), editLock.session, savedAt);
+    await saveIssueWorkDraft(sheet.id, currentUser.uid, { ...structuredClone(state), tools: remoteIssue.acceptedTools || compactRows(state.tools, TABLES.tools) }, editLock.session, savedAt);
     loadedDraftAt = savedAt; pendingDraftAt = "";
     setSharedSaveStatus("הטיוטה נשמרה לצוות בשרת. אפשר להמשיך לעבוד בדף.");
     applyPreflightGate();
@@ -601,6 +684,88 @@ async function saveTechnicianDraft() {
   finally { savingTechnicianDraft = false; applyPreflightGate(); }
 }
 document.querySelectorAll("#save-sheet, #save-sheet-bottom").forEach((button) => button.addEventListener("click", saveTechnicianDraft));
+
+if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
+  const panel = document.querySelector("#late-tools"), form = document.querySelector("#sheet-form");
+  const rows = document.querySelector("#late-tool-rows"), feedback = document.querySelector("#late-tools-status");
+  let draftTools = [{ toolName: "", toolNumber: "", notes: "" }];
+  let technicianSignature = "", inspectorSignature = "", clearTechnician, clearInspector;
+  let previousVisibility = null;
+  function renderLateRows() {
+    rows.replaceChildren();
+    draftTools.forEach((row, index) => {
+      const tr = document.createElement("tr");
+      for (const [key, label] of [["toolName", "שם כלי"], ["toolNumber", "מספר כלי"], ["notes", "הערות"]]) {
+        const td = document.createElement("td"), input = document.createElement("input");
+        input.type = "text"; input.value = row[key]; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
+        input.addEventListener("input", () => {
+          row[key] = input.value;
+          if (index === draftTools.length - 1 && (row.toolName || row.toolNumber || row.notes)) {
+            draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows();
+            const current = rows.children[index]?.querySelectorAll("input")[["toolName", "toolNumber", "notes"].indexOf(key)];
+            current?.focus(); current?.setSelectionRange(current.value.length, current.value.length);
+          }
+        });
+        td.append(input); tr.append(td);
+      }
+      rows.append(tr);
+    });
+  }
+  function showLateTools() {
+    if (!workStarted || !editLock?.held || previousVisibility) return;
+    previousVisibility = [...form.children].map((el) => [el, el.hidden]);
+    previousVisibility.forEach(([el]) => { el.hidden = el !== panel; });
+    panel.hidden = false; renderLateRows();
+    if (!clearTechnician) clearTechnician = attachSignaturePad(document.querySelector("#late-technician-signature"), { onChange: (value) => { technicianSignature = value; } });
+    if (!clearInspector) clearInspector = attachSignaturePad(document.querySelector("#late-inspector-signature"), { onChange: (value) => { inspectorSignature = value; } });
+    panel.scrollIntoView({ block: "start" });
+  }
+  function hideLateTools() {
+    previousVisibility?.forEach(([el, hidden]) => { el.hidden = hidden; });
+    previousVisibility = null; panel.hidden = true; applyPreflightGate();
+    if (location.hash === "#add-tools") history.replaceState(null, "", location.pathname + location.search);
+  }
+  document.querySelector("#add-tools-link").addEventListener("click", showLateTools);
+  document.querySelector("#cancel-late-tools").addEventListener("click", hideLateTools);
+  document.querySelector("#clear-late-technician").addEventListener("click", () => clearTechnician?.());
+  document.querySelector("#clear-late-inspector").addEventListener("click", () => clearInspector?.());
+  document.querySelector("#save-late-tools").addEventListener("click", async (event) => {
+    const button = event.currentTarget, tools = draftTools.filter((row) => row.toolName || row.toolNumber || row.notes);
+    button.disabled = true; feedback.textContent = "שומר ביקורת כניסה…";
+    try {
+      await editLock.renew();
+      const at = await addToolIntake(sheet.id, currentUser.uid, { tools, technicianSignature, inspectorSignature, inspectorNumber: document.querySelector("#late-inspector-number").value }, editLock.session);
+      state.tools = [...(remoteIssue.acceptedTools || []), ...tools]; state.toolsEnabled = true;
+      remoteIssue.acceptedTools = state.tools;
+      remoteIssue.toolIntakes = [...(remoteIssue.toolIntakes || []), { tools, at, by: currentUser.uid }];
+      state.finalEnabled = true;
+      renderRows("tools"); document.querySelector("#tools-toggle").checked = true;
+      document.querySelector("#tools-area").hidden = false;
+      document.querySelector("#final-check").checked = true;
+      document.querySelector("#final-fields").hidden = false;
+      setupSignaturePads(document.querySelector("#final-fields"));
+      applyPreflightGate();
+      renderToolIntakeHistory(); saveState();
+      draftTools = [{ toolName: "", toolNumber: "", notes: "" }];
+      clearTechnician(); clearInspector(); document.querySelector("#late-inspector-number").value = "";
+      hideLateTools();
+      setSharedSaveStatus("הכלים החדשים נקלטו עם ביקורת כניסה ונכללו בביקורת היציאה.");
+    } catch (error) { feedback.textContent = `הכלים לא נקלטו: ${error.message}`; feedback.dataset.state = "error"; }
+    finally { button.disabled = false; }
+  });
+  window.addEventListener("hashchange", () => { if (location.hash === "#add-tools") showLateTools(); });
+  if (location.hash === "#add-tools") window.addEventListener("ezeizo:edit-ready", showLateTools, { once: true });
+}
+
+function renderToolIntakeHistory() {
+  const container = document.querySelector("#tool-intake-history"); if (!container) return;
+  container.replaceChildren();
+  (remoteIssue?.toolIntakes || []).forEach((batch) => {
+    const line = document.createElement("p");
+    line.textContent = `כלים שנוספו בביקורת כניסה ${new Date(batch.at).toLocaleString("he-IL")}: ${batch.tools.map((tool) => `${tool.toolName} – ${tool.toolNumber}`).join(", ")}`;
+    container.append(line);
+  });
+}
 
 watchIssues((issues, partialError = "") => {
   cloudIssues = issues;
@@ -788,6 +953,12 @@ function bindToggleInputs() {
     input.addEventListener("change", () => {
       state[key] = input.checked;
       target.hidden = !input.checked;
+      if (key === "toolsEnabled" && input.checked && !intakeSaved) {
+        state.entryEnabled = true;
+        document.querySelector("#entry-check").checked = true;
+        document.querySelector("#entry-fields").hidden = false;
+        setupSignaturePads(document.querySelector("#entry-fields"));
+      }
       if (input.checked) setupSignaturePads(target);
       saveState();
     });
@@ -901,6 +1072,7 @@ Object.keys(TABLES).forEach((table) => renderRows(table));
 if (selectedSheet) watchComponents((items) => { savedUnitComponents = items; }, () => {});
 bindToggleInputs();
 bindStateFields();
+renderToolIntakeHistory();
 attachTimeNow();
 revealApp();
 setupSignaturePads();

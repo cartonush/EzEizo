@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.9.20">
+  <link rel="stylesheet" href="../styles.css?v=1.9.21">
 </head>
 <body>
   <div class="app-shell">
@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.9.20</span>
+      <span class="version-pill">v1.9.21</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
       <div class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./" aria-label="חזרה לרשימת המשימות" hidden>→ חזרה</a></div>
     </header>
@@ -50,7 +50,7 @@
         <div id="mechanic-issues" class="issue-list"></div>
       </section>
       <div id="sheet-form" hidden>
-      <div class="card sheet-save-toolbar"><button id="save-sheet" type="button" class="primary-button">שמור</button><span id="shared-save-status" role="status" aria-live="polite">חתום תחילה על מטוס בטוח לאחזקה, ולאחר מכן שמור כדי לפתוח את הטופס.</span></div>
+      <div class="card sheet-save-toolbar"><button id="save-sheet" type="button" class="primary-button">שמור</button><span id="shared-save-status" role="status" aria-live="polite">שמור תחילה קליטת כלים וקשיחים, ולאחר מכן חתום על מטוס בטוח לאחזקה.</span></div>
       <div id="closed-times" class="closed-times" hidden><div><span>שעת פתיחה</span><strong id="opened-at">—</strong></div><div><span>שעת סגירה</span><strong id="closed-at">—</strong></div></div>
       <section class="card form-lifecycle" aria-labelledby="lifecycle-title" hidden><h2 id="lifecycle-title">היסטוריית הטופס</h2><ol id="lifecycle-events" class="lifecycle-list"></ol></section>
       <section class="card summary-card" aria-labelledby="details-title">
@@ -78,13 +78,21 @@
         <p>יועבר ע"י מ"ע התקלה / משלח המשימה וייחתם על ידו.</p>
         <div class="signature-field"><span class="field-label">חתימת משלח המשימה</span><img id="dispatcher-signature-display" class="closed-signature" alt="חתימת משלח המשימה"></div>
       </section>
+      <section id="intake-choice" class="card" aria-labelledby="intake-title">
+        <h2 id="intake-title">קליטת כלים וקשיחים לפני תחילת העבודה</h2>
+        <p>האם לקחת איתך כלים או קשיחים?</p>
+        <label><input type="radio" name="initial-intake" value="yes"> כן</label>
+        <label><input type="radio" name="initial-intake" value="no"> לא</label>
+        <p id="intake-status" class="copy-status" role="status" aria-live="polite"></p>
+        <button id="intake-save" type="button" class="primary-button">שמור קליטה וביקורת כניסה</button>
+      </section>
       <section class="card safety-card" aria-labelledby="safety-title">
         <div class="section-heading"><div><p class="section-kicker">לפני תחילת העבודה</p><h2 id="safety-title">בדיקת בטיחות המטוס</h2></div></div>
         <p>בדיקת המטוס בטוח לאחזקה טרם התהליך: אין קסטות מוץ / נורים וכפט"ים מורכבים על המטוס.</p>
         <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="safetyTechnicianSignature" aria-label="חתימת הטכנאי על בדיקת בטיחות המטוס"></canvas><button type="button" class="clear-signature" data-clear-signature="safetyTechnicianSignature">נקה חתימה</button></div>
         <p id="safety-start-status" class="section-note" role="status" aria-live="polite"></p>
       </section>
-      <dialog id="preflight-notice" class="preflight-dialog"><p>יש לחתום גם על כלים / קשיחים במידת הצורך.</p><button type="button" class="primary-button" id="preflight-notice-close">הבנתי</button></dialog>
+      <dialog id="preflight-notice" class="preflight-dialog"><p>חתימת הבטיחות נשמרה. התקלה עברה לתהליך עבודה.</p><button type="button" class="primary-button" id="preflight-notice-close">אישור</button></dialog>
 
       <section class="card descriptions-card" aria-labelledby="description-title">
         <div class="section-heading">
@@ -207,6 +215,21 @@
             </div>
           </div>
         </div>
+        <button id="add-tools-link" type="button" class="secondary-button" hidden>הוסף כלי חדש</button>
+        <div id="tool-intake-history" class="section-note"></div>
+      </section>
+
+      <section id="late-tools" class="card" hidden>
+        <div class="section-heading"><h2>קליטת כלים נוספים</h2><button id="cancel-late-tools" type="button" class="secondary-button">חזרה לתקלה</button></div>
+        <p>הכלים יופיעו בטופס רק אחרי השלמת ביקורת כניסה ושמירה בשרת.</p>
+        <div class="table-wrap"><table><thead><tr><th>שם כלי</th><th>מספר כלי</th><th>הערות</th></tr></thead><tbody id="late-tool-rows"></tbody></table></div>
+        <div class="signature-grid">
+          <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas id="late-technician-signature" class="signature-pad" aria-label="חתימת טכנאי על כלים נוספים"></canvas><button id="clear-late-technician" type="button" class="clear-signature">נקה חתימה</button></div>
+          <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas id="late-inspector-signature" class="signature-pad" aria-label="חתימת בודק על כלים נוספים"></canvas><button id="clear-late-inspector" type="button" class="clear-signature">נקה חתימה</button></div>
+          <label class="input-field">מספר אישי של הבודק<input id="late-inspector-number" inputmode="numeric" maxlength="7"></label>
+        </div>
+        <button id="save-late-tools" type="button" class="primary-button">שמור ביקורת כניסה לכלים החדשים</button>
+        <p id="late-tools-status" class="copy-status" role="status" aria-live="polite"></p>
       </section>
 
       <section class="card parts-card" aria-labelledby="taken-title">
@@ -266,6 +289,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.9.20"></script>
+  <script type="module" src="../app.js?v=1.9.21"></script>
 </body>
 </html>
