@@ -1,5 +1,5 @@
 import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.30";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, alreadyLoadedForPeriod, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.9.26";
 import { attachTimeNow } from "../time-now.js?v=1.7.6";
 import { keyLoadTimeline } from "../lifecycle.js?v=1.9.23";

@@ -1,6 +1,6 @@
 import "./sheet-data.js?v=1.7.6";
 import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, watchToolCatalog, refreshTechnicianTasks, getIssue, startIssueWork, saveInitialIntake, addToolIntake, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.30";
-import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
+import { attachSignaturePad } from "./signature-canvas.js?v=1.9.31";
 import { validateTreatment } from "./mechanic-validation.js?v=1.9.23";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.9.23";
@@ -9,7 +9,7 @@ import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.23";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "./tool-catalog.js?v=1.9.30";
-import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.30";
+import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.31";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");
@@ -163,6 +163,15 @@ if (remoteIssue?.status === "open" && remoteIssue?.intake && !remoteIssue?.workD
     entryInspectorNumber: saved.entryInspectorNumber || "", takenSignature: saved.takenSignature || "",
     takenFullName: saved.takenFullName || "", takenPersonalNumber: saved.takenPersonalNumber || "", takenRank: saved.takenRank || "" });
 }
+if (remoteIssue?.status === "open" && remoteIssue?.intake) {
+  const saved = remoteIssue.intake;
+  Object.assign(state, {
+    entryTechnicianSignature: saved.entryTechnicianSignature || "",
+    entryInspectorSignature: saved.entryInspectorSignature || "",
+    entryInspectorNumber: saved.entryInspectorNumber || "",
+    takenSignature: saved.takenSignature || ""
+  });
+}
 if (remoteIssue?.acceptedTools) state.tools = remoteIssue.acceptedTools;
 if (remoteIssue?.intake) { state.toolsEnabled = state.tools.length > 0; state.entryEnabled = remoteIssue.intake.tools.length > 0; state.takenEnabled = remoteIssue.intake.taken.length > 0; }
 let intakeChoice = remoteIssue?.intake?.choice || "";
@@ -233,6 +242,10 @@ function applyPreflightGate() {
   for (const selector of [".tools-card", '.parts-card[aria-labelledby="taken-title"]']) form.querySelector(selector).hidden = !intakeSaved && intakeChoice !== "yes";
   document.querySelector(".safety-card").hidden = !intakeSaved;
   const toolsLocked = intakeSaved && Boolean(remoteIssue?.intake);
+  const inspectionStatus = document.querySelector("#entry-inspection-status");
+  inspectionStatus.textContent = toolsLocked && remoteIssue.intake.tools.length
+    ? "ביקורת הכניסה נחתמה ונשמרה. החתימות מוצגות לקריאה בלבד. לקליטת כלי נוסף השתמש בכפתור הוספת כלי חדש ברשימת התקלות."
+    : "";
   document.querySelector("#tools-toggle").disabled = toolsLocked;
   document.querySelector("#entry-check").disabled = toolsLocked;
   for (const key of ["interim", "final"]) {
@@ -241,6 +254,7 @@ function applyPreflightGate() {
     document.querySelector(`#${key}-fields`).hidden = !unlocked || !toggle.checked;
   }
   document.querySelectorAll("#tools-rows input, #tools-rows button, #entry-fields input, #entry-fields button").forEach((el) => { el.disabled = toolsLocked; });
+  document.querySelectorAll('#entry-fields [data-clear-signature]').forEach((button) => { button.hidden = toolsLocked; });
   document.querySelectorAll('[data-signature="entryTechnicianSignature"], [data-signature="entryInspectorSignature"]').forEach((canvas) => { canvas.style.pointerEvents = toolsLocked ? "none" : ""; });
   document.querySelector("#taken-toggle").disabled = intakeSaved && !started;
   document.querySelector("#add-tools-link").hidden = true;
@@ -1026,61 +1040,20 @@ function bindStateFields() {
   });
 }
 
+const signatureClearers = new Map();
 function setupSignaturePads(root = document) {
   root.querySelectorAll("canvas[data-signature]").forEach((canvas) => {
     if (canvas.dataset.initialized === "true" || canvas.clientWidth === 0) return;
     canvas.dataset.initialized = "true";
     const key = canvas.dataset.signature;
-    const context = canvas.getContext("2d");
-    const ratio = window.devicePixelRatio || 1;
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
-    canvas.width = Math.round(width * ratio);
-    canvas.height = Math.round(height * ratio);
-    context.scale(ratio, ratio);
-    context.lineWidth = 2;
-    context.lineCap = "round";
-    context.lineJoin = "round";
-    context.strokeStyle = "#18334a";
-
-    if (state[key]) {
-      const image = new Image();
-      image.onload = () => context.drawImage(image, 0, 0, width, height);
-      image.src = state[key];
-    }
-
-    let drawing = false;
-    const point = (event) => {
-      const rect = canvas.getBoundingClientRect();
-      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    };
-    canvas.addEventListener("pointerdown", (event) => {
-      drawing = true;
-      canvas.setPointerCapture(event.pointerId);
-      const p = point(event);
-      context.beginPath();
-      context.moveTo(p.x, p.y);
-      context.lineTo(p.x + 0.1, p.y + 0.1);
-      context.stroke();
-      event.preventDefault();
-    });
-    canvas.addEventListener("pointermove", (event) => {
-      if (!drawing) return;
-      const p = point(event);
-      context.lineTo(p.x, p.y);
-      context.stroke();
-      event.preventDefault();
-    });
-    const finish = () => {
-      if (!drawing) return;
-      drawing = false;
-      state[key] = canvas.toDataURL("image/png");
+    signatureClearers.set(key, attachSignaturePad(canvas, { initial: state[key] || "", onChange(value) {
+      state[key] = value;
       saveState();
-      if (key === "safetyTechnicianSignature") void beginIssueWork();
-    };
-    canvas.addEventListener("pointerup", finish);
-    canvas.addEventListener("pointercancel", finish);
-    canvas.addEventListener("lostpointercapture", finish);
+      if (key === "safetyTechnicianSignature") {
+        if (value) void beginIssueWork();
+        else applyPreflightGate();
+      }
+    } }));
   });
 }
 
@@ -1088,11 +1061,10 @@ document.querySelectorAll("[data-clear-signature]").forEach((button) => {
   button.addEventListener("click", () => {
     const key = button.dataset.clearSignature;
     if (key === "safetyTechnicianSignature" && (workStarted || safetyStartPending)) return;
-    state[key] = "";
+    if (["entryTechnicianSignature", "entryInspectorSignature"].includes(key) && remoteIssue?.intake) return;
     const canvas = document.querySelector(`canvas[data-signature="${key}"]`);
-    if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-    saveState();
-    if (key === "safetyTechnicianSignature") applyPreflightGate();
+    if (canvas && !signatureClearers.has(key)) setupSignaturePads(canvas.parentElement);
+    signatureClearers.get(key)?.();
   });
 });
 

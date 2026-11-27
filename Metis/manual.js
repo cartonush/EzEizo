@@ -1,5 +1,5 @@
 import { gate, revealApp, getIssue, watchToolCatalog, saveManualIssueDetails, approveManualIssue } from "../firebase-sync.js?v=1.9.30";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "../tool-catalog.js?v=1.9.30";
 
 const user = await gate("manager");
