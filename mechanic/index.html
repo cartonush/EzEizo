@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">משתמש מחובר: <span id="connected-user">—</span></p>
       </div>
-      <span class="version-pill">v1.9.25</span>
+      <span class="version-pill">v1.9.26</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
       <div class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./" aria-label="חזרה לרשימת המשימות" hidden>→ חזרה</a></div>
     </header>
@@ -53,7 +53,7 @@
         <div class="section-heading"><h2 id="tool-intake-heading">הוספת כלים לתקלה</h2><button id="close-tool-intake-dialog" type="button" class="secondary-button">סגור</button></div>
         <p id="tool-intake-issue"></p><p>הכלים ייקלטו ברשימת התקלה רק לאחר ביקורת כניסה מלאה ושמירה בשרת.</p>
         <p id="tool-intake-lock" class="copy-status" role="status"></p><button id="retry-tool-intake-lock" type="button" class="secondary-button" hidden>בדוק שוב</button>
-        <div class="table-wrap"><table><thead><tr><th>שם כלי</th><th>מספר כלי</th><th>הערות</th><th aria-label="פעולות"></th></tr></thead><tbody id="tool-intake-rows"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>מספר כלי</th><th>שם כלי</th><th>הערות</th><th aria-label="פעולות"></th></tr></thead><tbody id="tool-intake-rows"></tbody></table></div>
         <div class="signature-grid">
           <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas id="tool-intake-technician-signature" class="signature-pad" tabindex="0" aria-label="חתימת הטכנאי בביקורת כניסה"></canvas><button id="clear-tool-intake-technician" type="button" class="clear-signature">נקה חתימה</button></div>
           <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas id="tool-intake-inspector-signature" class="signature-pad" tabindex="0" aria-label="חתימת הבודק בביקורת כניסה"></canvas><button id="clear-tool-intake-inspector" type="button" class="clear-signature">נקה חתימה</button></div>
@@ -96,6 +96,8 @@
         <p>האם לקחת איתך כלים או קשיחים?</p>
         <label><input type="radio" name="initial-intake" value="yes"> כן</label>
         <label><input type="radio" name="initial-intake" value="no"> לא</label>
+      </section>
+      <section id="intake-save-area" class="card intake-save-area">
         <p id="intake-status" class="copy-status" role="status" aria-live="polite"></p>
         <button id="intake-save" type="button" class="primary-button">שמור קליטה וביקורת כניסה</button>
       </section>
@@ -190,7 +192,7 @@
         <div id="tools-area" class="conditional-area" hidden>
           <div class="unit-table-card wide-table">
             <div class="unit-table-heading"><h3>כלים</h3></div>
-            <div class="table-wrap"><table><thead><tr><th>שם כלי</th><th>מספר כלי</th><th>הערות</th><th aria-label="פעולות"></th></tr></thead><tbody id="tools-rows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>מספר כלי</th><th>שם כלי</th><th>הערות</th><th aria-label="פעולות"></th></tr></thead><tbody id="tools-rows"></tbody></table></div>
           </div>
           <div class="inspection-checks">
             <label class="replaced-toggle sub-toggle" for="entry-check">
@@ -235,7 +237,7 @@
       <section id="late-tools" class="card" hidden>
         <div class="section-heading"><h2>קליטת כלים נוספים</h2><button id="cancel-late-tools" type="button" class="secondary-button">חזרה לתקלה</button></div>
         <p>הכלים יופיעו בטופס רק אחרי השלמת ביקורת כניסה ושמירה בשרת.</p>
-        <div class="table-wrap"><table><thead><tr><th>שם כלי</th><th>מספר כלי</th><th>הערות</th><th aria-label="פעולות"></th></tr></thead><tbody id="late-tool-rows"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>מספר כלי</th><th>שם כלי</th><th>הערות</th><th aria-label="פעולות"></th></tr></thead><tbody id="late-tool-rows"></tbody></table></div>
         <div class="signature-grid">
           <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas id="late-technician-signature" class="signature-pad" aria-label="חתימת טכנאי על כלים נוספים"></canvas><button id="clear-late-technician" type="button" class="clear-signature">נקה חתימה</button></div>
           <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas id="late-inspector-signature" class="signature-pad" aria-label="חתימת בודק על כלים נוספים"></canvas><button id="clear-late-inspector" type="button" class="clear-signature">נקה חתימה</button></div>
