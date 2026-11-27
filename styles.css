@@ -139,6 +139,7 @@ td input:focus { border-color: #5da8c5; }
 .tool-picker-option { display: block; width: 100%; padding: 9px; border: 0; border-bottom: 1px solid #edf1f3; background: #fff; color: var(--ink); text-align: right; font: inherit; cursor: pointer; }
 .tool-picker-option:last-child { border-bottom: 0; }
 .tool-picker-option:hover,.tool-picker-option:focus-visible { background: #eaf5f9; }
+.tool-picker-option:disabled { color: #9a4a4a; background: #fff2f2; cursor: not-allowed; }
 .tool-picker-empty { padding: 9px; color: #617888; font-size: 12px; }
 .remove-row { border: 0; background: transparent; color: #98a6af; font-size: 17px; cursor: pointer; padding: 3px 5px; }
 .remove-row:hover { color: #c25454; }

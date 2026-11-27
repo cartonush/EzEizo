@@ -1,5 +1,5 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, watchToolCatalog, refreshTechnicianTasks, getIssue, startIssueWork, saveInitialIntake, addToolIntake, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.23";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, watchToolCatalog, refreshTechnicianTasks, getIssue, startIssueWork, saveInitialIntake, addToolIntake, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.30";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
 import { validateTreatment } from "./mechanic-validation.js?v=1.9.23";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
@@ -8,8 +8,8 @@ import { createEditLock } from "./edit-lock.js?v=1.9.23";
 import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.23";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
-import { attachToolPicker, catalogTool, updateToolCatalog } from "./tool-catalog.js?v=1.9.29";
-import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.29";
+import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "./tool-catalog.js?v=1.9.30";
+import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.30";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");
@@ -306,6 +306,8 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
     if (!intakeChoice) { intakeError("יש לבחור כן או לא.", document.querySelector('[name="initial-intake"]')); return; }
     if (intakeChoice === "yes" && !tools.length && !taken.length) { intakeError("יש למלא לפחות כלי או קשיח אחד.", document.querySelector("#tools-toggle")); return; }
     if (intakeChoice === "no" && (tools.length || taken.length)) { intakeError("יש להסיר את הפריטים לפני בחירה בלא.", document.querySelector("#intake-choice")); return; }
+    const repeatedTool = tools.findIndex((tool, index) => toolNumberRecorded(tool.toolNumber, tools, index));
+    if (repeatedTool !== -1) { intakeError("כלי זה כבר תועד בטבלה.", document.querySelector(`#tools-rows tr:nth-child(${repeatedTool + 1}) input[type="search"]`)); return; }
     const intake = { choice: intakeChoice, tools, taken,
       entryTechnicianSignature: state.entryTechnicianSignature, entryInspectorSignature: state.entryInspectorSignature,
       entryInspectorNumber: state.entryInspectorNumber, takenSignature: state.takenSignature,
@@ -728,7 +730,8 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
           row[key] = input.value;
           if (key === "toolNumber") {
             const tool = catalogTool(input.value);
-            if (tool) { row.toolNumber = tool.toolNumber; row.toolName = tool.toolName; if (index === draftTools.length - 1) draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows(); rows.children[index + 1]?.querySelector('input[type="search"]')?.focus(); return; }
+            if (tool && !toolNumberRecorded(tool.toolNumber, draftTools, index, remoteIssue.acceptedTools || [])) { row.toolNumber = tool.toolNumber; row.toolName = tool.toolName; if (index === draftTools.length - 1) draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows(); rows.children[index + 1]?.querySelector('input[type="search"]')?.focus(); return; }
+            row.toolName = "";
           }
           if (index === draftTools.length - 1 && (row.toolName || row.toolNumber || row.notes)) {
             draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows();
@@ -736,7 +739,7 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
             current?.focus(); current?.setSelectionRange(current.value.length, current.value.length);
           }
         });
-        td.append(key === "toolNumber" ? attachToolPicker(input) : input); tr.append(td);
+        td.append(key === "toolNumber" ? attachToolPicker(input, { isUnavailable: (number) => toolNumberRecorded(number, draftTools, index, remoteIssue.acceptedTools || []) }) : input); tr.append(td);
       }
       const actions = document.createElement("td"), remove = document.createElement("button");
       remove.type = "button"; remove.className = "remove-row"; remove.textContent = "×"; remove.setAttribute("aria-label", `מחק שורה ${index + 1}`);
@@ -765,6 +768,11 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
   document.querySelector("#clear-late-inspector").addEventListener("click", () => clearInspector?.());
   document.querySelector("#save-late-tools").addEventListener("click", async (event) => {
     const button = event.currentTarget, tools = draftTools.filter((row) => row.toolName || row.toolNumber || row.notes);
+    const repeatedTool = tools.findIndex((tool, index) => toolNumberRecorded(tool.toolNumber, tools, index, remoteIssue.acceptedTools || []));
+    if (repeatedTool !== -1) {
+      feedback.textContent = "כלי זה כבר תועד בתקלה."; feedback.dataset.state = "error";
+      document.querySelector(`#late-tool-rows tr:nth-child(${repeatedTool + 1}) input[type="search"]`)?.focus(); return;
+    }
     button.disabled = true; feedback.textContent = "שומר ביקורת כניסה…";
     try {
       await editLock.renew();
@@ -885,8 +893,9 @@ function renderRows(type, focusTarget = null) {
       function commitValue(value) {
         const wasFilled = rowHasValue(rows[index], fields);
         rows[index][key] = value;
-        const chosenTool = type === "tools" && key === "toolNumber" ? catalogTool(value) : null;
+        const chosenTool = type === "tools" && key === "toolNumber" && !toolNumberRecorded(value, rows, index) ? catalogTool(value) : null;
         if (chosenTool) { rows[index].toolNumber = chosenTool.toolNumber; rows[index].toolName = chosenTool.toolName; }
+        else if (type === "tools" && key === "toolNumber") rows[index].toolName = "";
         const isFilled = rowHasValue(rows[index], fields);
         const isLastRow = index === rows.length - 1;
         if (chosenTool || (isFilled && isLastRow) || (wasFilled && !isFilled && !isLastRow)) {
@@ -954,7 +963,7 @@ function renderRows(type, focusTarget = null) {
         picker.append(input, list); td.append(picker);
       } else {
         input.addEventListener("input", () => commitValue(input.value));
-        td.append(type === "tools" && key === "toolNumber" ? attachToolPicker(input) : input);
+        td.append(type === "tools" && key === "toolNumber" ? attachToolPicker(input, { isUnavailable: (number) => toolNumberRecorded(number, rows, index) }) : input);
       }
       tr.append(td);
     });

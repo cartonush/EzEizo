@@ -1,5 +1,5 @@
-import { gate, revealApp, getIssue, getAccountName } from "../firebase-sync.js?v=1.9.24";
-import { createFilledFaultPdf } from "./filled-print.js?v=1.9.24";
+import { gate, revealApp, getIssue, getAccountName, getAircraftConstants } from "../firebase-sync.js?v=1.9.30";
+import { createFilledFaultPdf } from "./filled-print.js?v=1.9.30";
 
 const status = document.querySelector("#print-status");
 try {
@@ -11,7 +11,8 @@ try {
   if (!issue?.manualPaper) throw new Error("התקלה הידנית לא נמצאה.");
   status.textContent = "יוצר PDF עם פרטי התקלה…";
   const dispatcherName = await getAccountName(issue.manualCreatedBy).catch(() => "") || user.name || "";
-  const pdf = await createFilledFaultPdf(issue, dispatcherName);
+  const currentConstants = await getAircraftConstants(issue.sheet.squadron, issue.sheet.aircraft);
+  const pdf = await createFilledFaultPdf(issue, dispatcherName, currentConstants);
   location.replace(URL.createObjectURL(pdf));
 } catch (error) {
   status.textContent = `לא ניתן להכין את הטופס: ${error.message}`;

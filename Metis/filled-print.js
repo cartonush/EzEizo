@@ -72,8 +72,7 @@ function jpeg(canvas) {
 }
 
 function constants(ctx, groups) {
-  // The printed blank form contains sample values. Cover only their value cells,
-  // leaving the constant labels and the original table lines intact.
+  // Keep the labels and empty table cells from the blank template.
   ctx.fillStyle = "#d9ddde";
   ctx.fillRect(58, 404, 1124, 31);
   ctx.direction = "rtl"; ctx.textAlign = "right"; ctx.textBaseline = "top";
@@ -105,7 +104,12 @@ function constants(ctx, groups) {
   }
 }
 
-export async function createFilledFaultPdf(issue, dispatcherName) {
+export function resolvePrintedConstants(savedConstants, currentConstants = null) {
+  return Object.fromEntries(Object.entries(savedConstants || {}).map(([group, entries]) => [group,
+    entries.map(([name, value]) => [name, String(currentConstants?.[group]?.[name] ?? value)])]));
+}
+
+export async function createFilledFaultPdf(issue, dispatcherName, currentConstants = null) {
   const sheet = issue.sheet || {};
   const [first, second] = await Promise.all(templates.map(loadImage));
   await document.fonts?.ready;
@@ -130,7 +134,7 @@ export async function createFilledFaultPdf(issue, dispatcherName) {
     field(a, members.slice(0, midpoint).join(" · "), 323, 357, 251, 12);
     field(a, members.slice(midpoint).join(" · "), 323, 374, 251, 12);
   } else field(a, team, 323, 356, 251);
-  constants(a, sheet.constants);
+  constants(a, resolvePrintedConstants(sheet.constants, currentConstants));
   paragraph(a, sheet.fault, 1168, 682, 526, 3);
   paragraph(a, sheet.managerNotes, 602, 682, 526, 3);
   await signature(a, sheet.dispatcherSignature, 671, 1583, 112, 36);
