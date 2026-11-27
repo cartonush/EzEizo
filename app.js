@@ -9,7 +9,7 @@ import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.33";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.33";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "./tool-catalog.js?v=1.9.30";
-import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.31";
+import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.37";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");
@@ -768,6 +768,10 @@ document.querySelectorAll("#save-sheet, #save-sheet-bottom").forEach((button) =>
 if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
   const panel = document.querySelector("#late-tools"), form = document.querySelector("#sheet-form");
   const rows = document.querySelector("#late-tool-rows"), feedback = document.querySelector("#late-tools-status");
+  const lateInspectorNumber = document.querySelector("#late-inspector-number");
+  lateInspectorNumber.addEventListener("input", () => {
+    lateInspectorNumber.value = lateInspectorNumber.value.replace(/[^0-9]/g, "").slice(0, 7);
+  });
   let draftTools = [{ toolName: "", toolNumber: "", notes: "" }];
   let technicianSignature = "", inspectorSignature = "", clearTechnician, clearInspector;
   let previousVisibility = null;

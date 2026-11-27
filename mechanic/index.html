@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">משתמש מחובר: <span id="connected-user">—</span></p>
       </div>
-      <span class="version-pill">v1.9.33</span>
+      <span class="version-pill">v1.9.37</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
       <div class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./" aria-label="חזרה לרשימת המשימות" hidden>→ חזרה</a></div>
     </header>
@@ -243,7 +243,7 @@
         <div class="signature-grid">
           <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas id="late-technician-signature" class="signature-pad" aria-label="חתימת טכנאי על כלים נוספים"></canvas><button id="clear-late-technician" type="button" class="clear-signature">נקה חתימה</button></div>
           <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas id="late-inspector-signature" class="signature-pad" aria-label="חתימת בודק על כלים נוספים"></canvas><button id="clear-late-inspector" type="button" class="clear-signature">נקה חתימה</button></div>
-          <label class="input-field">מספר אישי של הבודק<input id="late-inspector-number" inputmode="numeric" maxlength="7"></label>
+          <label class="input-field">מספר אישי של הבודק<input id="late-inspector-number" type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}"></label>
         </div>
         <button id="save-late-tools" type="button" class="primary-button">שמור ביקורת כניסה לכלים החדשים</button>
         <p id="late-tools-status" class="copy-status" role="status" aria-live="polite"></p>
@@ -306,6 +306,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.9.33"></script>
+  <script type="module" src="../app.js?v=1.9.37"></script>
 </body>
 </html>
