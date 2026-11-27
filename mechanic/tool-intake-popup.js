@@ -1,7 +1,7 @@
 import { addToolIntake } from "../firebase-sync.js?v=1.9.23";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
-import { catalogTool, toolNumberOptions } from "../tool-catalog.js?v=1.9.23";
+import { attachToolPicker, catalogTool } from "../tool-catalog.js?v=1.9.29";
 
 export function initToolIntakePopup(user) {
   const dialog = document.querySelector("#tool-intake-dialog");
@@ -35,8 +35,7 @@ export function initToolIntakePopup(user) {
         const cell = document.createElement("td"), input = document.createElement("input");
         input.type = key === "toolNumber" ? "search" : "text";
         input.value = row[key]; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
-        if (key === "toolNumber") { input.setAttribute("list", toolNumberOptions()); input.autocomplete = "off"; }
-        else input.readOnly = key === "toolName" || Boolean(catalogTool(row.toolNumber));
+        input.readOnly = key === "toolName" || Boolean(catalogTool(row.toolNumber));
         input.addEventListener("input", () => {
           clearError(); row[key] = input.value;
           if (key === "toolNumber") {
@@ -55,7 +54,7 @@ export function initToolIntakePopup(user) {
             same?.focus(); if (caret != null) same?.setSelectionRange(caret, caret);
           }
         });
-        cell.append(input); tr.append(cell);
+        cell.append(key === "toolNumber" ? attachToolPicker(input) : input); tr.append(cell);
       }
       const cell = document.createElement("td"), remove = document.createElement("button");
       remove.type = "button"; remove.className = "remove-row"; remove.textContent = "×";

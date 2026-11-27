@@ -7,26 +7,63 @@ export let TOOL_CATALOG = [...DEFAULT_TOOLS];
 
 export function updateToolCatalog(items) {
   TOOL_CATALOG = Array.isArray(items) ? items.map(({ toolNumber, toolName }) => ({ toolNumber, toolName })) : [...DEFAULT_TOOLS];
-  const list = document.getElementById("tool-number-options");
-  if (list) { list.remove(); toolNumberOptions(); }
 }
 
 export function catalogTool(number) {
   return TOOL_CATALOG.find((tool) => tool.toolNumber.toLocaleLowerCase() === String(number || "").trim().toLocaleLowerCase());
 }
 
-// The browser's native datalist supports filtering while typing and a keyboard
-// selection on mobile. Only an exact catalog number is a locked catalog row.
-export function toolNumberOptions() {
-  let list = document.getElementById("tool-number-options");
-  if (!list) {
-    list = document.createElement("datalist"); list.id = "tool-number-options";
-    for (const tool of TOOL_CATALOG) {
-      const option = document.createElement("option");
-      option.value = tool.toolNumber; option.label = `${tool.toolNumber} · ${tool.toolName}`;
-      list.append(option);
+let pickerCount = 0;
+
+export function attachToolPicker(input) {
+  if (input.readOnly || input.disabled) return input;
+  const picker = document.createElement("div");
+  picker.className = "tool-picker";
+  const results = document.createElement("div");
+  results.className = "tool-picker-results";
+  results.id = `tool-picker-results-${++pickerCount}`;
+  results.setAttribute("role", "listbox");
+  results.setAttribute("aria-label", "כלים במאגר");
+  results.hidden = true;
+  input.autocomplete = "off";
+  input.setAttribute("role", "combobox");
+  input.setAttribute("aria-autocomplete", "list");
+  input.setAttribute("aria-controls", results.id);
+  input.setAttribute("aria-expanded", "false");
+  const hide = () => { results.hidden = true; input.setAttribute("aria-expanded", "false"); };
+  const show = () => {
+    const query = input.value.trim().toLocaleLowerCase("he");
+    const matches = TOOL_CATALOG.filter((tool) => `${tool.toolNumber} ${tool.toolName}`.toLocaleLowerCase("he").includes(query));
+    results.replaceChildren();
+    if (!matches.length) {
+      const empty = document.createElement("span");
+      empty.className = "tool-picker-empty";
+      empty.textContent = "לא נמצאו כלים במאגר.";
+      results.append(empty);
     }
-    document.body.append(list);
-  }
-  return list.id;
+    matches.forEach((tool) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "tool-picker-option";
+      option.setAttribute("role", "option");
+      option.textContent = `${tool.toolNumber} · ${tool.toolName}`;
+      option.addEventListener("click", () => {
+        input.value = tool.toolNumber;
+        hide();
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      results.append(option);
+    });
+    results.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+  };
+  input.addEventListener("focus", show);
+  input.addEventListener("input", () => { if (input.isConnected) show(); });
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") { hide(); return; }
+    if (event.key === "ArrowDown" && !results.hidden) { event.preventDefault(); results.querySelector("button")?.focus(); }
+  });
+  picker.addEventListener("focusout", () => { setTimeout(() => { if (!picker.contains(document.activeElement)) hide(); }, 150); });
+  picker.append(input, results);
+  return picker;
 }

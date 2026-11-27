@@ -8,8 +8,8 @@ import { createEditLock } from "./edit-lock.js?v=1.9.23";
 import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.23";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
-import { catalogTool, toolNumberOptions, updateToolCatalog } from "./tool-catalog.js?v=1.9.23";
-import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.26";
+import { attachToolPicker, catalogTool, updateToolCatalog } from "./tool-catalog.js?v=1.9.29";
+import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.29";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");
@@ -722,14 +722,13 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
       for (const [key, label] of [["toolNumber", "מספר כלי"], ["toolName", "שם כלי"], ["notes", "הערות"]]) {
         const td = document.createElement("td"), input = document.createElement("input");
         input.type = key === "toolNumber" ? "search" : "text"; input.value = row[key]; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
-        if (key === "toolNumber") { input.setAttribute("list", toolNumberOptions()); input.autocomplete = "off"; }
         if (catalogTool(row.toolNumber)) input.readOnly = true;
         else if (key !== "toolNumber") input.readOnly = true;
         input.addEventListener("input", () => {
           row[key] = input.value;
           if (key === "toolNumber") {
             const tool = catalogTool(input.value);
-            if (tool) { row.toolNumber = tool.toolNumber; row.toolName = tool.toolName; if (index === draftTools.length - 1) draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows(); rows.children[index + 1]?.querySelector('[list="tool-number-options"]')?.focus(); return; }
+            if (tool) { row.toolNumber = tool.toolNumber; row.toolName = tool.toolName; if (index === draftTools.length - 1) draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows(); rows.children[index + 1]?.querySelector('input[type="search"]')?.focus(); return; }
           }
           if (index === draftTools.length - 1 && (row.toolName || row.toolNumber || row.notes)) {
             draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows();
@@ -737,7 +736,7 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
             current?.focus(); current?.setSelectionRange(current.value.length, current.value.length);
           }
         });
-        td.append(input); tr.append(td);
+        td.append(key === "toolNumber" ? attachToolPicker(input) : input); tr.append(td);
       }
       const actions = document.createElement("td"), remove = document.createElement("button");
       remove.type = "button"; remove.className = "remove-row"; remove.textContent = "×"; remove.setAttribute("aria-label", `מחק שורה ${index + 1}`);
@@ -875,7 +874,6 @@ function renderRows(type, focusTarget = null) {
       input.type = componentField || (type === "tools" && key === "toolNumber") ? "search" : field.type || "text";
       if (componentField) input.autocomplete = "off";
       if (type === "tools") {
-        if (key === "toolNumber") { input.setAttribute("list", toolNumberOptions()); input.autocomplete = "off"; }
         input.readOnly = Boolean(catalogTool(item.toolNumber)) || key !== "toolNumber";
       }
       if (field.type === "number") input.step = "1";
@@ -956,7 +954,7 @@ function renderRows(type, focusTarget = null) {
         picker.append(input, list); td.append(picker);
       } else {
         input.addEventListener("input", () => commitValue(input.value));
-        td.append(input);
+        td.append(type === "tools" && key === "toolNumber" ? attachToolPicker(input) : input);
       }
       tr.append(td);
     });
