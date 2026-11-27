@@ -1,4 +1,5 @@
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+import { DEFAULT_TOOLS } from "./tool-catalog.js?v=1.9.23";
 import { getAuth, onAuthStateChanged, getIdTokenResult, signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, inMemoryPersistence, deleteUser, signOut } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocsFromServer, setDoc, updateDoc, onSnapshot, query, where, runTransaction, Timestamp, deleteField } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-functions.js";
@@ -261,6 +262,16 @@ export function watchToolCatalog(onChange, onError) {
     (snapshot) => onChange(snapshot.exists() ? snapshot.data().items || [] : null), onError);
 }
 
+async function requireCatalogTools(transaction, tools, previous = []) {
+  if (!tools.length) return;
+  const catalog = await transaction.get(doc(db, "toolCatalog", "catalog"));
+  const available = catalog.exists() ? catalog.data().items || [] : DEFAULT_TOOLS;
+  if (tools.some((tool) => !available.some((entry) => entry.toolNumber === tool.toolNumber && entry.toolName === tool.toolName)
+      && !previous.some((entry) => entry.toolNumber === tool.toolNumber && entry.toolName === tool.toolName))) {
+    throw new Error("יש לבחור מספר כלי מעודכן מתוך הרשימה.");
+  }
+}
+
 export async function saveToolCatalog(items, managerUid) {
   if (!Array.isArray(items) || items.length > 100 || items.some((item) => !item.toolNumber?.trim() || !item.toolName?.trim() || item.toolNumber.length > 50 || item.toolName.length > 100)) throw new Error("יש למלא שם ומספר לכל כלי.");
   if (new Set(items.map((item) => item.toolNumber.trim().toLocaleLowerCase())).size !== items.length) throw new Error("מספר כלי מופיע יותר מפעם אחת.");
@@ -330,6 +341,7 @@ export async function saveManualIssueDetails(id, uid, details) {
     const snapshot = await transaction.get(ref);
     if (!snapshot.exists() || !snapshot.data().manualPaper || snapshot.data().status !== "pendingReview") throw new Error("התקלה הידנית כבר אינה ממתינה לסגירה.");
     if (!details.repair?.trim()) throw new Error("יש למלא תיאור תיקון לפני שמירה.");
+    await requireCatalogTools(transaction, details.tools || [], snapshot.data().manualDetails?.tools || []);
     transaction.update(ref, { manualDetails: details, manualUpdatedAt: new Date().toISOString(), manualUpdatedBy: uid });
   });
 }
@@ -643,6 +655,7 @@ export async function saveInitialIntake(id, uid, intake, session) {
     if (tools.some((row) => !row.toolName?.trim() || !row.toolNumber?.trim()) ||
         taken.some((row) => !row.description?.trim() || !row.quantityIn || Number(row.quantityIn) <= 0)) throw new Error("יש להשלים פרטי כל כלי וקשיח שנקלטו.");
     if (new Set(tools.map((row) => row.toolNumber)).size !== tools.length) throw new Error("מספר כלי מופיע יותר מפעם אחת.");
+    await requireCatalogTools(transaction, tools);
     if (tools.length && (!intake.entryTechnicianSignature?.startsWith("data:image/png;base64,") || !intake.entryInspectorSignature?.startsWith("data:image/png;base64,") || !/^[0-9]{1,7}$/.test(intake.entryInspectorNumber || ""))) throw new Error("יש להשלים ביקורת כניסה לכלים.");
     if (taken.length && (!intake.takenSignature?.startsWith("data:image/png;base64,") || !intake.takenFullName?.trim() || !/^[0-9]{1,7}$/.test(intake.takenPersonalNumber || "") || !intake.takenRank?.trim())) throw new Error("יש להשלים חתימה על קשיחים שנלקחו.");
     const at = new Date().toISOString();
@@ -664,6 +677,7 @@ export async function addToolIntake(id, uid, batch, session) {
     const accepted = snap.data().acceptedTools || [];
     if (new Set(tools.map((row) => row.toolNumber)).size !== tools.length) throw new Error("לא ניתן לקלוט פעמיים את אותו מספר כלי.");
     if (tools.some((row) => accepted.some((old) => old.toolNumber === row.toolNumber))) throw new Error("מספר כלי זה כבר נקלט בתקלה.");
+    await requireCatalogTools(transaction, tools);
     const at = new Date().toISOString();
     transaction.update(ref, { acceptedTools: [...accepted, ...tools], toolIntakes: [...(snap.data().toolIntakes || []), { ...batch, at, by: uid }] });
     return at;
