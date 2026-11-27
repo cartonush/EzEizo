@@ -1,6 +1,6 @@
-import { watchSystems, watchComponents, saveSystem, saveComponent } from "../firebase-sync.js?v=1.9.23";
+import { watchSystems, watchComponents, saveSystem, saveComponent, archiveSystem, archiveComponent } from "../firebase-sync.js?v=1.9.33";
 import { SYSTEMS, COMPONENTS_BY_SYSTEM } from "./catalog.js?v=1.9.0";
-import { VOLUMES, DEFAULT_SYSTEMS, DEFAULT_COMPONENTS, mergeCatalog, volumeLabel } from "./catalog-data.js?v=1.9.6";
+import { VOLUMES, DEFAULT_SYSTEMS, DEFAULT_COMPONENTS, mergeCatalog, volumeLabel } from "./catalog-data.js?v=1.9.33";
 
 let savedSystems = [], savedComponents = [];
 const systems = () => mergeCatalog(DEFAULT_SYSTEMS, savedSystems);
@@ -44,7 +44,15 @@ function renderSystems() {
     const action = document.createElement("td"); action.dataset.label = "פעולות";
     const button = document.createElement("button"); button.type = "button"; button.className = "secondary-button"; button.textContent = "שמור";
     button.addEventListener("click", async () => { button.disabled = true; try { await saveSystem(item.id, name.value, code.value, volume.value); status("#system-status", `המערכת ${name.value} נשמרה.`); } catch (error) { status("#system-status", `שמירת המערכת נכשלה: ${error.message}`, true); } finally { button.disabled = false; } });
-    action.append(button); row.append(action); body.append(row);
+    const remove = document.createElement("button"); remove.type = "button"; remove.className = "secondary-button"; remove.textContent = "מחק"; remove.setAttribute("aria-label", `מחק מערכת ${item.name}`);
+    remove.addEventListener("click", async () => {
+      if (components().some((part) => part.systemId === item.id)) { status("#system-status", "יש למחוק קודם את המכלולים המשויכים למערכת.", true); return; }
+      if (!window.confirm(`האם את/ה בטוח/ה שברצונך למחוק את המערכת ${item.name}?`)) return;
+      remove.disabled = true;
+      try { await archiveSystem(item); status("#system-status", `המערכת ${item.name} נמחקה מהרשימה.`); }
+      catch (error) { status("#system-status", `מחיקת המערכת נכשלה: ${error.message}`, true); remove.disabled = false; }
+    });
+    action.append(button, remove); row.append(action); body.append(row);
   });
   if (!visible.length) { const row = document.createElement("tr"), cell = document.createElement("td"); cell.colSpan = 4; cell.textContent = "לא נמצאו מערכות התואמות לחיפוש."; row.append(cell); body.append(row); }
   const select = document.querySelector('#component-form [name="systemId"]'), previous = select.value;
@@ -65,7 +73,13 @@ function renderComponents() {
     const action = document.createElement("td"); action.dataset.label = "פעולות";
     const button = document.createElement("button"); button.type = "button"; button.className = "secondary-button"; button.textContent = "שמור";
     button.addEventListener("click", async () => { button.disabled = true; try { await saveComponent(item.id, name.value, system.value); status("#component-status", `המכלול ${name.value} נשמר.`); } catch (error) { status("#component-status", `שמירת המכלול נכשלה: ${error.message}`, true); } finally { button.disabled = false; } });
-    action.append(button); row.append(action); body.append(row);
+    const remove = document.createElement("button"); remove.type = "button"; remove.className = "secondary-button"; remove.textContent = "מחק"; remove.setAttribute("aria-label", `מחק מכלול ${item.name}`);
+    remove.addEventListener("click", async () => { if (!window.confirm(`האם את/ה בטוח/ה שברצונך למחוק את המכלול ${item.name}?`)) return;
+      remove.disabled = true;
+      try { await archiveComponent(item); status("#component-status", `המכלול ${item.name} נמחק מהרשימה.`); }
+      catch (error) { status("#component-status", `מחיקת המכלול נכשלה: ${error.message}`, true); remove.disabled = false; }
+    });
+    action.append(button, remove); row.append(action); body.append(row);
   });
 }
 

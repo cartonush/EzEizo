@@ -12,6 +12,8 @@
 .preview-link { color: #17668f; font-size: 12px; font-weight: 700; text-decoration: none; }
 .preview-link:hover { text-decoration: underline; }
 .manager-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+#view-open .manager-grid > .input-field { min-width: 0; }
+#view-open .manager-grid input[type="date"] { box-sizing: border-box; display: block; width: min(100%, 190px); min-width: 0; max-width: 100%; font-size: 13px; }
 #tool-admin-list { margin-top: 20px; }
 .review-columns, .review-filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; direction: rtl; margin-block: 15px; }
 .review-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }

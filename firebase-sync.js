@@ -371,6 +371,8 @@ export async function approveManualIssue(id, uid, signature, managerReview) {
     if (!snapshot.exists() || !snapshot.data().manualPaper || snapshot.data().status !== "pendingReview") throw new Error("התקלה הידנית כבר אינה ממתינה לסגירה.");
     if (!snapshot.data().manualDetails?.repair?.trim()) throw new Error("יש לשמור תחילה את תיאור התיקון והטיפול.");
     if (!signature?.startsWith("data:image/png;base64,") || signature.length <= 100) throw new Error("יש לחתום על בדיקת הדף.");
+    const permits = [managerReview.trackingPermit, Boolean(managerReview.flightPermitUntil), Boolean(managerReview.approvalUntil)].filter(Boolean);
+    if (permits.length !== 1 || (managerReview.trackingPermit && (!Number.isSafeInteger(managerReview.trackingFlights) || managerReview.trackingFlights < 1))) throw new Error("יש לבחור היתר אחד ולמלא מספר גיחות או תאריך בהתאם.");
     transaction.update(ref, { status: "closed", reviewedAt: new Date().toISOString(), reviewedBy: uid, reviewerSignature: signature, managerReview });
   });
 }
@@ -407,9 +409,15 @@ export async function saveSystem(id, name, code, volume) {
   if (!name.trim() || !code.trim()) throw new Error("שם וקוד מערכת הם שדות חובה.");
   await setDoc(doc(db, "systemCatalog", id), { name: name.trim(), code: code.trim(), volume: volume.trim(), updatedAt: new Date().toISOString() });
 }
+export async function archiveSystem(item) {
+  await setDoc(doc(db, "systemCatalog", item.id), { name: item.name, code: item.code, volume: item.volume || "", deleted: true, updatedAt: new Date().toISOString() });
+}
 export async function saveComponent(id, name, systemId) {
   if (!name.trim() || !systemId) throw new Error("בחר מכלול ומערכת.");
   await setDoc(doc(db, "componentCatalog", id), { name: name.trim(), systemId, updatedAt: new Date().toISOString() });
+}
+export async function archiveComponent(item) {
+  await setDoc(doc(db, "componentCatalog", item.id), { name: item.name, systemId: item.systemId, deleted: true, updatedAt: new Date().toISOString() });
 }
 
 export function watchKeyLoads(onChange, onError, technicianUid = null) {
@@ -478,7 +486,7 @@ export async function saveKeyManagerReview(id, managerUid, managerReview) {
   const ref = doc(db, "keyLoads", id);
   await runTransaction(db, async (transaction) => {
     const current = await transaction.get(ref);
-    if (!current.exists() || !["pendingReview", "closed"].includes(current.data().status)) throw new Error("ההטענה אינה ממתינה לבקרה או סגורה.");
+    if (!current.exists() || current.data().status !== "pendingReview") throw new Error("הטענה חתומה וסגורה מוצגת לקריאה בלבד.");
     transaction.update(ref, { managerReview, reviewUpdatedAt: new Date().toISOString(), reviewUpdatedBy: managerUid });
   });
 }
@@ -511,7 +519,7 @@ export async function reopenKeyLoad(id, managerUid) {
   const ref = doc(db, "keyLoads", id);
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(ref);
-    if (!snapshot.exists() || !["closed", "pendingReview"].includes(snapshot.data().status)) throw new Error("ההטענה כבר פתוחה או אינה קיימת.");
+    if (!snapshot.exists() || snapshot.data().status !== "pendingReview") throw new Error("אפשר להחזיר לעריכה רק הטענה שטרם נחתמה ונסגרה.");
     const load = snapshot.data();
     const reopenedAt = new Date().toISOString();
     transaction.update(ref, {
@@ -726,35 +734,11 @@ export async function approveIssue(id, reviewerUid, signature, managerReview = {
   });
 }
 
-// A paper form is an explicit alternative to the technician's digital closure.
-// The transaction checks the form the operator saw before it changes its state.
-export async function closePrintedIssue(id, operatorUid, serial, expectedStatus, expectedReopenedAt = "", expectedDefinitionUpdatedAt = "") {
-  const issueRef = doc(db, "issues", id);
-  await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(issueRef);
-    if (!snapshot.exists()) throw new Error("התקלה לא נמצאה. רענן את הרשימה.");
-    const issue = snapshot.data();
-    if (issue.status !== expectedStatus || !["open", "pendingReview"].includes(issue.status) || issue.sheet.serial !== serial || (issue.reopenedAt || "") !== expectedReopenedAt || (issue.definitionUpdatedAt || "") !== expectedDefinitionUpdatedAt) {
-      throw new Error("מצב התקלה השתנה מאז ההדפסה. בדוק אותה מחדש לפני סגירה.");
-    }
-    if (auth.currentUser?.uid !== operatorUid) throw new Error("יש להתחבר שוב כדי לסגור את התקלה.");
-    const at = new Date().toISOString();
-    const changes = { status: "closed", reviewedAt: at, reviewedBy: operatorUid, paperClosure: { at, by: operatorUid, template: "v1.9.20" } };
-    if (issue.status === "open") {
-      changes.closed = {
-        record: { id, serial, aircraft: issue.sheet.aircraft || "", location: issue.sheet.location || "", fault: issue.sheet.fault || "", closedAt: at, actionsComplete: false, paper: true },
-        state: { closedAt: at, paper: true }
-      };
-    }
-    transaction.update(issueRef, changes);
-  });
-}
-
 export async function updateClosedIssueReview(id, reviewerUid, managerReview) {
   const issueRef = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(issueRef);
-    if (!snapshot.exists() || !["closed", "pendingReview"].includes(snapshot.data().status)) throw new Error("התקלה אינה ממתינה לבקרה או סגורה. רענן את הדף.");
+    if (!snapshot.exists() || snapshot.data().status !== "pendingReview") throw new Error("תקלה חתומה וסגורה מוצגת לקריאה בלבד.");
     transaction.update(issueRef, { managerReview, reviewUpdatedAt: new Date().toISOString(), reviewUpdatedBy: reviewerUid });
   });
 }
@@ -763,7 +747,7 @@ export async function reopenIssue(id, managerUid) {
   const issueRef = doc(db, "issues", id);
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(issueRef);
-    if (!snapshot.exists() || !["closed", "pendingReview"].includes(snapshot.data().status)) throw new Error("התקלה כבר פתוחה או אינה קיימת.");
+    if (!snapshot.exists() || snapshot.data().status !== "pendingReview") throw new Error("אפשר להחזיר לעריכה רק תקלה שטרם נחתמה ונסגרה.");
     const issue = snapshot.data();
     if (!issue.assigneeUid) throw new Error("לא הוגדר טכנאי לתקלה.");
     const reopenedAt = new Date().toISOString();

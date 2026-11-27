@@ -1,4 +1,4 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.30";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.33";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, alreadyLoadedForPeriod, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.9.26";
 import { attachTimeNow } from "../time-now.js?v=1.7.6";
@@ -17,7 +17,7 @@ const setMessageOnNode = (node, message, bad = false) => { node.textContent = me
 const currentDate = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const currentTime = () => new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
 const draftKey = "ezeizo-key-draft-v1";
-const defaultDraft = () => ({ date: currentDate(), time: currentTime(), squadron: "", shelter: "", teamUids: ["", ""], rows: [] });
+const defaultDraft = () => ({ date: currentDate(), time: currentTime(), squadron: "", shelter: "", teamUids: ["", ""], leaderRequiresInspection: false, rows: [] });
 let draft;
 try { draft = { ...defaultDraft(), ...JSON.parse(localStorage.getItem(draftKey) || "{}") }; } catch { draft = defaultDraft(); }
 let loads = [], history = new Map(), technicians = [], activeLoad = null, selectedSquadron = "101", work = null;
@@ -79,12 +79,34 @@ function renderTeam(values = draft.teamUids) {
   draft.teamUids.forEach((uid, index) => {
     const row = make("div", undefined, "assignee-row");
     const label = make("label", index === 0 ? "מוביל התקלה" : `טכנאי ${index + 1}`, "input-field");
-    const select = document.createElement("select");
-    select.append(new Option("בחר טכנאי", ""));
-    technicians.filter((item) => item.active && !item.deleted).forEach((item) => select.append(new Option(item.name, item.uid)));
-    select.value = uid;
-    select.addEventListener("change", () => { draft.teamUids[index] = select.value; saveDraft(); });
-    label.append(select); row.append(label);
+    const picker = make("div", undefined, "search-picker");
+    const input = document.createElement("input"); input.type = "search"; input.autocomplete = "off"; input.placeholder = "חפש ובחר טכנאי";
+    input.setAttribute("role", "combobox"); input.setAttribute("aria-autocomplete", "list"); input.setAttribute("aria-expanded", "false");
+    const list = make("div", undefined, "picker-list"); list.hidden = true; list.setAttribute("role", "listbox");
+    let check;
+    if (index === 0 && manager) {
+      const filter = make("label", undefined, "leader-inspection-toggle");
+      check = document.createElement("input"); check.type = "checkbox"; check.checked = Boolean(draft.leaderRequiresInspection);
+      filter.append(check, document.createTextNode("דורש בדיקה")); row.append(filter);
+    }
+    const eligible = () => technicians.filter((person) => person.active && !person.deleted && (!check?.checked || Number(person.workStage) >= 11));
+    function choose(person) { draft.teamUids[index] = person?.uid || ""; input.value = person?.name || ""; list.hidden = true; input.setAttribute("aria-expanded", "false"); saveDraft(); }
+    function show(all = false) {
+      const term = all ? "" : input.value.trim().toLocaleLowerCase("he"); list.replaceChildren();
+      const matches = eligible().filter((person) => `${person.name} ${person.personalNumber || ""}`.toLocaleLowerCase("he").includes(term));
+      matches.forEach((person) => { const option = make("button", `${person.name}${person.personalNumber ? ` · ${person.personalNumber}` : ""}`, "picker-option"); option.type = "button"; option.setAttribute("role", "option"); option.disabled = draft.teamUids.some((selected, at) => at !== index && selected === person.uid);
+        option.addEventListener("pointerdown", (event) => event.preventDefault()); option.addEventListener("click", () => choose(person)); list.append(option); });
+      if (!matches.length) list.append(make("p", "לא נמצאו טכנאים מתאימים", "picker-empty"));
+      list.hidden = false; input.setAttribute("aria-expanded", "true");
+    }
+    input.addEventListener("focus", () => { input.select(); show(true); });
+    input.addEventListener("input", () => { draft.teamUids[index] = ""; saveDraft(); show(); });
+    input.addEventListener("keydown", (event) => { if (event.key === "Escape") { list.hidden = true; input.setAttribute("aria-expanded", "false"); } else if (event.key === "Enter" && !list.hidden) { event.preventDefault(); list.querySelector("button:not(:disabled)")?.click(); } });
+    input.addEventListener("blur", () => setTimeout(() => { if (!picker.contains(document.activeElement)) { list.hidden = true; input.setAttribute("aria-expanded", "false"); if (!draft.teamUids[index]) input.value = ""; } }, 120));
+    if (check) check.addEventListener("change", () => { draft.leaderRequiresInspection = check.checked; if (draft.teamUids[index] && !eligible().some((person) => person.uid === draft.teamUids[index])) choose(null); else saveDraft(); show(true); });
+    input.value = eligible().find((person) => person.uid === uid)?.name || "";
+    if (uid && !input.value) draft.teamUids[index] = "";
+    picker.append(input, list); label.append(picker); row.prepend(label);
     if (index >= 2) {
       const remove = make("button", "הסר", "secondary-button"); remove.type = "button";
       remove.addEventListener("click", () => { draft.teamUids.splice(index, 1); renderTeam([...draft.teamUids]); saveDraft(); }); row.append(remove);
@@ -125,7 +147,7 @@ function renderAircraftRows() {
     const choices = make("div", undefined, "picker-list"); choices.hidden = true; choices.id = `key-options-${index}`; choices.setAttribute("role", "listbox"); input.setAttribute("aria-controls", choices.id);
     const holder = make("div", undefined, "search-picker");
     function showChoices() {
-      choices.replaceChildren(); const matches = aircraftFor(draft.squadron).filter((value) => value.includes(input.value.trim()) && (value === item.aircraft || !draft.rows.some((other, at) => at !== index && other.aircraft === value)));
+      choices.replaceChildren(); const matches = aircraftFor(draft.squadron).filter((value) => value.includes(input.value.trim()));
       matches.forEach((value) => { const button = make("button", value, "picker-option"); button.type = "button"; button.setAttribute("role", "option"); button.setAttribute("aria-selected", String(value === item.aircraft)); button.addEventListener("pointerdown", (event) => event.preventDefault()); button.addEventListener("click", () => {
         if (alreadyLoadedForPeriod(history, draft.squadron, value, draft.date) && !window.confirm("מטוס זה נטען כבר לחודש הנוכחי ולחודש הבא. האם להטעין שוב?")) { input.value = ""; choices.hidden = true; input.setAttribute("aria-expanded", "false"); return; }
         const target = draft.rows[index] || (draft.rows[index] = { aircraft: "", blue: false, shach: false, notes: "" }); target.aircraft = value; saveDraft(); renderAircraftRows();
@@ -153,8 +175,11 @@ $("#create-key-load").addEventListener("click", async () => {
   if (!KEY_SQUADRONS.includes(draft.squadron) || !sheltersFor(draft.squadron).includes(draft.shelter)) return setMessage("#create-status", "בחר טייסת ודת״ק מהרשימות.", true);
   const teamUids = draft.teamUids.filter(Boolean);
   if (teamUids.length < 2 || new Set(teamUids).size !== teamUids.length || teamUids.some((uid) => !technicians.some((person) => person.uid === uid && person.active && !person.deleted))) return setMessage("#create-status", "בחר לפחות שני טכנאים שונים ופעילים.", true);
+  if (draft.leaderRequiresInspection && !technicians.some((person) => person.uid === teamUids[0] && Number(person.workStage) >= 11)) return setMessage("#create-status", "מוביל הטענה הדורשת בדיקה חייב להיות בשלב 11 ומעלה.", true);
   const rows = normalizedAircraftRows().slice(0, -1);
-  if (!rows.length || rows.some((row) => !aircraftFor(draft.squadron).includes(row.aircraft) || !(row.blue || row.shach)) || new Set(rows.map((row) => row.aircraft)).size !== rows.length) return setMessage("#create-status", "בכל שורה בחר מטוס ייחודי מהרשימה וסמן לפחות מפתח אחד.", true);
+  if (!rows.length || rows.some((row) => !aircraftFor(draft.squadron).includes(row.aircraft) || !(row.blue || row.shach))) return setMessage("#create-status", "בכל שורה בחר מטוס מהרשימה וסמן לפחות מפתח אחד.", true);
+  const keyPairs = rows.flatMap((row) => [row.blue && `${row.aircraft}:blue`, row.shach && `${row.aircraft}:shach`].filter(Boolean));
+  if (new Set(keyPairs).size !== keyPairs.length) return setMessage("#create-status", "אותו סוג מפתח למטוס כבר נבחר בשורה אחרת. אפשר לבחור את המטוס שוב עבור סוג המפתח השני.", true);
   if (!$("#key-briefed").checked || !dispatchSignature) return setMessage("#create-status", "יש לאשר את התדריך ולחתום כמשלח המשימה.", true);
   button.disabled = true;
   const loading = $("#key-create-loading");
@@ -301,7 +326,8 @@ function renderKeyReview(load) {
   panel.querySelector("#key-review-signature").style.pointerEvents = closed ? "none" : "auto";
   panel.querySelector("#clear-key-review-signature").addEventListener("click", clear);
   panel.querySelector("#approve-key-load").hidden = closed;
-  panel.querySelector("#save-key-review").textContent = closed ? "שמור עדכון בקרה" : "שמור בקרה להמשך";
+  panel.querySelector("#save-key-review").hidden = closed;
+  if (closed) panel.querySelectorAll("input, [data-key-today]").forEach((input) => { input.disabled = true; });
   const collect = () => {
     const result = { verified: false, unitsReplaced: false, repairPerformed: false, missionCancelled: false, sortieCancelled: false, trackingPermit: false, inspectionPermitUntil: "", flightPermitUntil: "", approvalUntil: "", recurrent: false, recurrentAnswer: "" };
     panel.querySelectorAll("[data-key-review]").forEach((input) => { result[input.dataset.keyReview] = input.checked; });
@@ -380,7 +406,7 @@ function renderWork() {
   bindExtraTables(closed);
   $("#complete-key-load").hidden = closed;
   $("#save-key-work")?.toggleAttribute("hidden", closed);
-  $("#reopen-key-load").hidden = !manager || !["closed", "pendingReview"].includes(load.status);
+  $("#reopen-key-load").hidden = !manager || load.status !== "pendingReview";
   renderKeyReview(load);
   setMessage("#reopen-key-status", "");
   $("#key-reopen-history").hidden = !manager;
@@ -490,7 +516,7 @@ $("#save-key-work")?.addEventListener("click", async (event) => {
   catch (error) { setMessage("#work-status", `שמירת הטיוטה המשותפת נכשלה: ${error.message}`, true); button.disabled = false; }
 });
 $("#reopen-key-load").addEventListener("click", async () => {
-  if (!manager || !["closed", "pendingReview"].includes(activeLoad?.status)) return;
+  if (!manager || activeLoad?.status !== "pendingReview") return;
   const button = $("#reopen-key-load"); button.disabled = true;
   setMessage("#reopen-key-status", "מחזיר את ההטענה לצוות…");
   try {

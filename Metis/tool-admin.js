@@ -19,8 +19,8 @@ export function initToolAdmin(user) {
       remove.addEventListener("click", async () => {
         if (busy || !window.confirm(`האם את/ה בטוח/ה שברצונך למחוק את הכלי ${tool.toolNumber} – ${tool.toolName}?`)) return;
         busy = true; remove.disabled = true;
-        try { await saveToolCatalog(items.filter((item) => item.toolNumber !== tool.toolNumber), user.uid); status.textContent = `הכלי ${tool.toolNumber} נמחק מהרשימה.`; }
-        catch (error) { status.textContent = `המחיקה נכשלה: ${error.message}`; remove.disabled = false; }
+        try { await saveToolCatalog(items.filter((item) => item.toolNumber !== tool.toolNumber), user.uid); status.textContent = `הכלי ${tool.toolNumber} נמחק מהרשימה.`; delete status.dataset.state; }
+        catch (error) { status.textContent = `המחיקה נכשלה: ${error.message}`; status.dataset.state = "error"; remove.disabled = false; }
         finally { busy = false; }
       });
       card.append(text, remove); list.append(card);
@@ -32,12 +32,12 @@ export function initToolAdmin(user) {
     ready = true; available = true;
     form.querySelector('button[type="submit"]').disabled = false;
     updateToolCatalog(saved); render();
-    status.textContent = "";
+    if (status.dataset.state === "error" && status.textContent.includes("אין גישה")) { status.textContent = ""; delete status.dataset.state; }
   }, (error) => {
     items = [...DEFAULT_TOOLS]; ready = true; available = false;
     form.querySelector('button[type="submit"]').disabled = true;
     render();
-    status.textContent = `אין גישה לניהול הכלים כרגע (${error.message}). מוצגת הרשימה הראשונית לצפייה בלבד. נסו לרענן לאחר עדכון ההרשאות.`;
+    status.textContent = `אין גישה לניהול הכלים כרגע (${error.message}). מחיקה והוספה דורשות הרשאת מטיס לכללי Firestore; רענן לאחר תיקון ההרשאות.`; status.dataset.state = "error";
   });
   form.addEventListener("submit", async (event) => {
     event.preventDefault(); if (!ready || busy || !available) return;

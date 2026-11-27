@@ -14,7 +14,7 @@ export const DEFAULT_COMPONENTS = ["ANT", "DMT", "MLPRF", "PSP"].map((name) => (
 export function mergeCatalog(defaults, saved) {
   const result = new Map(defaults.map((item) => [item.id, item]));
   for (const item of saved) result.set(item.id, { ...result.get(item.id), ...item, volume: item.volume || result.get(item.id)?.volume || "" });
-  return [...result.values()];
+  return [...result.values()].filter((item) => !item.deleted);
 }
 
 export function volumeLabel(code) {
