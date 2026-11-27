@@ -188,7 +188,7 @@ async function issuePdf(issue) {
     for (const [title, key, fields] of [
       ["יחידות שפורקו", "removed", [["מכלול", "name"], ["מספר סידורי", "serial"]]],
       ["יחידות שהורכבו", "installed", [["מכלול", "name"], ["מספר סידורי", "serial"]]],
-      ["כלים", "tools", [["שם", "toolName"], ["מספר", "toolNumber"], ["הערות", "notes"]]],
+      ["כלים", "tools", [["מספר", "toolNumber"], ["שם", "toolName"], ["הערות", "notes"]]],
       ["קשיחים שנצרכו", "taken", [["תיאור", "description"], ["כניסה", "quantityIn"], ["יציאה", "quantityOut"], ["הערות", "notes"]]],
       ["קשיחים שנפסלו", "rejected", [["תיאור", "description"], ["כמות", "quantity"], ["סיבה", "reason"]]]
     ]) if (details[key]?.length) pdf.rows(title, details[key], fields);

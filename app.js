@@ -9,7 +9,7 @@ import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.23";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 import { catalogTool, toolNumberOptions, updateToolCatalog } from "./tool-catalog.js?v=1.9.23";
-import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.25";
+import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.26";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");
@@ -123,8 +123,8 @@ const TABLES = {
     { key: "serial", label: "מס״ד", placeholder: "מס״ד" }
   ],
   tools: [
-    { key: "toolName", label: "שם כלי", placeholder: "שם כלי" },
     { key: "toolNumber", label: "מספר כלי", placeholder: "מספר כלי" },
+    { key: "toolName", label: "שם כלי", placeholder: "שם כלי" },
     { key: "notes", label: "הערות", placeholder: "הערות", optional: true }
   ],
   taken: [
@@ -227,7 +227,7 @@ function applyPreflightGate() {
   const unlocked = started && state.preflightSaved;
   const form = document.querySelector("#sheet-form");
   document.querySelector("#intake-choice").hidden = intakeSaved;
-  document.querySelector("#intake-save").hidden = intakeSaved;
+  document.querySelector("#intake-save-area").hidden = intakeSaved;
   document.querySelector("#intake-save").disabled = intakePending || !editLock?.held;
   for (const selector of [".tools-card", '.parts-card[aria-labelledby="taken-title"]']) form.querySelector(selector).hidden = !intakeSaved && intakeChoice !== "yes";
   document.querySelector(".safety-card").hidden = !intakeSaved;
@@ -279,6 +279,7 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
   const form = document.querySelector("#sheet-form"), safety = form.querySelector(".safety-card");
   form.insertBefore(form.querySelector(".tools-card"), safety);
   form.insertBefore(form.querySelector('[aria-labelledby="taken-title"]'), safety);
+  form.insertBefore(form.querySelector("#intake-save-area"), safety);
   document.querySelectorAll('[name="initial-intake"]').forEach((radio) => radio.addEventListener("change", () => {
     intakeChoice = radio.value;
     if (radio.value === "no") {
@@ -712,7 +713,7 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
     rows.replaceChildren();
     draftTools.forEach((row, index) => {
       const tr = document.createElement("tr");
-      for (const [key, label] of [["toolName", "שם כלי"], ["toolNumber", "מספר כלי"], ["notes", "הערות"]]) {
+      for (const [key, label] of [["toolNumber", "מספר כלי"], ["toolName", "שם כלי"], ["notes", "הערות"]]) {
         const td = document.createElement("td"), input = document.createElement("input");
         input.type = key === "toolNumber" ? "search" : "text"; input.value = row[key]; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
         if (key === "toolNumber") { input.setAttribute("list", toolNumberOptions()); input.autocomplete = "off"; }
@@ -726,7 +727,7 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
           }
           if (index === draftTools.length - 1 && (row.toolName || row.toolNumber || row.notes)) {
             draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows();
-            const current = rows.children[index]?.querySelectorAll("input")[["toolName", "toolNumber", "notes"].indexOf(key)];
+            const current = rows.children[index]?.querySelectorAll("input")[["toolNumber", "toolName", "notes"].indexOf(key)];
             current?.focus(); current?.setSelectionRange(current.value.length, current.value.length);
           }
         });

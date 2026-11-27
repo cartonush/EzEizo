@@ -19,7 +19,7 @@ if (!issue?.manualPaper) {
   const fields = {
     removed: [["name", "מכלול"], ["serial", "מספר סידורי"]],
     installed: [["name", "מכלול"], ["serial", "מספר סידורי"]],
-    tools: [["toolName", "שם כלי"], ["toolNumber", "מספר כלי"], ["notes", "הערות"]],
+    tools: [["toolNumber", "מספר כלי"], ["toolName", "שם כלי"], ["notes", "הערות"]],
     taken: [["description", "תיאור"], ["quantityIn", "כמות בכניסה"], ["quantityOut", "כמות ביציאה"], ["notes", "הערות"]],
     rejected: [["description", "תיאור"], ["quantity", "כמות"], ["reason", "סיבת פסילה"]]
   };

@@ -31,7 +31,7 @@ export function initToolIntakePopup(user) {
     body.replaceChildren();
     rows.forEach((row, index) => {
       const tr = document.createElement("tr");
-      for (const [key, label] of [["toolName", "שם כלי"], ["toolNumber", "מספר כלי"], ["notes", "הערות"]]) {
+      for (const [key, label] of [["toolNumber", "מספר כלי"], ["toolName", "שם כלי"], ["notes", "הערות"]]) {
         const cell = document.createElement("td"), input = document.createElement("input");
         input.type = key === "toolNumber" ? "search" : "text";
         input.value = row[key]; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
@@ -51,7 +51,7 @@ export function initToolIntakePopup(user) {
           if (index === rows.length - 1 && Object.values(row).some(Boolean)) rows.push({ toolName: "", toolNumber: "", notes: "" });
           if (rows.length !== body.children.length) {
             const caret = input.selectionStart; render();
-            const same = body.children[index]?.querySelectorAll("input")[["toolName", "toolNumber", "notes"].indexOf(key)];
+            const same = body.children[index]?.querySelectorAll("input")[["toolNumber", "toolName", "notes"].indexOf(key)];
             same?.focus(); if (caret != null) same?.setSelectionRange(caret, caret);
           }
         });

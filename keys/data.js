@@ -16,7 +16,7 @@ export const KEY_TASKS = [
   'סמן בדף זה ביצוע הטענה בכל המטוסים הרשומים והחזר להטסה בסיום'
 ];
 export const KEY_TABLES = {
-  tools: [{ key: "toolName", label: "שם כלי" }, { key: "toolNumber", label: "מספר כלי" }, { key: "notes", label: "הערות", optional: true }],
+  tools: [{ key: "toolNumber", label: "מספר כלי" }, { key: "toolName", label: "שם כלי" }, { key: "notes", label: "הערות", optional: true }],
   taken: [{ key: "description", label: "תיאור קשיח / נצרך" }, { key: "removedFrom", label: "הוסר מרכיב / אזור" }, { key: "quantityIn", label: "כמות בכניסה" }, { key: "quantityOut", label: "כמות ביציאה" }, { key: "notes", label: "הערות", optional: true }],
   rejected: [{ key: "description", label: "תיאור הקשיח" }, { key: "quantity", label: "כמות" }, { key: "mascha", label: "מסחא" }, { key: "reason", label: "סיבת הפסילה" }]
 };

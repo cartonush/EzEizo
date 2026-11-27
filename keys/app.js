@@ -1,9 +1,10 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.23";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.23";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
-import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, alreadyLoadedForPeriod, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.9.0";
+import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, alreadyLoadedForPeriod, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.9.26";
 import { attachTimeNow } from "../time-now.js?v=1.7.6";
 import { keyLoadTimeline } from "../lifecycle.js?v=1.9.23";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
+import { catalogTool, toolNumberOptions, updateToolCatalog } from "../tool-catalog.js?v=1.9.23";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -20,6 +21,10 @@ const defaultDraft = () => ({ date: currentDate(), time: currentTime(), squadron
 let draft;
 try { draft = { ...defaultDraft(), ...JSON.parse(localStorage.getItem(draftKey) || "{}") }; } catch { draft = defaultDraft(); }
 let loads = [], history = new Map(), technicians = [], activeLoad = null, selectedSquadron = "101", work = null;
+watchToolCatalog((items) => {
+  updateToolCatalog(items);
+  if (work && activeLoad?.status === "open") renderExtraRows("tools", false);
+}, (error) => { if (!embedded) setMessage("#work-status", `טעינת מאגר הכלים נכשלה: ${error.message}`, true); });
 let editLock = null, lockedLoadId = "";
 let workLoadId = "", draftTimer = null, pendingDraft = Promise.resolve();
 function queueDraft(id, snapshot, session) {
@@ -404,8 +409,25 @@ function renderExtraRows(type, closed) {
   rows.forEach((row, index) => {
     const tr = document.createElement("tr");
     columns.forEach(({ key, label }) => {
-      const td = document.createElement("td"), input = document.createElement("input"); td.dataset.label = label; input.type = "text"; input.value = row[key] || ""; input.placeholder = label; input.disabled = closed; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
-      input.addEventListener("input", () => { row[key] = input.value; if (index === rows.length - 1 && input.value.trim()) { const caret = input.selectionStart; renderExtraRows(type, false); const next = target.children[index]?.querySelectorAll("input")[columns.findIndex((field) => field.key === key)]; next?.focus({ preventScroll: true }); next?.setSelectionRange(caret, caret); } saveWork(); }); td.append(input); tr.append(td);
+      const td = document.createElement("td"), input = document.createElement("input"); td.dataset.label = label; input.type = type === "tools" && key === "toolNumber" ? "search" : "text"; input.value = row[key] || ""; input.placeholder = label; input.disabled = closed; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
+      if (type === "tools") {
+        if (key === "toolNumber") { input.setAttribute("list", toolNumberOptions()); input.autocomplete = "off"; }
+        input.readOnly = key === "toolName" || Boolean(catalogTool(row.toolNumber));
+      }
+      input.addEventListener("input", () => {
+        row[key] = input.value;
+        const tool = type === "tools" && key === "toolNumber" ? catalogTool(input.value) : null;
+        if (type === "tools" && key === "toolNumber") row.toolName = tool?.toolName || "";
+        if (tool) row.toolNumber = tool.toolNumber;
+        if (tool || (index === rows.length - 1 && input.value.trim())) {
+          const caret = input.selectionStart; renderExtraRows(type, false);
+          const nextIndex = tool ? index + 1 : index;
+          const nextKey = tool ? "toolNumber" : key;
+          const next = target.children[nextIndex]?.querySelectorAll("input")[columns.findIndex((field) => field.key === nextKey)];
+          next?.focus({ preventScroll: true }); if (!tool && caret != null) next?.setSelectionRange(caret, caret);
+        }
+        saveWork();
+      }); td.append(input); tr.append(td);
     });
     const cell = document.createElement("td"); if (!closed && columns.some(({ key }) => row[key])) { const remove = make("button", "×", "remove-row"); remove.type = "button"; remove.addEventListener("click", () => { work[type].splice(index, 1); renderExtraRows(type, false); saveWork(); }); cell.append(remove); } tr.append(cell); target.append(tr);
   });
