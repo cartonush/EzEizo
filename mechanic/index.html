@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">משתמש מחובר: <span id="connected-user">—</span></p>
       </div>
-      <span class="version-pill">v1.9.31</span>
+      <span class="version-pill">v1.9.32</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
       <div class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./" aria-label="חזרה לרשימת המשימות" hidden>→ חזרה</a></div>
     </header>
@@ -106,6 +106,7 @@
         <p>בדיקת המטוס בטוח לאחזקה טרם התהליך: אין קסטות מוץ / נורים וכפט"ים מורכבים על המטוס.</p>
         <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="safetyTechnicianSignature" aria-label="חתימת הטכנאי על בדיקת בטיחות המטוס"></canvas><button type="button" class="clear-signature" data-clear-signature="safetyTechnicianSignature">נקה חתימה</button></div>
         <p id="safety-start-status" class="section-note" role="status" aria-live="polite"></p>
+        <button id="retry-safety-save" type="button" class="primary-button" hidden>נסה שוב לשמור את חתימת הבטיחות</button>
       </section>
       <dialog id="preflight-notice" class="preflight-dialog"><p>חתימת הבטיחות נשמרה. התקלה עברה לתהליך עבודה.</p><button type="button" class="primary-button" id="preflight-notice-close">אישור</button></dialog>
 
@@ -305,6 +306,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.9.31"></script>
+  <script type="module" src="../app.js?v=1.9.32"></script>
 </body>
 </html>

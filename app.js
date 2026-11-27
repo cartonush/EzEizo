@@ -108,7 +108,12 @@ if (selectedSheet && !managerClosedView && remoteIssue.status === "open") {
       applyPreflightGate();
       document.dispatchEvent(new Event("ezeizo:edit-ready"));
       if (!workStarted && state.preflightSaved && state.safetyTechnicianSignature) void beginIssueWork();
-    }).catch((error) => { message.textContent = `בדיקת הטיוטה המשותפת נכשלה: ${error.message}`; editLock?.dispose(); });
+    }).catch((error) => {
+      notice.hidden = false;
+      message.textContent = error.code === "permission-denied"
+        ? "השרת חסם את בדיקת הטיוטה בגלל הרשאות Firestore. בדוק את כללי השרת ואת שיוך הטכנאי לתקלה, ואז לחץ על בדוק שוב."
+        : `בדיקת הטיוטה המשותפת נכשלה: ${error.message}. לחץ על בדוק שוב.`;
+    });
   } });
   window.addEventListener("pagehide", () => editLock?.dispose());
   void editLock.acquire();
@@ -178,9 +183,10 @@ let intakeChoice = remoteIssue?.intake?.choice || "";
 let intakeSaved = Boolean(remoteIssue?.intake || remoteIssue?.startedAt);
 let intakePending = false;
 if (remoteIssue?.workDraft?.state && !("preflightSaved" in remoteIssue.workDraft.state) && state.safetyTechnicianSignature) state.preflightSaved = true;
-if (remoteIssue?.safetySignature && !state.safetyTechnicianSignature) state.safetyTechnicianSignature = remoteIssue.safetySignature;
+if (remoteIssue?.safetySignature) state.safetyTechnicianSignature = remoteIssue.safetySignature;
 let workStarted = Boolean(remoteIssue?.startedAt);
 let safetyStartPending = false;
+let safetyRetryNeeded = Boolean(intakeSaved && !state.preflightSaved && state.safetyTechnicianSignature);
 let savingTechnicianDraft = false;
 if (["closed", "pendingReview"].includes(remoteIssue?.status) && remoteIssue.closed?.state) {
   state = { ...defaultState, ...remoteIssue.closed.state };
@@ -263,6 +269,12 @@ function applyPreflightGate() {
   document.querySelectorAll("#save-sheet, #save-sheet-bottom").forEach((button) => { button.disabled = !started || safetyStartPending || savingTechnicianDraft; });
   document.querySelector('canvas[data-signature="safetyTechnicianSignature"]').style.pointerEvents = workStarted ? "none" : "";
   document.querySelector('[data-clear-signature="safetyTechnicianSignature"]').disabled = workStarted || safetyStartPending;
+  const safetyRetry = document.querySelector("#retry-safety-save");
+  safetyRetry.hidden = !safetyRetryNeeded || !state.safetyTechnicianSignature || unlocked;
+  safetyRetry.disabled = safetyStartPending || !editLock?.held;
+  if (safetyRetryNeeded && workStarted && !document.querySelector("#safety-start-status").textContent) {
+    document.querySelector("#safety-start-status").textContent = "חתימת הבטיחות שמורה בשרת, אך טיוטת העבודה עדיין לא נשמרה. לחץ לנסות שוב.";
+  }
   if (document.querySelector("#shared-save-status")?.dataset.state !== "error") {
     if (!intakeSaved) setSharedSaveStatus("בחר אם נלקחו כלים או קשיחים ושמור את ביקורת הכניסה לפני בדיקת בטיחות המטוס.");
     else if (!started) setSharedSaveStatus("הקליטה נשמרה. חתום על מטוס בטוח לאחזקה כדי להתחיל בעבודה.");
@@ -271,12 +283,17 @@ function applyPreflightGate() {
 }
 
 async function beginIssueWork() {
-  if (managerClosedView || workStarted || safetyStartPending || !intakeSaved || !editLock?.held || remoteIssue?.status !== "open") return;
+  if (managerClosedView || safetyStartPending || !intakeSaved || !editLock?.held || remoteIssue?.status !== "open" || !state.safetyTechnicianSignature) return false;
+  if (workStarted && state.preflightSaved) return true;
   safetyStartPending = true; applyPreflightGate();
-  const feedback = document.querySelector("#safety-start-status"); feedback.textContent = "שומר חתימת בטיחות…";
+  const feedback = document.querySelector("#safety-start-status"); feedback.textContent = workStarted ? "שומר טיוטת עבודה…" : "שומר חתימת בטיחות…";
+  delete feedback.dataset.state;
   try {
-    await startIssueWork(sheet.id, currentUser.uid, state.safetyTechnicianSignature, editLock.session);
-    workStarted = true;
+    await editLock.renew();
+    if (!workStarted) {
+      await startIssueWork(sheet.id, currentUser.uid, state.safetyTechnicianSignature, editLock.session);
+      workStarted = true;
+    }
     state.preflightSaved = true;
     const savedAt = new Date().toISOString(); pendingDraftAt = savedAt;
     try {
@@ -284,15 +301,28 @@ async function beginIssueWork() {
       loadedDraftAt = savedAt; pendingDraftAt = "";
     } catch (error) {
       state.preflightSaved = false; pendingDraftAt = "";
-      feedback.textContent = `חתימת הבטיחות נשמרה, אך הטיוטה לא נשמרה: ${error.message}. לחץ ״שמור טיוטה״ שוב.`;
-      applyPreflightGate(); return;
+      saveState();
+      safetyRetryNeeded = true;
+      feedback.textContent = `חתימת הבטיחות נשמרה, אך הטיוטה לא נשמרה: ${error.message}. לחץ על ״נסה שוב לשמור את חתימת הבטיחות״.`;
+      feedback.dataset.state = "error";
+      applyPreflightGate(); return false;
     }
+    safetyRetryNeeded = false;
     feedback.textContent = "חתימת הבטיחות נשמרה. התקלה בתהליך עבודה.";
     applyPreflightGate();
     document.querySelector("#preflight-notice").showModal();
-  } catch (error) { feedback.textContent = `שמירת חתימת הבטיחות נכשלה: ${error.message}. נסה לחתום שוב.`; }
+    return true;
+  } catch (error) {
+    safetyRetryNeeded = true;
+    feedback.textContent = error.code === "permission-denied"
+      ? "השרת דחה את שמירת חתימת הבטיחות בגלל הרשאות Firestore. החתימה נשארה כאן; אפשר לנסות שוב בלי לנקות אותה. אם השגיאה חוזרת, יש לבדוק את הכללים שפורסמו בשרת ואת שיוך הטכנאי לתקלה."
+      : `שמירת חתימת הבטיחות נכשלה: ${error.message}. אפשר לנסות שוב בלי לנקות את החתימה.`;
+    feedback.dataset.state = "error";
+    return false;
+  }
   finally { safetyStartPending = false; applyPreflightGate(); }
 }
+document.querySelector("#retry-safety-save")?.addEventListener("click", () => { void beginIssueWork(); });
 document.querySelector("#preflight-notice-close")?.addEventListener("click", () => document.querySelector("#preflight-notice").close());
 
 if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
@@ -337,7 +367,11 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
       document.querySelector("#entry-fields").hidden = !state.entryEnabled;
       intakeSaved = true; feedback.textContent = "הקליטה נשמרה. כעת אפשר לחתום על בטיחות המטוס."; delete feedback.dataset.state;
       applyPreflightGate(); saveState();
-    } catch (error) { intakeError(`הקליטה לא נשמרה: ${error.message}`); }
+    } catch (error) {
+      intakeError(error.code === "permission-denied"
+        ? "השרת דחה את שמירת ביקורת הכניסה בגלל הרשאות Firestore. החתימות נשארו בטופס; בדוק את הכללים שפורסמו ואת שיוך הצוות, ואז לחץ שוב על שמור קליטה וביקורת כניסה."
+        : `הקליטה לא נשמרה: ${error.message}. אפשר ללחוץ שוב על שמור קליטה וביקורת כניסה.`);
+    }
     finally { intakePending = false; if (!intakeSaved) button.disabled = false; }
   });
 }
@@ -711,8 +745,7 @@ async function saveTechnicianDraft() {
   const previousPreflight = state.preflightSaved, previousDraftAt = loadedDraftAt;
   try {
     await editLock.renew();
-    if (!workStarted) await beginIssueWork();
-    if (!workStarted) throw new Error("חתימת הבטיחות טרם נשמרה בשרת.");
+    if (!state.preflightSaved && !(await beginIssueWork())) throw new Error("שמירת חתימת הבטיחות או הטיוטה עדיין לא הושלמה. השתמש בכפתור הניסיון החוזר ליד החתימה.");
     state.preflightSaved = true;
     saveState();
     const savedAt = new Date().toISOString(); pendingDraftAt = savedAt;
@@ -720,7 +753,13 @@ async function saveTechnicianDraft() {
     loadedDraftAt = savedAt; pendingDraftAt = "";
     setSharedSaveStatus("הטיוטה נשמרה לצוות בשרת. אפשר להמשיך לעבוד בדף.");
     applyPreflightGate();
-  } catch (error) { state.preflightSaved = previousPreflight; loadedDraftAt = previousDraftAt; pendingDraftAt = ""; setSharedSaveStatus(`השמירה המשותפת נכשלה: ${error.message}`, true); }
+  } catch (error) {
+    state.preflightSaved = previousPreflight; loadedDraftAt = previousDraftAt; pendingDraftAt = "";
+    saveState();
+    setSharedSaveStatus(error.code === "permission-denied"
+      ? "השרת דחה את שמירת הטיוטה בגלל הרשאות Firestore. העבודה נשארה במכשיר. בדוק את כללי השרת ושיוך הצוות, ואז לחץ שוב על שמור טיוטה."
+      : `השמירה המשותפת נכשלה: ${error.message}. לחץ שוב על שמור טיוטה.`, true);
+  }
   finally { savingTechnicianDraft = false; applyPreflightGate(); }
 }
 document.querySelectorAll("#save-sheet, #save-sheet-bottom").forEach((button) => button.addEventListener("click", saveTechnicianDraft));
@@ -1051,7 +1090,7 @@ function setupSignaturePads(root = document) {
       saveState();
       if (key === "safetyTechnicianSignature") {
         if (value) void beginIssueWork();
-        else applyPreflightGate();
+        else { safetyRetryNeeded = false; const feedback = document.querySelector("#safety-start-status"); feedback.textContent = ""; delete feedback.dataset.state; applyPreflightGate(); }
       }
     } }));
   });
