@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.9.23">
-  <link rel="stylesheet" href="styles.css?v=1.9.23">
+  <link rel="stylesheet" href="../styles.css?v=1.9.25">
+  <link rel="stylesheet" href="styles.css?v=1.9.25">
 </head>
 <body>
   <div class="app-shell">
@@ -23,7 +23,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">משתמש מחובר: <span id="connected-user">—</span></p>
       </div>
-      <span class="version-pill">v1.9.23</span>
+      <span class="version-pill">v1.9.25</span>
       <div id="manager-controls" class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./#closed" aria-label="חזרה לתקלות סגורות" hidden>→ חזרה</a></div>
     </header>
 
@@ -255,7 +255,7 @@
         <fieldset class="review-column"><legend>חוזרת</legend><label class="replaced-toggle"><input type="checkbox" data-review="missionCancelled"><span class="custom-check" aria-hidden="true"></span><span>ביטול משימה</span></label><label class="replaced-toggle"><input type="checkbox" data-review="sortieCancelled"><span class="custom-check" aria-hidden="true"></span><span>ביטול גיחה</span></label><label class="replaced-toggle"><input type="checkbox" data-recurrent-answer="yes"><span class="custom-check" aria-hidden="true"></span><span>חוזרת: כן</span></label><label class="replaced-toggle"><input type="checkbox" data-recurrent-answer="no"><span class="custom-check" aria-hidden="true"></span><span>חוזרת: לא</span></label></fieldset>
         <fieldset class="review-column"><legend>היתרים / אישורים</legend><div class="review-dated-choice"><label class="replaced-toggle"><input type="checkbox" data-date-toggle="flightPermitUntil"><span class="custom-check" aria-hidden="true"></span><span>ניתן היתר לטיסה עד תאריך</span></label><div class="review-date-field" hidden><label class="input-field">תוקף ההיתר<input type="date" data-review="flightPermitUntil"></label><button type="button" class="secondary-button" data-date-today="flightPermitUntil">היום</button></div></div><label class="replaced-toggle"><input type="checkbox" data-review="trackingPermit"><span class="custom-check" aria-hidden="true"></span><span>ניתן היתר למעקב</span></label><div class="review-dated-choice"><label class="replaced-toggle"><input type="checkbox" data-date-toggle="approvalUntil"><span class="custom-check" aria-hidden="true"></span><span>ניתן אישור עד תאריך</span></label><div class="review-date-field" hidden><label class="input-field">תוקף האישור<input type="date" data-review="approvalUntil"></label><button type="button" class="secondary-button" data-date-today="approvalUntil">היום</button></div></div></fieldset></div>
         <input type="hidden" data-review="inspectionPermitUntil"><input type="hidden" data-review="recurrent">
-        <div class="signature-field"><span class="field-label">חתימת בודק הדף</span><canvas id="reviewer-signature" class="signature-pad" aria-label="חתימת בודק הדף"></canvas><button id="clear-reviewer-signature" type="button" class="clear-signature">נקה חתימה</button></div>
+        <div class="signature-field"><span class="field-label">חתימת בודק הדף</span><canvas id="reviewer-signature" class="signature-pad" tabindex="0" aria-label="חתימת בודק הדף"></canvas><button id="clear-reviewer-signature" type="button" class="clear-signature">נקה חתימה</button></div>
         <button id="approve-sheet" type="button" class="primary-button">חתום וסגור את הדף</button>
         <button id="save-closed-review" type="button" class="secondary-button" hidden>שמור עדכון בקרה</button>
         <p id="review-status" class="copy-status" role="status" aria-live="polite"></p>
@@ -264,6 +264,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.9.23"></script>
+  <script type="module" src="../app.js?v=1.9.25"></script>
 </body>
 </html>

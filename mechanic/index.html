@@ -11,18 +11,18 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.9.23">
+  <link rel="stylesheet" href="../styles.css?v=1.9.25">
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar">
-      <div class="brand-mark" aria-hidden="true">ט</div>
+    <header class="topbar mechanic-topbar">
+      <img class="brand-mark manager-mark" src="../assets/emblems/avionics-combat.jpeg" alt="" aria-hidden="true">
       <div class="brand-copy">
         <p class="eyebrow">כנף 1 - טייסת תחזוקה</p>
         <h1>גף אוויוניקה קרב</h1>
-        <p class="header-subtitle">דף טיפול בתקלה</p>
+        <p class="header-subtitle">משתמש מחובר: <span id="connected-user">—</span></p>
       </div>
-      <span class="version-pill">v1.9.23</span>
+      <span class="version-pill">v1.9.25</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
       <div class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./" aria-label="חזרה לרשימת המשימות" hidden>→ חזרה</a></div>
     </header>
@@ -49,6 +49,19 @@
         <p id="refresh-tasks-status" class="copy-status" role="status" aria-live="polite"></p>
         <div id="mechanic-issues" class="issue-list"></div>
       </section>
+      <dialog id="tool-intake-dialog" class="tool-intake-dialog" aria-labelledby="tool-intake-heading">
+        <div class="section-heading"><h2 id="tool-intake-heading">הוספת כלים לתקלה</h2><button id="close-tool-intake-dialog" type="button" class="secondary-button">סגור</button></div>
+        <p id="tool-intake-issue"></p><p>הכלים ייקלטו ברשימת התקלה רק לאחר ביקורת כניסה מלאה ושמירה בשרת.</p>
+        <p id="tool-intake-lock" class="copy-status" role="status"></p><button id="retry-tool-intake-lock" type="button" class="secondary-button" hidden>בדוק שוב</button>
+        <div class="table-wrap"><table><thead><tr><th>שם כלי</th><th>מספר כלי</th><th>הערות</th><th aria-label="פעולות"></th></tr></thead><tbody id="tool-intake-rows"></tbody></table></div>
+        <div class="signature-grid">
+          <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas id="tool-intake-technician-signature" class="signature-pad" tabindex="0" aria-label="חתימת הטכנאי בביקורת כניסה"></canvas><button id="clear-tool-intake-technician" type="button" class="clear-signature">נקה חתימה</button></div>
+          <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas id="tool-intake-inspector-signature" class="signature-pad" tabindex="0" aria-label="חתימת הבודק בביקורת כניסה"></canvas><button id="clear-tool-intake-inspector" type="button" class="clear-signature">נקה חתימה</button></div>
+          <label class="input-field">מספר אישי של הבודק<input id="tool-intake-inspector-number" type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}"></label>
+        </div>
+        <div class="create-fault-actions"><button id="save-tool-intake-dialog" type="button" class="primary-button" disabled>שמור ביקורת כניסה</button><button id="cancel-tool-intake-dialog" type="button" class="secondary-button">ביטול</button></div>
+        <p id="tool-intake-error" class="copy-status" role="alert"></p>
+      </dialog>
       <div id="sheet-form" hidden>
       <div class="card sheet-save-toolbar"><button id="save-sheet" type="button" class="primary-button">שמור</button><span id="shared-save-status" role="status" aria-live="polite">שמור תחילה קליטת כלים וקשיחים, ולאחר מכן חתום על מטוס בטוח לאחזקה.</span></div>
       <div id="closed-times" class="closed-times" hidden><div><span>שעת פתיחה</span><strong id="opened-at">—</strong></div><div><span>שעת סגירה</span><strong id="closed-at">—</strong></div></div>
@@ -289,6 +302,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.9.23"></script>
+  <script type="module" src="../app.js?v=1.9.25"></script>
 </body>
 </html>

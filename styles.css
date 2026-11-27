@@ -23,6 +23,12 @@ button, textarea, input, select { font: inherit; }
 .topbar { position: sticky; top: 0; z-index: 100; min-height: 70px; display: flex; align-items: center; gap: 11px; padding: calc(9px + env(safe-area-inset-top)) max(22px, calc((100vw - 880px) / 2)) 9px; color: white; background: radial-gradient(circle at 90% 0%, #1d5075 0, transparent 35%), linear-gradient(110deg, #0a233b, #103a5d); box-shadow: 0 4px 16px #09233925; }
 .brand-mark { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(145deg, #68d3dd, #2981a2); color: #08233c; font-size: 23px; font-weight: 800; box-shadow: inset 0 1px 0 #ffffff80; }
 .brand-mark.manager-mark { border-radius: 50%; object-fit: cover; background: #fff; }
+.tool-intake-dialog { box-sizing: border-box; width: min(96vw, 820px); max-height: min(90vh, 1000px); overflow: auto; padding: 18px; border: 1px solid #c8dce7; border-radius: 16px; background: #fff; color: var(--ink); box-shadow: 0 20px 60px #0a233b55; }
+.tool-intake-dialog::backdrop { background: #071e35a8; }
+.tool-intake-dialog .table-wrap { margin-block: 14px; }
+.tool-intake-dialog td input { box-sizing: border-box; min-width: 90px; width: 100%; }
+.tool-intake-dialog [aria-invalid="true"] { outline: 2px solid #dc3650; outline-offset: 2px; }
+.mechanic-topbar .header-subtitle { display: block; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .squadron-emblem { display: inline-block; flex: none; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; vertical-align: middle; }
 .detail-item strong[data-sheet-field="squadron"] { display: inline-flex; align-items: center; gap: 8px; }
 .paper-form-notice { border-color: #c8d9e3; background: #f0f6fa; }
