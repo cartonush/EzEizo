@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">משתמש מחובר: <span id="connected-user">—</span></p>
       </div>
-      <span class="version-pill">v1.9.30</span>
+      <span class="version-pill">v1.9.31</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
       <div class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./" aria-label="חזרה לרשימת המשימות" hidden>→ חזרה</a></div>
     </header>
@@ -205,6 +205,7 @@
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="entryInspectorSignature" aria-label="חתימת הבודק בביקורת כניסה"></canvas><button type="button" class="clear-signature" data-clear-signature="entryInspectorSignature">נקה חתימה</button></div>
               <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="entryInspectorNumber"></label>
             </div>
+            <p id="entry-inspection-status" class="section-note" role="status" aria-live="polite"></p>
             <label class="replaced-toggle sub-toggle" for="interim-check">
               <input id="interim-check" type="checkbox" data-toggle-state="interimEnabled" data-target="interim-fields">
               <span class="custom-check" aria-hidden="true"></span>
@@ -304,6 +305,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.9.30"></script>
+  <script type="module" src="../app.js?v=1.9.31"></script>
 </body>
 </html>

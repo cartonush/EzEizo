@@ -1,6 +1,6 @@
 import { addToolIntake } from "../firebase-sync.js?v=1.9.30";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
-import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
+import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { attachToolPicker, catalogTool, toolNumberRecorded } from "../tool-catalog.js?v=1.9.30";
 
 export function initToolIntakePopup(user) {
