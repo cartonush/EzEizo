@@ -187,7 +187,10 @@ if (!issue?.manualPaper) {
   }
   async function save() {
     validate();
-    await saveManualIssueDetails(issue.id, user.uid, { ...state, actions: state.actions.slice(0, 12), ...Object.fromEntries(Object.keys(fields).map((key) => [key, state[key].filter(filled)])) });
+    const details = Object.fromEntries(["repair", "classification", "technicianNotes", "arrivalTime", "completionTime", "inspection"].map((key) => [key, state[key] || ""]));
+    details.actions = state.actions.slice(0, 12);
+    for (const key of Object.keys(fields)) details[key] = state[key].filter(filled);
+    await saveManualIssueDetails(issue.id, user.uid, details);
     dirty = false;
   }
   document.querySelector("#save-manual").addEventListener("click", async () => {
@@ -198,14 +201,17 @@ if (!issue?.manualPaper) {
   });
   document.querySelector("#close-manual").addEventListener("click", async () => {
     if (saving) return; saving = true; clearError(); status.textContent = "שומר וסוגר…";
+    let phase = "שמירת פרטי הטיפול";
     try {
       validate();
       if (!signature) required("יש לחתום על בדיקת הדף.", document.querySelector("#manual-review-signature"));
       const review = collectReview();
       await save();
+      phase = "חתימת המטיס וסגירת התקלה";
+      status.textContent = "פרטי הטיפול נשמרו. חותם וסוגר את התקלה…";
       await approveManualIssue(issue.id, user.uid, signature, review);
       location.replace("./#pending");
-    } catch (error) { reportError(error); }
+    } catch (error) { if (error.code === "permission-denied") error.message = `הפעולה בשלב ${phase} נדחתה על ידי כללי Firestore: ${error.message}`; reportError(error); }
     finally { saving = false; }
   });
   if (closed) {
