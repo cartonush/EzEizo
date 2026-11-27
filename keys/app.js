@@ -4,7 +4,7 @@ import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodF
 import { attachTimeNow } from "../time-now.js?v=1.7.6";
 import { keyLoadTimeline } from "../lifecycle.js?v=1.9.23";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
-import { catalogTool, toolNumberOptions, updateToolCatalog } from "../tool-catalog.js?v=1.9.23";
+import { attachToolPicker, catalogTool, updateToolCatalog } from "../tool-catalog.js?v=1.9.29";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -411,7 +411,6 @@ function renderExtraRows(type, closed) {
     columns.forEach(({ key, label }) => {
       const td = document.createElement("td"), input = document.createElement("input"); td.dataset.label = label; input.type = type === "tools" && key === "toolNumber" ? "search" : "text"; input.value = row[key] || ""; input.placeholder = label; input.disabled = closed; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
       if (type === "tools") {
-        if (key === "toolNumber") { input.setAttribute("list", toolNumberOptions()); input.autocomplete = "off"; }
         input.readOnly = key === "toolName" || Boolean(catalogTool(row.toolNumber));
       }
       input.addEventListener("input", () => {
@@ -427,7 +426,7 @@ function renderExtraRows(type, closed) {
           next?.focus({ preventScroll: true }); if (!tool && caret != null) next?.setSelectionRange(caret, caret);
         }
         saveWork();
-      }); td.append(input); tr.append(td);
+      }); td.append(type === "tools" && key === "toolNumber" ? attachToolPicker(input) : input); tr.append(td);
     });
     const cell = document.createElement("td"); if (!closed && columns.some(({ key }) => row[key])) { const remove = make("button", "×", "remove-row"); remove.type = "button"; remove.addEventListener("click", () => { work[type].splice(index, 1); renderExtraRows(type, false); saveWork(); }); cell.append(remove); } tr.append(cell); target.append(tr);
   });

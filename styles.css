@@ -132,6 +132,14 @@ td input:focus { border-color: #5da8c5; }
 .component-result:last-child { border-bottom: 0; }
 .component-result:hover,.component-result:focus-visible { background: #eaf5f9; outline: none; }
 .component-no-results { display: block; padding: 9px 10px; color: #617888; font-size: 12px; }
+.tool-picker { display: grid; gap: 4px; min-width: 0; }
+.tool-picker input { min-width: 0; }
+.tool-picker-results { display: grid; max-height: 190px; overflow-y: auto; border: 1px solid #b9d2df; border-radius: 9px; background: #fff; }
+.tool-picker-results[hidden] { display: none; }
+.tool-picker-option { display: block; width: 100%; padding: 9px; border: 0; border-bottom: 1px solid #edf1f3; background: #fff; color: var(--ink); text-align: right; font: inherit; cursor: pointer; }
+.tool-picker-option:last-child { border-bottom: 0; }
+.tool-picker-option:hover,.tool-picker-option:focus-visible { background: #eaf5f9; }
+.tool-picker-empty { padding: 9px; color: #617888; font-size: 12px; }
 .remove-row { border: 0; background: transparent; color: #98a6af; font-size: 17px; cursor: pointer; padding: 3px 5px; }
 .remove-row:hover { color: #c25454; }
 .empty-row td { color: #a0adb5; text-align: center; font-size: 11px; padding: 14px; }

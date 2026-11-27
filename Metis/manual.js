@@ -1,6 +1,6 @@
 import { gate, revealApp, getIssue, watchToolCatalog, saveManualIssueDetails, approveManualIssue } from "../firebase-sync.js?v=1.9.23";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
-import { catalogTool, toolNumberOptions, updateToolCatalog } from "../tool-catalog.js?v=1.9.23";
+import { attachToolPicker, catalogTool, updateToolCatalog } from "../tool-catalog.js?v=1.9.29";
 
 const user = await gate("manager");
 watchToolCatalog((items) => updateToolCatalog(items), () => {});
@@ -100,7 +100,6 @@ if (!issue?.manualPaper) {
         if (input.type === "number") { input.min = "0"; input.step = "1"; }
         input.value = item[key] || ""; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
         if (type === "tools") {
-          if (key === "toolNumber") { input.setAttribute("list", toolNumberOptions()); input.autocomplete = "off"; }
           input.readOnly = Boolean(catalogTool(item.toolNumber)) || previouslySavedTools.has(`${item.toolNumber}\u0000${item.toolName}`) || key !== "toolNumber";
         }
         input.addEventListener("input", () => {
@@ -108,12 +107,12 @@ if (!issue?.manualPaper) {
           item[key] = input.value;
           if (type === "tools" && key === "toolNumber") {
             const tool = catalogTool(input.value);
-            if (tool) { item.toolNumber = tool.toolNumber; item.toolName = tool.toolName; renderRows(type); body.children[index + 1]?.querySelector('[list="tool-number-options"]')?.focus(); markDirty(); return; }
+            if (tool) { item.toolNumber = tool.toolNumber; item.toolName = tool.toolName; renderRows(type); body.children[index + 1]?.querySelector('input[type="search"]')?.focus(); markDirty(); return; }
           }
           if (index === state[type].length - 1 && body.children.length === state[type].length) renderRows(type, { index, key, caret: input.selectionStart });
           markDirty();
         });
-        td.append(input); tr.append(td);
+        td.append(type === "tools" && key === "toolNumber" ? attachToolPicker(input) : input); tr.append(td);
       }
       const td = document.createElement("td"), remove = document.createElement("button");
       remove.type = "button"; remove.className = "remove-row"; remove.textContent = "×"; remove.setAttribute("aria-label", `מחק שורה ${index + 1}`);
