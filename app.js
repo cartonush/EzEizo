@@ -228,12 +228,18 @@ function applyPreflightGate() {
   const form = document.querySelector("#sheet-form");
   document.querySelector("#intake-choice").hidden = intakeSaved;
   document.querySelector("#intake-save-area").hidden = intakeSaved;
+  document.querySelectorAll(".sheet-save-toolbar").forEach((toolbar) => { toolbar.hidden = !unlocked; });
   document.querySelector("#intake-save").disabled = intakePending || !editLock?.held;
   for (const selector of [".tools-card", '.parts-card[aria-labelledby="taken-title"]']) form.querySelector(selector).hidden = !intakeSaved && intakeChoice !== "yes";
   document.querySelector(".safety-card").hidden = !intakeSaved;
   const toolsLocked = intakeSaved && Boolean(remoteIssue?.intake);
   document.querySelector("#tools-toggle").disabled = toolsLocked;
   document.querySelector("#entry-check").disabled = toolsLocked;
+  for (const key of ["interim", "final"]) {
+    const toggle = document.querySelector(`#${key}-check`);
+    toggle.closest("label").hidden = !unlocked;
+    document.querySelector(`#${key}-fields`).hidden = !unlocked || !toggle.checked;
+  }
   document.querySelectorAll("#tools-rows input, #tools-rows button, #entry-fields input, #entry-fields button").forEach((el) => { el.disabled = toolsLocked; });
   document.querySelectorAll('[data-signature="entryTechnicianSignature"], [data-signature="entryInspectorSignature"]').forEach((canvas) => { canvas.style.pointerEvents = toolsLocked ? "none" : ""; });
   document.querySelector("#taken-toggle").disabled = intakeSaved && !started;
