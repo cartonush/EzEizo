@@ -326,14 +326,15 @@ async function createFault(event) {
   const button = event.currentTarget;
   const manual = button.id === "create-manual";
   const acknowledgment = document.querySelector("#creation-ack");
-  if (!manual && !acknowledgment.checked) { setStatus("#created-status", "יש לאשר את בדיקת פרטי התקלה לפני פתיחתה.", true); acknowledgment.focus(); return; }
-  if (!manual && !draft.dispatcherSignature) { setStatus("#created-status", "חובה להחתים את משלח המשימה על תדריך הבטיחות וניהול הסיכונים.", true); document.querySelector("#dispatcher-signature").scrollIntoView({ block: "center" }); return; }
+  if (!acknowledgment.checked) { setStatus("#created-status", "יש לאשר את בדיקת פרטי התקלה לפני פתיחתה.", true); acknowledgment.focus(); return; }
+  if (!draft.dispatcherSignature) { setStatus("#created-status", "חובה להחתים את משלח המשימה על תדריך הבטיחות וניהול הסיכונים.", true); document.querySelector("#dispatcher-signature").scrollIntoView({ block: "center" }); return; }
   const catalogError = validateCatalogSelection(selections, draft);
   if (catalogError) { setStatus("#created-status", catalogError.message, true); (pickers[catalogError.field]?.input || document.querySelector("#ew-system-select")).focus(); return; }
-  const { assignees, error: assigneeError } = manual ? { assignees: [] } : resolveAssignees(selectedAssigneeUids(), technicians);
+  const { assignees, error: assigneeError } = resolveAssignees(selectedAssigneeUids(), technicians);
   if (assigneeError) { setStatus("#created-status", assigneeError, true); document.querySelector("#new-assignees").scrollIntoView({ block: "center" }); return; }
   button.disabled = true;
   const sheet = EzEizoData.normalizeSheet(draft);
+  sheet.technicians = assignees.map((person) => person.name).join(" · ");
   if (!sheet.fault.trim()) {
     setStatus("#created-status", "חובה למלא תיאור תקלה לפני פתיחת התקלה.", true);
     document.querySelector('[data-sheet-field="fault"]').focus();
@@ -348,7 +349,7 @@ async function createFault(event) {
     sheet.serial = created.serial;
     recentIssues.set(created.id, { id: created.id, sheet: { ...sheet, id: created.id }, status: manual ? "pendingReview" : "open", manualPaper: manual, closed: manual ? { record: { ...sheet, id: created.id, serial: created.serial }, state: { paper: true } } : undefined, createdAt: created.createdAt, assigneeUid: assignees[0]?.uid || "", assigneeName: assignees[0]?.name || "", teamUids: assignees.map((person) => person.uid), teamNames: assignees.map((person) => person.name) });
     updateManagerIssues(latestServerIssues);
-    if (printTab) printTab.location.replace("./printable-fault-form.pdf");
+    if (printTab) printTab.location.replace(`./filled-print.html?id=${encodeURIComponent(created.id)}`);
     resetFaultDraft();
     setStatus("#created-status", manual ? `תקלה ידנית מספר ${sheet.serial} נפתחה וממתינה למילוי וסגירה בידי המטיס. טופס התקלה נפתח להדפסה.` : `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. הטופס מוכן לפתיחת תקלה חדשה.`);
     window.location.hash = manual ? "pending" : "open";

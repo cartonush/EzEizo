@@ -11,6 +11,7 @@ revealApp();
 if (!issue?.manualPaper) {
   document.querySelector("#manual-error").textContent ||= "התקלה הידנית לא נמצאה.";
 } else {
+  document.querySelector("#manual-filled-print").href = `./filled-print.html?id=${encodeURIComponent(issue.id)}`;
   const closed = issue.status === "closed";
   document.querySelector("#manual-editor").hidden = false;
   document.querySelector("#manual-heading").textContent = `תקלה ${issue.sheet.serial}${closed ? " · סגורה" : " · לסגירה"}`;

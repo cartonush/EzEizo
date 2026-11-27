@@ -257,6 +257,12 @@ export async function getIssue(id) {
   return snapshot.exists() ? { id: snapshot.id, ...snapshot.data(), sheet: restoredSheet(snapshot.data().sheet) } : null;
 }
 
+export async function getAccountName(uid) {
+  if (!uid) return "";
+  const snapshot = await getDoc(doc(db, "roles", uid));
+  return snapshot.exists() ? String(snapshot.data().name || "") : "";
+}
+
 export function watchToolCatalog(onChange, onError) {
   return onSnapshot(doc(db, "toolCatalog", "catalog"),
     (snapshot) => onChange(snapshot.exists() ? snapshot.data().items || [] : null), onError);
