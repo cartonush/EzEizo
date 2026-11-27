@@ -1,4 +1,4 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.33";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.38";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, alreadyLoadedForPeriod, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.9.26";
 import { attachTimeNow } from "../time-now.js?v=1.7.6";
@@ -472,7 +472,7 @@ function bindExtraTables(closed) {
   root.querySelectorAll("[data-state-field]").forEach((input) => {
     const key = input.dataset.stateField; input.value = work[key] || ""; input.disabled = closed;
     input.closest(".time-field")?.querySelector(".time-now-button")?.toggleAttribute("disabled", closed);
-    input.oninput = () => { if (key.endsWith("InspectorNumber") || key === "takenPersonalNumber") input.value = input.value.replace(/[^0-9]/g, "").slice(0, 7); work[key] = input.value; saveWork(); };
+    input.oninput = () => { if (key.endsWith("InspectorNumber") || key === "takenPersonalNumber") input.value = input.value.replace(/[^0-9]/g, "").replace(/^0+/, "").slice(0, 7); work[key] = input.value; saveWork(); };
   });
   ["tools", "taken", "rejected"].forEach((key) => renderExtraRows(key, closed));
   initializeSignatures(root);
@@ -496,7 +496,7 @@ function validateWork() {
   if (work.takenEnabled) required.push("takenFullName", "takenPersonalNumber", "takenRank", "takenSignature");
   for (const key of required) {
     if (!String(work[key] || "").trim()) return "יש למלא את כל פרטי הביקורות והחתימות שסומנו.";
-    if ((key.endsWith("InspectorNumber") || key === "takenPersonalNumber") && !/^[0-9]{1,7}$/.test(work[key])) return "מספר אישי חייב להכיל ספרות בלבד, עד שבע ספרות.";
+    if ((key.endsWith("InspectorNumber") || key === "takenPersonalNumber") && !/^[1-9][0-9]{6}$/.test(work[key])) return "מספר אישי חייב להכיל שבע ספרות ולהתחיל בספרה שאינה 0.";
   }
   if (work.finalEnabled && !/^([01]\d|2[0-3]):[0-5]\d$/.test(work.departureTime || "")) return "יש לבחור שעת עזיבה תקינה בביקורת סיום.";
   return "";

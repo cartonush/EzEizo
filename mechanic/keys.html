@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#173b5d">
 <title>EzEizo · מפתחות</title><link rel="stylesheet" href="../styles.css?v=1.9.30"><link rel="stylesheet" href="../Metis/styles.css?v=1.7.6"><link rel="stylesheet" href="../keys/styles.css?v=1.9.18">
-</head><body><div class="app-shell"><header class="topbar manager-topbar"><div class="brand-mark manager-mark" aria-hidden="true">מ</div><div class="brand-copy"><p class="eyebrow">כנף 1 - טייסת תחזוקה</p><h1>מפתחות</h1><p class="header-subtitle">מעקב והטענת מפתחות</p></div><span class="version-pill">v1.9.33</span><div class="header-actions"><a id="back-link" class="secondary-button" href="./">→ חזרה</a></div></header>
+</head><body><div class="app-shell"><header class="topbar manager-topbar"><div class="brand-mark manager-mark" aria-hidden="true">מ</div><div class="brand-copy"><p class="eyebrow">כנף 1 - טייסת תחזוקה</p><h1>מפתחות</h1><p class="header-subtitle">מעקב והטענת מפתחות</p></div><span class="version-pill">v1.9.38</span><div class="header-actions"><a id="back-link" class="secondary-button" href="./">→ חזרה</a></div></header>
 <div id="app-skeleton" class="app-skeleton" role="status" aria-label="הדף נטען"><div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-input"></span></div></div>
 <main hidden>
 <nav id="keys-nav" class="keys-nav" aria-label="דפי מפתחות" hidden><button type="button" data-view="open">הטענות פתוחות</button></nav>
@@ -47,7 +47,7 @@
             <div id="entry-fields" class="signature-grid" hidden>
               <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="entryTechnicianSignature" aria-label="חתימת הטכנאי בביקורת כניסה"></canvas><button type="button" class="clear-signature" data-clear-signature="entryTechnicianSignature">נקה חתימה</button></div>
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="entryInspectorSignature" aria-label="חתימת הבודק בביקורת כניסה"></canvas><button type="button" class="clear-signature" data-clear-signature="entryInspectorSignature">נקה חתימה</button></div>
-              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="entryInspectorNumber"></label>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[1-9][0-9]{6}" data-state-field="entryInspectorNumber"></label>
             </div>
             <label class="replaced-toggle sub-toggle" for="interim-check">
               <input id="interim-check" type="checkbox" data-toggle-state="interimEnabled" data-target="interim-fields">
@@ -56,7 +56,7 @@
             </label>
             <div id="interim-fields" class="signature-grid" hidden>
               <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="interimTechnicianSignature" aria-label="חתימת הטכנאי"></canvas><button type="button" class="clear-signature" data-clear-signature="interimTechnicianSignature">נקה חתימה</button></div>
-              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="interimInspectorNumber"></label>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[1-9][0-9]{6}" data-state-field="interimInspectorNumber"></label>
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="interimInspectorSignature" aria-label="חתימת הבודק"></canvas><button type="button" class="clear-signature" data-clear-signature="interimInspectorSignature">נקה חתימה</button></div>
               <div class="named-signature"><label class="input-field">שם פ.כלים / מ״ע<input type="text" data-state-field="interimToolsName"></label><div class="signature-field"><span class="field-label">חתימת פ.כלים / מ״ע</span><canvas class="signature-pad" data-signature="interimToolsSignature" aria-label="חתימת פ.כלים או מ״ע"></canvas><button type="button" class="clear-signature" data-clear-signature="interimToolsSignature">נקה חתימה</button></div></div>
             </div>
@@ -67,7 +67,7 @@
             </label>
             <div id="final-fields" class="signature-grid" hidden>
               <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="finalTechnicianSignature" aria-label="חתימת הטכנאי בסיום"></canvas><button type="button" class="clear-signature" data-clear-signature="finalTechnicianSignature">נקה חתימה</button></div>
-              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="finalInspectorNumber"></label>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[1-9][0-9]{6}" data-state-field="finalInspectorNumber"></label>
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="finalInspectorSignature" aria-label="חתימת הבודק בסיום"></canvas><button type="button" class="clear-signature" data-clear-signature="finalInspectorSignature">נקה חתימה</button></div>
               <div class="named-signature"><label class="input-field">שם ר״צ / מ״ע<input type="text" data-state-field="finalLeadName"></label><div class="signature-field"><span class="field-label">חתימת ר״צ / מ״ע</span><canvas class="signature-pad" data-signature="finalLeadSignature" aria-label="חתימת ר״צ או מ״ע"></canvas><button type="button" class="clear-signature" data-clear-signature="finalLeadSignature">נקה חתימה</button></div></div>
               <label class="input-field">שעת עזיבה<input type="time" step="60" data-state-field="departureTime"></label>
@@ -93,7 +93,7 @@
           </div>
           <div class="signature-grid taken-signature-grid">
             <label class="input-field">שם מלא<input type="text" data-state-field="takenFullName" autocomplete="name"></label>
-            <label class="input-field">מספר אישי<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="takenPersonalNumber"></label>
+            <label class="input-field">מספר אישי<input type="text" inputmode="numeric" maxlength="7" pattern="[1-9][0-9]{6}" data-state-field="takenPersonalNumber"></label>
             <label class="input-field">דרגה<input type="text" data-state-field="takenRank"></label>
             <div class="signature-field"><span class="field-label">חתימה</span><canvas class="signature-pad" data-signature="takenSignature" aria-label="חתימה על קשיחים נצרכים"></canvas><button type="button" class="clear-signature" data-clear-signature="takenSignature">נקה חתימה</button></div>
           </div>
@@ -120,4 +120,4 @@
 
 </div><section class="card"><button id="save-key-work" type="button" class="secondary-button">שמור וחזור לרשימה</button> <button id="complete-key-load" type="button" class="primary-button">העבר הטענה לבדיקת מטיס</button><p id="work-status" class="copy-status" role="status" aria-live="polite"></p><button id="reopen-key-load" type="button" class="secondary-button" hidden>החזר את ההטענה לטכנאים לעריכה</button><p id="reopen-key-status" class="copy-status" role="status" aria-live="polite"></p><details id="key-reopen-history" class="key-reopen-history" hidden><summary>היסטוריית הטופס</summary><ol id="key-reopen-events"></ol></details></section>
 </section>
-</main></div><script type="module" src="../keys/app.js?v=1.9.33"></script></body></html>
+</main></div><script type="module" src="../keys/app.js?v=1.9.38"></script></body></html>

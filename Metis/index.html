@@ -24,7 +24,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">משתמש מחובר: <span id="connected-user">—</span></p>
       </div>
-      <span class="version-pill">v1.9.36</span>
+      <span class="version-pill">v1.9.38</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
@@ -135,7 +135,7 @@
             <div id="entry-fields" class="signature-grid" hidden>
               <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="entryTechnicianSignature" aria-label="חתימת הטכנאי בביקורת כניסה"></canvas><button type="button" class="clear-signature" data-clear-signature="entryTechnicianSignature">נקה חתימה</button></div>
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="entryInspectorSignature" aria-label="חתימת הבודק בביקורת כניסה"></canvas><button type="button" class="clear-signature" data-clear-signature="entryInspectorSignature">נקה חתימה</button></div>
-              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="entryInspectorNumber"></label>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[1-9][0-9]{6}" data-state-field="entryInspectorNumber"></label>
             </div>
             <label class="replaced-toggle sub-toggle" for="interim-check">
               <input id="interim-check" type="checkbox" data-toggle-state="interimEnabled" data-target="interim-fields">
@@ -144,7 +144,7 @@
             </label>
             <div id="interim-fields" class="signature-grid" hidden>
               <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="interimTechnicianSignature" aria-label="חתימת הטכנאי"></canvas><button type="button" class="clear-signature" data-clear-signature="interimTechnicianSignature">נקה חתימה</button></div>
-              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="interimInspectorNumber"></label>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[1-9][0-9]{6}" data-state-field="interimInspectorNumber"></label>
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="interimInspectorSignature" aria-label="חתימת הבודק"></canvas><button type="button" class="clear-signature" data-clear-signature="interimInspectorSignature">נקה חתימה</button></div>
               <div class="named-signature"><label class="input-field">שם פ.כלים / מ״ע<input type="text" data-state-field="interimToolsName"></label><div class="signature-field"><span class="field-label">חתימת פ.כלים / מ״ע</span><canvas class="signature-pad" data-signature="interimToolsSignature" aria-label="חתימת פ.כלים או מ״ע"></canvas><button type="button" class="clear-signature" data-clear-signature="interimToolsSignature">נקה חתימה</button></div></div>
             </div>
@@ -155,7 +155,7 @@
             </label>
             <div id="final-fields" class="signature-grid" hidden>
               <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas class="signature-pad" data-signature="finalTechnicianSignature" aria-label="חתימת הטכנאי בסיום"></canvas><button type="button" class="clear-signature" data-clear-signature="finalTechnicianSignature">נקה חתימה</button></div>
-              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="finalInspectorNumber"></label>
+              <label class="input-field">מספר אישי של הבודק<input type="text" inputmode="numeric" maxlength="7" pattern="[1-9][0-9]{6}" data-state-field="finalInspectorNumber"></label>
               <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas class="signature-pad" data-signature="finalInspectorSignature" aria-label="חתימת הבודק בסיום"></canvas><button type="button" class="clear-signature" data-clear-signature="finalInspectorSignature">נקה חתימה</button></div>
               <div class="named-signature"><label class="input-field">שם ר״צ / מ״ע<input type="text" data-state-field="finalLeadName"></label><div class="signature-field"><span class="field-label">חתימת ר״צ / מ״ע</span><canvas class="signature-pad" data-signature="finalLeadSignature" aria-label="חתימת ר״צ או מ״ע"></canvas><button type="button" class="clear-signature" data-clear-signature="finalLeadSignature">נקה חתימה</button></div></div>
               <label class="input-field">שעת עזיבה<input type="time" step="60" data-state-field="departureTime"></label>
@@ -181,7 +181,7 @@
           </div>
           <div class="signature-grid taken-signature-grid">
             <label class="input-field">שם מלא<input type="text" data-state-field="takenFullName" autocomplete="name"></label>
-            <label class="input-field">מספר אישי<input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]{1,7}" data-state-field="takenPersonalNumber"></label>
+            <label class="input-field">מספר אישי<input type="text" inputmode="numeric" maxlength="7" pattern="[1-9][0-9]{6}" data-state-field="takenPersonalNumber"></label>
             <label class="input-field">דרגה<input type="text" data-state-field="takenRank"></label>
             <div class="signature-field"><span class="field-label">חתימה</span><canvas class="signature-pad" data-signature="takenSignature" aria-label="חתימה על קשיחים נצרכים"></canvas><button type="button" class="clear-signature" data-clear-signature="takenSignature">נקה חתימה</button></div>
           </div>
@@ -345,7 +345,7 @@
           <form id="create-user-form" class="user-form">
             <label class="input-field">שם<input name="firstName" required maxlength="80" autocomplete="off"></label>
             <label class="input-field">שם משפחה<input name="lastName" required maxlength="80" autocomplete="off"></label>
-            <label class="input-field">מספר אישי<input name="personalNumber" required inputmode="numeric" pattern="[0-9]{7}" maxlength="7" title="שבע ספרות" autocomplete="off"></label>
+            <label class="input-field">מספר אישי<input name="personalNumber" required inputmode="numeric" pattern="[1-9][0-9]{6}" maxlength="7" title="שבע ספרות, הראשונה אינה 0" autocomplete="off"></label>
             <label class="input-field">שלב עבודה / הסמכה<select name="workStage"><option value="">בחר שלב</option><option value="1">שלב 1</option><option value="7">שלב 7</option><option value="9">שלב 9</option><option value="11">שלב 11</option></select></label>
             <label class="input-field">הסמכת מג״ת<select name="magatCertified"><option value="false">ללא הסמכה</option><option value="true">מוסמך מג״ת</option></select></label>
             <label class="input-field">מחלקה<select name="department"><option value="">בחר מחלקה</option><option>דרג א</option><option>קשר</option><option>ברקת</option><option>תחקור</option><option>חלון לוגיסטי</option><option>הטסה</option></select></label>
@@ -362,6 +362,6 @@
       <div id="view-components" data-manager-view="components" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>מכלולים</h2></div></div><form id="component-form" class="directory-form manager-grid"><label class="input-field">שם מכלול<input name="name" required maxlength="80"></label><label class="input-field">מערכת<select name="systemId" required></select></label><button class="primary-button" type="submit">הוסף מכלול</button></form><p id="component-status" class="copy-status" role="status"></p><div class="table-wrap"><table class="directory-table"><thead><tr><th>מכלול</th><th>מערכת</th><th>פעולות</th></tr></thead><tbody id="components-table"></tbody></table></div></section></div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.9.36"></script>
+  <script type="module" src="app.js?v=1.9.38"></script>
 </body>
 </html>

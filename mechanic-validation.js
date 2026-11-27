@@ -40,7 +40,7 @@ export function validateTreatment(sheet, state, tables) {
     for (const [key, label, signature = false] of fields) {
       if (!filled(state[key])) return missing(`לא ניתן לסגור: חובה למלא ${label}.`, signature ? `canvas[data-signature="${key}"]` : `[data-state-field="${key}"]`);
       if (key.endsWith("InspectorNumber") || key === "takenPersonalNumber") {
-        if (!/^[0-9]{1,7}$/.test(String(state[key]))) return missing(`לא ניתן לסגור: ${label} חייב להכיל ספרות בלבד, עד 7 ספרות.`, `[data-state-field="${key}"]`);
+        if (!/^[1-9][0-9]{6}$/.test(String(state[key]))) return missing(`לא ניתן לסגור: ${label} חייב להכיל שבע ספרות, הראשונה אינה 0.`, `[data-state-field="${key}"]`);
       }
     }
     return null;

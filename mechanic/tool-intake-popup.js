@@ -16,7 +16,7 @@ export function initToolIntakePopup(user) {
   let issue = null, lock = null, rows = [], technicianSignature = "", inspectorSignature = "", saving = false;
   let clearTechnician, clearInspector;
   inspectorNumber.addEventListener("input", () => {
-    inspectorNumber.value = inspectorNumber.value.replace(/[^0-9]/g, "").slice(0, 7);
+    inspectorNumber.value = inspectorNumber.value.replace(/[^0-9]/g, "").replace(/^0+/, "").slice(0, 7);
     clearError();
   });
 
@@ -100,7 +100,7 @@ export function initToolIntakePopup(user) {
     }
     if (!technicianSignature) { error("יש לחתום כטכנאי על ביקורת הכניסה.", technicianCanvas); return; }
     if (!inspectorSignature) { error("יש להחתים את הבודק על ביקורת הכניסה.", inspectorCanvas); return; }
-    if (!/^[0-9]{1,7}$/.test(inspectorNumber.value.trim())) { error("יש למלא מספר אישי של הבודק (עד 7 ספרות).", inspectorNumber); return; }
+    if (!/^[1-9][0-9]{6}$/.test(inspectorNumber.value.trim())) { error("יש למלא מספר אישי של הבודק: שבע ספרות, הראשונה אינה 0.", inspectorNumber); return; }
     saving = true; save.disabled = true; status.textContent = "שומר את ביקורת הכניסה בשרת…";
     try {
       await lock.renew();
