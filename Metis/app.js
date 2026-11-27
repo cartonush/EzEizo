@@ -13,7 +13,7 @@ import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS
 import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.23";
 import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.23";
 import { makeSquadronEmblem } from "../squadron-emblems.js?v=1.9.19";
-import { initToolAdmin } from "./tool-admin.js?v=1.9.23";
+import { initToolAdmin } from "./tool-admin.js?v=1.9.23a";
 
 const managerUser = await gate("operations");
 const fullManager = managerUser.isFullManager;
