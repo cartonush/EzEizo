@@ -12,6 +12,7 @@
 .preview-link { color: #17668f; font-size: 12px; font-weight: 700; text-decoration: none; }
 .preview-link:hover { text-decoration: underline; }
 .manager-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+#tool-admin-list { margin-top: 20px; }
 .review-columns, .review-filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; direction: rtl; margin-block: 15px; }
 .review-column, .review-filter-grid fieldset, .origin-options { box-sizing: border-box; min-width: 0; max-width: 100%; margin: 0; padding: 13px; border: 1px solid #cbdce5; border-radius: 13px; background: #f7fafc; overflow: hidden; }
 .review-column legend, .review-filter-grid legend, .origin-options legend { padding-inline: 7px; font-weight: 800; color: #173b5d; }
