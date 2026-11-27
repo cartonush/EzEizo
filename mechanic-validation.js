@@ -1,4 +1,4 @@
-export function validateTreatment(sheet, state, tables) {
+export function validateTreatment(sheet, state, tables, { requireFreshExit = false } = {}) {
   const missing = (message, selector) => ({ message, selector });
   const filled = (value) => String(value ?? "").trim().length > 0;
 
@@ -54,6 +54,7 @@ export function validateTreatment(sheet, state, tables) {
     const error = checkRows("tools", "כלים");
     if (error) return error;
     if (!state.finalEnabled) return missing("חובה לבצע ביקורת יציאה על כל הכלים שנקלטו.", "#final-check");
+    if (requireFreshExit && state.finalInspectionToolCount !== state.tools.length) return missing("נוספו כלים מאז ביקורת היציאה. יש לבצע ולחתום שוב על ביקורת יציאה לכל הכלים.", 'canvas[data-signature="finalInspectorSignature"]');
     if (state.entryEnabled) {
       const entry = checkFields([
         ["entryTechnicianSignature", "חתימת הטכנאי בביקורת כניסה", true],

@@ -379,6 +379,58 @@ service cloud.firestore {
         && request.resource.data.workDraft.state.actions.size() == 12
         && (!resource.data.keys().hasAny(['acceptedTools']) || request.resource.data.workDraft.state.tools == resource.data.acceptedTools)
         && resource.data.keys().hasAny(['startedAt']);
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acceptedTools', 'toolIntakes'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['acceptedTools', 'toolIntakes'])
+        && hasRole('technician')
+        && resource.data.status == 'open'
+        && resource.data.keys().hasAll(['startedAt', 'intake', 'acceptedTools'])
+        && request.auth.uid in resource.data.get('teamUids', [resource.data.assigneeUid])
+        && ownsIssueLock(id, resource.data.sheet.serial)
+        && request.resource.data.toolIntakes is list
+        && request.resource.data.toolIntakes.size() == resource.data.get('toolIntakes', []).size() + 1
+        && request.resource.data.toolIntakes.hasAll(resource.data.get('toolIntakes', []))
+        && request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].by == request.auth.uid
+        && request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].tools is list
+        && request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].tools.size() > 0
+        && request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].technicianSignature.size() > 100
+        && request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].inspectorSignature.size() > 100
+        && validPersonalNumber(request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].inspectorNumber)
+        && request.resource.data.acceptedTools.size() == resource.data.acceptedTools.size() + request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].tools.size()
+        && request.resource.data.acceptedTools.hasAll(resource.data.acceptedTools)
+        && request.resource.data.acceptedTools.hasAll(request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].tools);
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'closed', 'workDraft'])
+        && hasRole('technician')
+        && resource.data.status == 'open'
+        && request.auth.uid in resource.data.get('teamUids', [resource.data.assigneeUid])
+        && ownsIssueLock(id, resource.data.sheet.serial)
+        && request.resource.data.status == 'pendingReview'
+        && resource.data.keys().hasAny(['startedAt'])
+        && request.resource.data.closed.state.get('preflightSaved', false) == true
+        && request.resource.data.closed.state.get('repairClassification', '') in ['verified', 'notVerified', 'notFault']
+        && request.resource.data.closed.keys().hasOnly(['record', 'state'])
+        && request.resource.data.closed.record.id == id
+        && request.resource.data.closed.record.serial == resource.data.sheet.serial
+        && (!resource.data.keys().hasAny(['acceptedTools']) || request.resource.data.closed.state.tools == resource.data.acceptedTools)
+        && (resource.data.get('toolIntakes', []).size() == 0 ||
+          (request.resource.data.closed.state.get('finalInspectionToolCount', -1) == resource.data.acceptedTools.size()
+          && request.resource.data.closed.state.get('finalEnabled', false) == true
+          && request.resource.data.closed.state.finalTechnicianSignature.size() > 100
+          && request.resource.data.closed.state.finalInspectorSignature.size() > 100
+          && request.resource.data.closed.state.finalLeadSignature.size() > 100
+          && validPersonalNumber(request.resource.data.closed.state.finalInspectorNumber)))
+        && request.resource.data.closed.record.actionsComplete == true
+        && request.resource.data.closed.record.closedAt == request.resource.data.closed.state.closedAt
+        && request.resource.data.closed.state.actions.size() == 12
+        && request.resource.data.closed.state.actions.hasOnly([true])
+        && request.resource.data.closed.state.safetyTechnicianSignature is string
+        && request.resource.data.closed.state.safetyTechnicianSignature.size() > 100
+        && request.resource.data.closed.state.technicianDeclarationSignature is string
+        && request.resource.data.closed.state.technicianDeclarationSignature.size() > 100
+        && request.resource.data.closed.state.arrivalTime is string
+        && request.resource.data.closed.state.arrivalTime.matches('([01][0-9]|2[0-3]):[0-5][0-9]')
+        && request.resource.data.closed.state.completionTime is string
+        && request.resource.data.closed.state.completionTime.matches('([01][0-9]|2[0-3]):[0-5][0-9]');
+
       allow update: if isOperator()
         && resource.data.status == 'open'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assigneeUid', 'assigneeName'])
@@ -457,50 +509,6 @@ service cloud.firestore {
           (request.resource.data.intake.takenSignature is string
           && request.resource.data.intake.takenSignature.size() > 100
           && validPersonalNumber(request.resource.data.intake.takenPersonalNumber)));
-      allow update: if hasRole('technician')
-        && resource.data.status == 'open'
-        && resource.data.keys().hasAll(['startedAt', 'intake', 'acceptedTools'])
-        && request.auth.uid in resource.data.get('teamUids', [resource.data.assigneeUid])
-        && ownsIssueLock(id, resource.data.sheet.serial)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acceptedTools', 'toolIntakes'])
-        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['acceptedTools', 'toolIntakes'])
-        && request.resource.data.toolIntakes is list
-        && request.resource.data.toolIntakes.size() == resource.data.get('toolIntakes', []).size() + 1
-        && request.resource.data.toolIntakes.hasAll(resource.data.get('toolIntakes', []))
-        && request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].by == request.auth.uid
-        && request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].tools is list
-        && request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].tools.size() > 0
-        && request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].technicianSignature.size() > 100
-        && request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].inspectorSignature.size() > 100
-        && validPersonalNumber(request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].inspectorNumber)
-        && request.resource.data.acceptedTools.size() == resource.data.acceptedTools.size() + request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].tools.size()
-        && request.resource.data.acceptedTools.hasAll(resource.data.acceptedTools)
-        && request.resource.data.acceptedTools.hasAll(request.resource.data.toolIntakes[request.resource.data.toolIntakes.size() - 1].tools);
-      allow update: if hasRole('technician')
-        && resource.data.status == 'open'
-        && request.auth.uid in resource.data.get('teamUids', [resource.data.assigneeUid])
-        && ownsIssueLock(id, resource.data.sheet.serial)
-        && request.resource.data.status == 'pendingReview'
-        && resource.data.keys().hasAny(['startedAt'])
-        && request.resource.data.closed.state.get('preflightSaved', false) == true
-        && request.resource.data.closed.state.get('repairClassification', '') in ['verified', 'notVerified', 'notFault']
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'closed', 'workDraft'])
-        && request.resource.data.closed.keys().hasOnly(['record', 'state'])
-        && request.resource.data.closed.record.id == id
-        && request.resource.data.closed.record.serial == resource.data.sheet.serial
-        && (!resource.data.keys().hasAny(['acceptedTools']) || request.resource.data.closed.state.tools == resource.data.acceptedTools)
-        && request.resource.data.closed.record.actionsComplete == true
-        && request.resource.data.closed.record.closedAt == request.resource.data.closed.state.closedAt
-        && request.resource.data.closed.state.actions.size() == 12
-        && request.resource.data.closed.state.actions.hasOnly([true])
-        && request.resource.data.closed.state.safetyTechnicianSignature is string
-        && request.resource.data.closed.state.safetyTechnicianSignature.size() > 100
-        && request.resource.data.closed.state.technicianDeclarationSignature is string
-        && request.resource.data.closed.state.technicianDeclarationSignature.size() > 100
-        && request.resource.data.closed.state.arrivalTime is string
-        && request.resource.data.closed.state.arrivalTime.matches('([01][0-9]|2[0-3]):[0-5][0-9]')
-        && request.resource.data.closed.state.completionTime is string
-        && request.resource.data.closed.state.completionTime.matches('([01][0-9]|2[0-3]):[0-5][0-9]');
       allow update: if isOperator()
         && resource.data.status == 'pendingReview'
         && request.resource.data.status == 'closed'

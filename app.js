@@ -1,7 +1,7 @@
 import "./sheet-data.js?v=1.7.6";
 import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, watchToolCatalog, refreshTechnicianTasks, getIssue, startIssueWork, saveInitialIntake, addToolIntake, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.38";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.9.31";
-import { validateTreatment } from "./mechanic-validation.js?v=1.9.38";
+import { validateTreatment } from "./mechanic-validation.js?v=1.9.39";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.9.23";
 import { createEditLock } from "./edit-lock.js?v=1.9.23";
@@ -9,7 +9,7 @@ import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.33";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.33";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "./tool-catalog.js?v=1.9.30";
-import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.38";
+import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.39";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");
@@ -178,6 +178,11 @@ if (remoteIssue?.status === "open" && remoteIssue?.intake) {
   });
 }
 if (remoteIssue?.acceptedTools) state.tools = remoteIssue.acceptedTools;
+if (remoteIssue?.status === "open" && remoteIssue.toolIntakes?.length && state.finalInspectionToolCount !== state.tools.length) {
+  for (const key of ["finalTechnicianSignature", "finalInspectorSignature", "finalInspectorNumber", "finalLeadName", "finalLeadSignature", "departureTime"]) state[key] = "";
+  state.finalInspectionToolCount = null;
+  state.finalEnabled = true;
+}
 if (remoteIssue?.intake) { state.toolsEnabled = state.tools.length > 0; state.entryEnabled = remoteIssue.intake.tools.length > 0; state.takenEnabled = remoteIssue.intake.taken.length > 0; }
 let intakeChoice = remoteIssue?.intake?.choice || "";
 let intakeSaved = Boolean(remoteIssue?.intake || remoteIssue?.startedAt);
@@ -704,7 +709,7 @@ async function submitTreatment() {
   if (managerClosedView) return;
   if (!editLock?.held) { const message = document.querySelector("#close-message"); message.textContent = "הטופס אינו נעול לעריכה עבורך. לחץ על בדוק שוב."; message.dataset.state = "error"; message.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
   if (document.querySelector("#close-sheet").disabled) return;
-  const validation = validateTreatment(sheet, state, TABLES);
+  const validation = validateTreatment(sheet, state, TABLES, { requireFreshExit: Boolean(remoteIssue?.toolIntakes?.length) });
   if (validation) {
     const message = document.querySelector("#close-message");
     message.textContent = validation.message;
@@ -841,6 +846,13 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
       remoteIssue.acceptedTools = state.tools;
       remoteIssue.toolIntakes = [...(remoteIssue.toolIntakes || []), { tools, at, by: currentUser.uid }];
       state.finalEnabled = true;
+      state.finalInspectionToolCount = null;
+      for (const key of ["finalTechnicianSignature", "finalInspectorSignature", "finalInspectorNumber", "finalLeadName", "finalLeadSignature", "departureTime"]) {
+        signatureClearers.get(key)?.();
+        state[key] = "";
+        const field = document.querySelector(`[data-state-field="${key}"]`);
+        if (field) field.value = "";
+      }
       renderRows("tools"); document.querySelector("#tools-toggle").checked = true;
       document.querySelector("#tools-area").hidden = false;
       document.querySelector("#final-check").checked = true;
@@ -851,7 +863,7 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
       draftTools = [{ toolName: "", toolNumber: "", notes: "" }];
       clearTechnician(); clearInspector(); document.querySelector("#late-inspector-number").value = "";
       hideLateTools();
-      setSharedSaveStatus("הכלים החדשים נקלטו עם ביקורת כניסה ונכללו בביקורת היציאה.");
+      setSharedSaveStatus("הכלים החדשים נקלטו. יש לבצע ולחתום שוב על ביקורת יציאה לכל הכלים לפני הגשת הדף.");
     } catch (error) { feedback.textContent = `הכלים לא נקלטו: ${error.message}`; feedback.dataset.state = "error"; }
     finally { button.disabled = false; }
   });
@@ -1094,6 +1106,7 @@ function setupSignaturePads(root = document) {
     const key = canvas.dataset.signature;
     signatureClearers.set(key, attachSignaturePad(canvas, { initial: state[key] || "", onChange(value) {
       state[key] = value;
+      if (key === "finalInspectorSignature") state.finalInspectionToolCount = value ? state.tools.length : null;
       saveState();
       if (key === "safetyTechnicianSignature") {
         if (value) void beginIssueWork();
