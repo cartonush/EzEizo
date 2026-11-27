@@ -1,7 +1,7 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, watchToolCatalog, refreshTechnicianTasks, getIssue, startIssueWork, saveInitialIntake, addToolIntake, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.33";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, watchToolCatalog, refreshTechnicianTasks, getIssue, startIssueWork, saveInitialIntake, addToolIntake, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.38";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.9.31";
-import { validateTreatment } from "./mechanic-validation.js?v=1.9.23";
+import { validateTreatment } from "./mechanic-validation.js?v=1.9.38";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.9.23";
 import { createEditLock } from "./edit-lock.js?v=1.9.23";
@@ -9,7 +9,7 @@ import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.33";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.33";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "./tool-catalog.js?v=1.9.30";
-import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.37";
+import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.38";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");
@@ -246,7 +246,9 @@ function applyPreflightGate() {
   document.querySelectorAll(".sheet-save-toolbar").forEach((toolbar) => { toolbar.hidden = !unlocked; });
   document.querySelector("#intake-save").disabled = intakePending || !editLock?.held;
   for (const selector of [".tools-card", '.parts-card[aria-labelledby="taken-title"]']) form.querySelector(selector).hidden = !intakeSaved && intakeChoice !== "yes";
-  document.querySelector(".safety-card").hidden = !intakeSaved;
+  const safetyCard = document.querySelector(".safety-card");
+  safetyCard.hidden = !intakeSaved;
+  if (intakeSaved && !form.hidden && !document.querySelector("main").hidden) setupSignaturePads(safetyCard);
   const toolsLocked = intakeSaved && Boolean(remoteIssue?.intake);
   const inspectionStatus = document.querySelector("#entry-inspection-status");
   inspectionStatus.textContent = toolsLocked && remoteIssue.intake.tools.length
@@ -770,7 +772,7 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
   const rows = document.querySelector("#late-tool-rows"), feedback = document.querySelector("#late-tools-status");
   const lateInspectorNumber = document.querySelector("#late-inspector-number");
   lateInspectorNumber.addEventListener("input", () => {
-    lateInspectorNumber.value = lateInspectorNumber.value.replace(/[^0-9]/g, "").slice(0, 7);
+    lateInspectorNumber.value = lateInspectorNumber.value.replace(/[^0-9]/g, "").replace(/^0+/, "").slice(0, 7);
   });
   let draftTools = [{ toolName: "", toolNumber: "", notes: "" }];
   let technicianSignature = "", inspectorSignature = "", clearTechnician, clearInspector;
@@ -1077,7 +1079,7 @@ function bindStateFields() {
     input.value = state[key] || "";
     const eventName = input.type === "time" ? "change" : "input";
     input.addEventListener(eventName, () => {
-      if (key.endsWith("InspectorNumber") || key === "takenPersonalNumber") input.value = input.value.replace(/[^0-9]/g, "").slice(0, 7);
+      if (key.endsWith("InspectorNumber") || key === "takenPersonalNumber") input.value = input.value.replace(/[^0-9]/g, "").replace(/^0+/, "").slice(0, 7);
       state[key] = input.value;
       saveState();
     });

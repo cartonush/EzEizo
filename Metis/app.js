@@ -1,12 +1,12 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createManualIssue, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.36";
+import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createManualIssue, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.38";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
 import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.33";
 import { initCatalogView } from "./catalog-view.js?v=1.9.33";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
-import { initKeyPages } from "../keys/app.js?v=1.9.33";
+import { initKeyPages } from "../keys/app.js?v=1.9.38";
 import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.26";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
 import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.18";
@@ -831,7 +831,7 @@ function renderDirectory() {
         const choices = { workStage: WORK_STAGES, department: DEPARTMENTS, serviceType: SERVICE_TYPES, license: LICENSES };
         const input = document.createElement(["rank", ...Object.keys(choices)].includes(key) ? "select" : "input");
         input.maxLength = key === "personalNumber" ? 7 : 80; input.setAttribute("aria-label", `${td.dataset.label} · ${person.name || person.uid}`);
-        if (key === "personalNumber") { input.inputMode = "numeric"; input.pattern = "[0-9]{7}"; input.placeholder = "הגדרה חד פעמית"; }
+        if (key === "personalNumber") { input.inputMode = "numeric"; input.pattern = "[1-9][0-9]{6}"; input.placeholder = "הגדרה חד פעמית"; input.addEventListener("input", () => { input.value = input.value.replace(/[^0-9]/g, "").replace(/^0+/, "").slice(0, 7); }); }
         if (choices[key]) {
           const value = person[key] || fallback;
           input.append(new Option(`בחר ${td.dataset.label}`, ""), ...choices[key].map((item) => new Option(key === "workStage" ? `שלב ${item}` : item, item)));
@@ -986,6 +986,7 @@ function refreshTechnicianFilter() {
   select.value = previous;
 }
 const userForm = document.querySelector("#create-user-form");
+userForm.elements.personalNumber.addEventListener("input", () => { const input = userForm.elements.personalNumber; input.value = input.value.replace(/[^0-9]/g, "").replace(/^0+/, "").slice(0, 7); });
 function refreshNewUserRanks() {
   const select = userForm.elements.rank, old = select.value;
   const ranks = permanentService(userForm.elements.serviceType.value) ? PERMANENT_RANKS : REGULAR_RANKS;

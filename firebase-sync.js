@@ -530,7 +530,7 @@ export async function reopenKeyLoad(id, managerUid) {
 }
 
 export async function createTechnician(name, email, password, personalNumber, profile = {}) {
-  if (!/^\d{7}$/.test(personalNumber)) throw new Error("מספר אישי חייב להכיל שבע ספרות.");
+  if (!/^[1-9][0-9]{6}$/.test(personalNumber)) throw new Error("מספר אישי חייב להכיל שבע ספרות ולהתחיל בספרה שאינה 0.");
   if (!/^[0-9]{8}$/.test(password)) throw new Error("הסיסמה חייבת להכיל בדיוק 8 ספרות.");
   const secondary = initializeApp(firebaseConfig, `provision-${crypto.randomUUID()}`);
   const provisioningAuth = getAuth(secondary);
@@ -556,7 +556,7 @@ export async function createTechnician(name, email, password, personalNumber, pr
 }
 
 export async function setTechnicianPersonalNumber(uid, personalNumber) {
-  if (!/^\d{7}$/.test(personalNumber)) throw new Error("מספר אישי חייב להכיל שבע ספרות.");
+  if (!/^[1-9][0-9]{6}$/.test(personalNumber)) throw new Error("מספר אישי חייב להכיל שבע ספרות ולהתחיל בספרה שאינה 0.");
   await runTransaction(db, async (transaction) => {
     const roleRef = doc(db, "roles", uid), numberRef = doc(db, "personalNumbers", personalNumber);
     const [role, number] = await Promise.all([transaction.get(roleRef), transaction.get(numberRef)]);
@@ -683,8 +683,8 @@ export async function saveInitialIntake(id, uid, intake, session) {
         taken.some((row) => !row.description?.trim() || !row.quantityIn || Number(row.quantityIn) <= 0)) throw new Error("יש להשלים פרטי כל כלי וקשיח שנקלטו.");
     if (duplicateToolNumbers(tools)) throw new Error("מספר כלי מופיע יותר מפעם אחת.");
     await requireCatalogTools(transaction, tools);
-    if (tools.length && (!intake.entryTechnicianSignature?.startsWith("data:image/png;base64,") || !intake.entryInspectorSignature?.startsWith("data:image/png;base64,") || !/^[0-9]{1,7}$/.test(intake.entryInspectorNumber || ""))) throw new Error("יש להשלים ביקורת כניסה לכלים.");
-    if (taken.length && (!intake.takenSignature?.startsWith("data:image/png;base64,") || !intake.takenFullName?.trim() || !/^[0-9]{1,7}$/.test(intake.takenPersonalNumber || "") || !intake.takenRank?.trim())) throw new Error("יש להשלים חתימה על קשיחים שנלקחו.");
+    if (tools.length && (!intake.entryTechnicianSignature?.startsWith("data:image/png;base64,") || !intake.entryInspectorSignature?.startsWith("data:image/png;base64,") || !/^[1-9][0-9]{6}$/.test(intake.entryInspectorNumber || ""))) throw new Error("יש להשלים ביקורת כניסה לכלים ומספר אישי תקין בן שבע ספרות שאינו מתחיל ב־0.");
+    if (taken.length && (!intake.takenSignature?.startsWith("data:image/png;base64,") || !intake.takenFullName?.trim() || !/^[1-9][0-9]{6}$/.test(intake.takenPersonalNumber || "") || !intake.takenRank?.trim())) throw new Error("יש להשלים חתימה ומספר אישי תקין בן שבע ספרות שאינו מתחיל ב־0 על קשיחים שנלקחו.");
     const at = new Date().toISOString();
     transaction.update(ref, { intake: { ...intake, at, by: uid }, acceptedTools: tools });
     return at;
@@ -700,7 +700,7 @@ export async function addToolIntake(id, uid, batch, session) {
     await requireEditLock(transaction, "issue", snap.data().sheet.serial, session, uid);
     const tools = batch.tools || [];
     if (!tools.length || tools.some((row) => !row.toolName?.trim() || !row.toolNumber?.trim())) throw new Error("יש למלא שם ומספר לכל כלי חדש.");
-    if (!batch.technicianSignature?.startsWith("data:image/png;base64,") || !batch.inspectorSignature?.startsWith("data:image/png;base64,") || !/^[0-9]{1,7}$/.test(batch.inspectorNumber || "")) throw new Error("יש להשלים ביקורת כניסה חדשה.");
+    if (!batch.technicianSignature?.startsWith("data:image/png;base64,") || !batch.inspectorSignature?.startsWith("data:image/png;base64,") || !/^[1-9][0-9]{6}$/.test(batch.inspectorNumber || "")) throw new Error("יש להשלים ביקורת כניסה חדשה ומספר אישי תקין בן שבע ספרות שאינו מתחיל ב־0.");
     const accepted = snap.data().acceptedTools || [];
     if (duplicateToolNumbers(tools)) throw new Error("לא ניתן לקלוט פעמיים את אותו מספר כלי.");
     if (tools.some((row) => accepted.some((old) => String(old.toolNumber || "").trim().toLocaleLowerCase() === row.toolNumber.trim().toLocaleLowerCase()))) throw new Error("מספר כלי זה כבר נקלט בתקלה.");
