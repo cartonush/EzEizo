@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.9.21">
+  <link rel="stylesheet" href="../styles.css?v=1.9.23">
 </head>
 <body>
   <div class="app-shell">
@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">דף טיפול בתקלה</p>
       </div>
-      <span class="version-pill">v1.9.21</span>
+      <span class="version-pill">v1.9.23</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
       <div class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./" aria-label="חזרה לרשימת המשימות" hidden>→ חזרה</a></div>
     </header>
@@ -222,7 +222,7 @@
       <section id="late-tools" class="card" hidden>
         <div class="section-heading"><h2>קליטת כלים נוספים</h2><button id="cancel-late-tools" type="button" class="secondary-button">חזרה לתקלה</button></div>
         <p>הכלים יופיעו בטופס רק אחרי השלמת ביקורת כניסה ושמירה בשרת.</p>
-        <div class="table-wrap"><table><thead><tr><th>שם כלי</th><th>מספר כלי</th><th>הערות</th></tr></thead><tbody id="late-tool-rows"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>שם כלי</th><th>מספר כלי</th><th>הערות</th><th aria-label="פעולות"></th></tr></thead><tbody id="late-tool-rows"></tbody></table></div>
         <div class="signature-grid">
           <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas id="late-technician-signature" class="signature-pad" aria-label="חתימת טכנאי על כלים נוספים"></canvas><button id="clear-late-technician" type="button" class="clear-signature">נקה חתימה</button></div>
           <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas id="late-inspector-signature" class="signature-pad" aria-label="חתימת בודק על כלים נוספים"></canvas><button id="clear-late-inspector" type="button" class="clear-signature">נקה חתימה</button></div>
@@ -289,6 +289,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.9.21"></script>
+  <script type="module" src="../app.js?v=1.9.23"></script>
 </body>
 </html>

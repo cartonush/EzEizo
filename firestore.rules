@@ -310,8 +310,39 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /toolCatalog/{id} {
+      allow get: if id == 'catalog' && (isOperator() || hasRole('technician'));
+      allow list: if false;
+      allow create, update: if id == 'catalog' && isManager()
+        && request.resource.data.keys().hasOnly(['items', 'updatedAt', 'updatedBy'])
+        && request.resource.data.keys().hasAll(['items', 'updatedAt', 'updatedBy'])
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 100
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if false;
+    }
+
     match /issues/{id} {
       allow get, list: if isOperator() || (hasRole('technician') && (resource.data.assigneeUid == request.auth.uid || request.auth.uid in resource.data.get('teamUids', [])));
+      allow create: if isManager()
+        && request.resource.data.keys().hasOnly(['sheet', 'status', 'createdAt', 'assigneeUid', 'assigneeName', 'manualPaper', 'manualCreatedBy', 'closed'])
+        && request.resource.data.status == 'pendingReview'
+        && request.resource.data.manualPaper == true
+        && request.resource.data.manualCreatedBy == request.auth.uid
+        && request.resource.data.assigneeUid == ''
+        && request.resource.data.assigneeName == ''
+        && request.resource.data.sheet.id == id
+        && request.resource.data.sheet.serial.matches('[0-9]{10}')
+        && request.resource.data.sheet.actions.size() == 12
+        && request.resource.data.createdAt is string
+        && request.resource.data.closed.keys().hasOnly(['record', 'state'])
+        && request.resource.data.closed.record.keys().hasOnly(['id', 'serial', 'aircraft', 'location', 'fault', 'closedAt', 'actionsComplete', 'paper'])
+        && request.resource.data.closed.record.id == id
+        && request.resource.data.closed.record.serial == request.resource.data.sheet.serial
+        && request.resource.data.closed.record.paper == true
+        && request.resource.data.closed.record.actionsComplete == false
+        && request.resource.data.closed.state == { 'paper': true };
       allow create: if isOperator()
         && request.resource.data.keys().hasOnly(['sheet', 'status', 'createdAt', 'assigneeUid', 'assigneeName', 'teamUids', 'teamNames'])
         && request.resource.data.status == 'open'
@@ -469,12 +500,34 @@ service cloud.firestore {
         && request.resource.data.status == 'closed'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'reviewerSignature', 'managerReview'])
         && validManagerReview(request.resource.data.managerReview)
+        && (!resource.data.get('manualPaper', false) || resource.data.get('manualDetails', {}).get('repair', '').size() > 0)
         && request.resource.data.reviewedBy == request.auth.uid
         && request.resource.data.reviewedAt is string
         && request.resource.data.reviewerSignature is string
         && request.resource.data.reviewerSignature.size() > 100;
       allow update: if isManager()
+        && resource.data.get('manualPaper', false) == true
+        && resource.data.status == 'pendingReview'
+        && request.resource.data.status == 'pendingReview'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['manualDetails', 'manualUpdatedAt', 'manualUpdatedBy'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['manualDetails', 'manualUpdatedAt', 'manualUpdatedBy'])
+        && request.resource.data.manualUpdatedBy == request.auth.uid
+        && request.resource.data.manualUpdatedAt is string
+        && request.resource.data.manualDetails is map
+        && request.resource.data.manualDetails.keys().hasOnly(['repair', 'classification', 'technicianNotes', 'arrivalTime', 'completionTime', 'actions', 'removed', 'installed', 'tools', 'taken', 'rejected', 'inspection', 'paperReference'])
+        && request.resource.data.manualDetails.repair is string
+        && request.resource.data.manualDetails.repair.size() > 0
+        && request.resource.data.manualDetails.repair.size() <= 1200
+        && request.resource.data.manualDetails.actions is list
+        && request.resource.data.manualDetails.actions.size() == 12
+        && request.resource.data.manualDetails.removed is list
+        && request.resource.data.manualDetails.installed is list
+        && request.resource.data.manualDetails.tools is list
+        && request.resource.data.manualDetails.taken is list
+        && request.resource.data.manualDetails.rejected is list;
+      allow update: if isManager()
         && resource.data.status in ['open', 'pendingReview']
+        && !resource.data.get('manualPaper', false)
         && request.resource.data.status == 'closed'
         && request.resource.data.diff(resource.data).affectedKeys().hasAll(['status', 'reviewedAt', 'reviewedBy', 'paperClosure'])
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'paperClosure', 'closed'])
@@ -518,6 +571,7 @@ service cloud.firestore {
         && request.resource.data.reviewUpdatedAt is string;
       allow update: if isOperator()
         && resource.data.status in ['closed', 'pendingReview']
+        && !resource.data.get('manualPaper', false)
         && request.resource.data.status == 'open'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reopenedAt', 'reopenedBy', 'reopenEvents', 'paperClosure'])
         && (!resource.data.keys().hasAny(['paperClosure']) || !request.resource.data.keys().hasAny(['paperClosure']))

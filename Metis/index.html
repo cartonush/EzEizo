@@ -11,8 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=1.9.21">
-  <link rel="stylesheet" href="styles.css?v=1.9.21">
+  <link rel="stylesheet" href="../styles.css?v=1.9.23">
+  <link rel="stylesheet" href="styles.css?v=1.9.23">
   <link rel="stylesheet" href="../keys/styles.css?v=1.9.18">
 </head>
 <body>
@@ -24,14 +24,14 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">משתמש מחובר: <span id="connected-user">—</span></p>
       </div>
-      <span class="version-pill">v1.9.21</span>
+      <span class="version-pill">v1.9.23</span>
       <div id="manager-controls" class="header-actions">
         <button id="manager-back" class="secondary-button" type="button" hidden>→ חזרה</button>
         <a id="key-back-link" class="secondary-button" href="#keys/open" aria-label="חזרה להטענות" hidden>→ חזרה</a>
         <button id="reset-draft" class="secondary-button" type="button" hidden>איפוס</button>
       </div>
     </header>
-    <div class="paper-print-access"><a href="./printable-fault-form.pdf" target="_blank" rel="noopener" class="secondary-button">פתח דף תקלה ריק להדפסה</a><span>זמין גם ללא חיבור לאחר טעינת האפליקציה</span></div>
+    <div class="paper-print-access"><a href="./printable-fault-form.pdf" target="_blank" rel="noopener" class="secondary-button">טופס תקלה להדפסה</a><span>זמין גם ללא חיבור לאחר טעינת האפליקציה</span></div>
 
     <div id="app-skeleton" class="app-skeleton" role="status" aria-live="polite" aria-label="הדף נטען">
       <span class="sr-only">הדף נטען…</span>
@@ -50,7 +50,6 @@
         <section class="card manager-home-intro"><div class="section-heading"><div><p class="section-kicker">דף בית</p><h2>שלום</h2></div></div><p>בחר את תחום העבודה כדי לפתוח דף או לעקוב אחר משימות הצוות.</p><p id="paper-sync-status" class="copy-status" role="status" aria-live="polite"></p><button id="paper-sync-retry" type="button" class="secondary-button" hidden>נסה לסנכרן סגירות מודפסות</button></section>
         <div class="manager-home-grid">
           <a href="#new" class="manager-home-tile"><strong>פתיחת תקלה</strong><span>יצירת דף טיפול חדש לטכנאים</span></a>
-          <a href="./printable-fault-form.pdf" target="_blank" rel="noopener" class="manager-home-tile"><strong>דף תקלה להדפסה</strong><span>טופס ריק · שני עמודי A4 · זמין גם ללא שרת לאחר טעינה</span></a>
           <a href="#open" class="manager-home-tile"><strong>תקלות פתוחות</strong><span id="home-open-count">ממתינות לתחילת עבודה</span></a>
           <a href="#in-progress" class="manager-home-tile"><strong>תקלות בתהליך</strong><span id="home-progress-count">חתימת בטיחות נשמרה</span></a>
           <a href="#pending" class="manager-home-tile"><strong>תקלות לסגירה</strong><span id="home-review-count">סקירה וחתימת בודק הדף</span></a>
@@ -78,7 +77,19 @@
         <a href="#new" data-fault-link="new">פתיחת תקלה</a><a href="#open" data-fault-link="open">כל התקלות</a><a href="#pending" data-fault-link="pending">לסגירה</a><a href="#history" data-fault-link="history">היסטוריה</a>
       </nav>
       <div id="view-management" data-manager-view="management" hidden>
-        <section class="card"><div class="section-heading"><div><p class="section-kicker">דף ראשי</p><h2>ניהול</h2></div></div><div class="manager-home-grid"><a href="#technicians" class="manager-home-tile"><strong>טכנאים ומשתמשים</strong><span>טבלת טכנאים, יצירה, פרטים והיסטוריה</span></a><a href="#systems" class="manager-home-tile"><strong>מערכות</strong><span>שם מערכת, קוד וכרך</span></a><a href="#components" class="manager-home-tile"><strong>מכלולים</strong><span>רשימת מכלולים ושיוך למערכת</span></a><a href="#reports" class="manager-home-tile"><strong>הפקת דוחות</strong><span>סינון, תצוגה מקדימה והפקת PDF או CSV</span></a><a href="#aircraft-constants" class="manager-home-tile"><strong>עדכון קבועים לפי מטוס</strong><span>דף קבועים למטוסים</span></a></div></section>
+        <section class="card"><div class="section-heading"><div><p class="section-kicker">דף ראשי</p><h2>ניהול</h2></div></div><div class="manager-home-grid"><a href="#technicians" class="manager-home-tile"><strong>טכנאים ומשתמשים</strong><span>טבלת טכנאים, יצירה, פרטים והיסטוריה</span></a><a href="#systems" class="manager-home-tile"><strong>מערכות</strong><span>שם מערכת, קוד וכרך</span></a><a href="#components" class="manager-home-tile"><strong>מכלולים</strong><span>רשימת מכלולים ושיוך למערכת</span></a><a href="#tool-admin" class="manager-home-tile"><strong>ניהול כלים</strong><span>הוספת כלים ומחיקתם מהרשימה</span></a><a href="#reports" class="manager-home-tile"><strong>הפקת דוחות</strong><span>סינון, תצוגה מקדימה והפקת PDF או CSV</span></a><a href="#print-files" class="manager-home-tile"><strong>קבצים להדפסות</strong><span>טופס תקלה וטופס כלים</span></a><a href="#aircraft-constants" class="manager-home-tile"><strong>עדכון קבועים לפי מטוס</strong><span>דף קבועים למטוסים</span></a></div></section>
+      </div>
+      <div id="view-tool-admin" data-manager-view="tool-admin" hidden>
+        <section class="card"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>ניהול כלים</h2></div></div>
+          <form id="tool-admin-form" class="manager-grid"><label class="input-field">מספר כלי<input name="toolNumber" required maxlength="50" autocomplete="off" placeholder="לדוגמה F-20"></label><label class="input-field">שם כלי<input name="toolName" required maxlength="100" autocomplete="off" placeholder="שם הכלי"></label><button type="submit" class="primary-button">הוסף כלי</button></form>
+          <div id="tool-admin-list" class="issue-list" aria-live="polite"></div><p id="tool-admin-status" class="copy-status" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+      <div id="view-print-files" data-manager-view="print-files" hidden>
+        <section class="card"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>קבצים להדפסות</h2></div></div><div class="manager-home-grid">
+          <a href="./printable-fault-form.pdf" target="_blank" rel="noopener" class="manager-home-tile"><strong>טופס תקלה</strong><span>שני עמודי A4 להדפסה דו צדדית</span></a>
+          <a href="./printable-tools-form.pdf" target="_blank" rel="noopener" class="manager-home-tile"><strong>טופס כלים</strong><span>העמוד השני בלבד של טופס התקלה</span></a>
+        </div><p class="section-note">הטפסים זמינים גם ללא חיבור לאחר טעינת האפליקציה.</p></section>
       </div>
       <div id="view-keys" data-manager-view="keys" hidden>
 <div id="keys-loading" class="app-skeleton" role="status" aria-label="דף המפתחות נטען"><div class="skeleton-card"><span class="skeleton-title"></span><span class="skeleton-line"></span><span class="skeleton-input"></span></div></div>
@@ -271,9 +282,9 @@
         <label class="replaced-toggle" for="creation-ack"><input id="creation-ack" type="checkbox"><span class="custom-check" aria-hidden="true"></span><span><strong>תדריך בטיחות וניהול סיכונים</strong><small>יועבר ע"י מ"ע התקלה / משלח המשימה וייחתם על ידו.</small></span></label>
         <div class="signature-field"><span class="field-label">חתימת משלח המשימה</span><canvas id="dispatcher-signature" class="signature-pad" aria-label="חתימת משלח המשימה"></canvas><button id="clear-dispatcher-signature" type="button" class="clear-signature">נקה חתימה</button></div>
         <fieldset class="assignee-fieldset"><legend>הקצאה לטכנאים (לפחות שני טכנאים)</legend><div id="new-assignees" class="assignee-options"></div><button id="add-assignee" class="secondary-button" type="button">+ הוסף טכנאי</button><p id="assignee-feedback" class="copy-status" role="status" aria-live="polite"></p></fieldset>
-        <button id="create-link" class="primary-button" type="button">פתח תקלה</button>
+        <div class="create-fault-actions"><button id="create-link" class="primary-button" type="button">פתח תקלה</button><button id="create-manual" class="secondary-button" type="button" data-full-manager>הדפס ופתח תקלה ידנית</button></div>
         <p id="created-status" class="copy-status" role="status" aria-live="polite"></p>
-        <p class="demo-note">התקלה נשלחת אוטומטית לטכנאי ונשמרת ב־Firestore.</p>
+        <p class="demo-note">תקלה רגילה נשלחת לטכנאים. תקלה ידנית עוברת ישירות לתקלות לסגירה למילוי בידי המטיס.</p>
         <p id="legacy-status" class="copy-status" role="status" aria-live="polite"></p>
       </section>
       <footer class="footer-note"><span class="shield-icon" aria-hidden="true">✓</span><span id="draft-status">הטיוטה נשמרת במכשיר הזה</span></footer>
@@ -353,6 +364,6 @@
       <div id="view-components" data-manager-view="components" hidden><section class="card"><div class="section-heading"><div><p class="section-kicker">ניהול</p><h2>מכלולים</h2></div></div><form id="component-form" class="directory-form manager-grid"><label class="input-field">שם מכלול<input name="name" required maxlength="80"></label><label class="input-field">מערכת<select name="systemId" required></select></label><button class="primary-button" type="submit">הוסף מכלול</button></form><p id="component-status" class="copy-status" role="status"></p><div class="table-wrap"><table class="directory-table"><thead><tr><th>מכלול</th><th>מערכת</th><th>פעולות</th></tr></thead><tbody id="components-table"></tbody></table></div></section></div>
     </main>
   </div>
-  <script type="module" src="app.js?v=1.9.21"></script>
+  <script type="module" src="app.js?v=1.9.23"></script>
 </body>
 </html>

@@ -1,8 +1,8 @@
-import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.9.21";
+import { watchAircraftConstants, saveAircraftConstants } from "../firebase-sync.js?v=1.9.23";
 import { SQUADRONS, SYSTEMS } from "./catalog.js?v=1.9.0";
 import { downloadReportPdf } from "./report-pdf.js?v=1.7.6";
 import { downloadFile } from "./report-pdf.js?v=1.7.6";
-import { createFormPdf } from "./form-pdf.js?v=1.9.21";
+import { createFormPdf } from "./form-pdf.js?v=1.9.23";
 import { zipFiles } from "./zip.js?v=1.7.6";
 
 const $ = (selector) => document.querySelector(selector);
