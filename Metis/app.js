@@ -360,7 +360,9 @@ function addDefinitionEditor(card, issue) {
   const team = document.createElement("fieldset"); team.className = "assignee-fieldset";
   const teamLegend = document.createElement("legend"); teamLegend.textContent = "צוות טכנאים · לפחות שניים"; team.append(teamLegend);
   const selected = issue.teamUids || [issue.assigneeUid];
-  const teamRows = document.createElement("div"); teamRows.className = "assignee-options";
+  const teamRows = document.createElement("div"); teamRows.className = "assignee-options team-editor-options";
+  const teamWarning = document.createElement("p"); teamWarning.className = "copy-status"; teamWarning.setAttribute("role", "alert");
+  const clearTeamWarning = () => { teamWarning.textContent = ""; delete teamWarning.dataset.state; teamRows.querySelectorAll('[aria-invalid="true"]').forEach((input) => input.removeAttribute("aria-invalid")); };
   const addMember = document.createElement("button"); addMember.type = "button"; addMember.className = "secondary-button"; addMember.textContent = "+ הוסף טכנאי";
   function renderTeamEditor(values = selected) {
     teamRows.replaceChildren();
@@ -372,7 +374,15 @@ function addDefinitionEditor(card, issue) {
       input.setAttribute("role", "combobox"); input.setAttribute("aria-autocomplete", "list"); input.setAttribute("aria-expanded", "false");
       const list = document.createElement("div"); list.className = "picker-list"; list.hidden = true; list.setAttribute("role", "listbox");
       const eligible = technicians.filter((person) => person.active && !person.deleted);
-      const choose = (person) => { row.dataset.uid = person?.uid || ""; input.value = person?.name || ""; list.hidden = true; input.setAttribute("aria-expanded", "false"); };
+      const choose = (person) => {
+        if (person && [...teamRows.children].some((other) => other !== row && other.dataset.uid === person.uid)) {
+          teamWarning.textContent = `הטכנאי ${person.name} כבר נבחר בצוות. יש לבחור טכנאי אחר.`;
+          teamWarning.dataset.state = "error"; input.setAttribute("aria-invalid", "true");
+          input.value = eligible.find((item) => item.uid === row.dataset.uid)?.name || "";
+          list.hidden = true; input.setAttribute("aria-expanded", "false"); return;
+        }
+        clearTeamWarning(); row.dataset.uid = person?.uid || ""; input.value = person?.name || ""; list.hidden = true; input.setAttribute("aria-expanded", "false");
+      };
       const show = (all = false) => {
         const term = all ? "" : input.value.trim().toLocaleLowerCase("he"); list.replaceChildren();
         const matches = eligible.filter((person) => `${person.name} ${person.personalNumber || ""}`.toLocaleLowerCase("he").includes(term));
@@ -382,7 +392,7 @@ function addDefinitionEditor(card, issue) {
         list.hidden = false; input.setAttribute("aria-expanded", "true");
       };
       input.addEventListener("focus", () => { input.select(); show(true); });
-      input.addEventListener("input", () => { row.dataset.uid = ""; show(); });
+      input.addEventListener("input", () => { clearTeamWarning(); row.dataset.uid = ""; show(); });
       input.addEventListener("keydown", (event) => { if (event.key === "Escape") { list.hidden = true; input.setAttribute("aria-expanded", "false"); } else if (event.key === "Enter" && !list.hidden) { event.preventDefault(); list.querySelector("button")?.click(); } });
       input.addEventListener("blur", () => setTimeout(() => { if (!picker.contains(document.activeElement)) { list.hidden = true; input.setAttribute("aria-expanded", "false"); if (!row.dataset.uid) input.value = ""; } }, 120));
       choose(eligible.find((person) => person.uid === uid));
@@ -394,7 +404,7 @@ function addDefinitionEditor(card, issue) {
   }
   renderTeamEditor();
   addMember.addEventListener("click", () => renderTeamEditor([...teamRows.children].map((row) => row.dataset.uid).concat("")));
-  team.append(teamRows, addMember);
+  team.append(teamRows, addMember, teamWarning);
   const save = document.createElement("button"); save.type = "submit"; save.className = "primary-button"; save.textContent = "שמור פרטי תקלה";
   const status = document.createElement("p"); status.className = "copy-status"; status.setAttribute("role", "status");
   const retryLock = document.createElement("button"); retryLock.type = "button"; retryLock.className = "secondary-button"; retryLock.textContent = "בדוק שוב"; retryLock.hidden = true;
@@ -416,7 +426,8 @@ function addDefinitionEditor(card, issue) {
     event.preventDefault();
     const selectedUids = [...teamRows.children].map((row) => row.dataset.uid);
     const members = selectedUids.map((uid) => technicians.find((person) => person.uid === uid && person.active && !person.deleted));
-    if (!editLock?.held || !fault.value.trim() || members.length < 2 || members.some((member) => !member) || new Set(selectedUids).size !== selectedUids.length || !shelter.value || !aircraft.value) { status.textContent = "בדוק שהטופס נעול לעריכתך, מלא תיאור ומיקום ובחר לפחות שני טכנאים פעילים ושונים מהרשימה."; status.dataset.state = "error"; return; }
+    if (new Set(selectedUids.filter(Boolean)).size !== selectedUids.filter(Boolean).length) { teamWarning.textContent = "אותו טכנאי נבחר פעמיים בצוות. יש לבחור טכנאים שונים."; teamWarning.dataset.state = "error"; teamWarning.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    if (!editLock?.held || !fault.value.trim() || members.length < 2 || members.some((member) => !member) || !shelter.value || !aircraft.value) { status.textContent = "בדוק שהטופס נעול לעריכתך, מלא תיאור ומיקום ובחר לפחות שני טכנאים פעילים ושונים מהרשימה."; status.dataset.state = "error"; return; }
     save.disabled = true; status.textContent = "בודק נעילה ושומר…"; delete status.dataset.state;
     try {
       const faultOrigins = [...origins.querySelectorAll("input:checked")].map((box) => box.value);
