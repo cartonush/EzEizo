@@ -1,19 +1,19 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createManualIssue, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch, closePrintedIssue } from "../firebase-sync.js?v=1.9.23";
+import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createManualIssue, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.33";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
-import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.23";
-import { initCatalogView } from "./catalog-view.js?v=1.9.23";
+import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.33";
+import { initCatalogView } from "./catalog-view.js?v=1.9.33";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
-import { initKeyPages } from "../keys/app.js?v=1.9.32";
+import { initKeyPages } from "../keys/app.js?v=1.9.33";
 import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.26";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
 import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.18";
 import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.23";
 import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.23";
 import { makeSquadronEmblem } from "../squadron-emblems.js?v=1.9.19";
-import { initToolAdmin } from "./tool-admin.js?v=1.9.30";
+import { initToolAdmin } from "./tool-admin.js?v=1.9.33";
 
 const managerUser = await gate("operations");
 const fullManager = managerUser.isFullManager;
@@ -34,43 +34,8 @@ updateManagerGreeting();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) updateManagerGreeting(); });
 setInterval(updateManagerGreeting, 60_000);
 
-const PAPER_QUEUE_KEY = "ezeizo-paper-closures-v1";
-let syncingPaper = false;
-function paperQueue() {
-  try { const items = JSON.parse(localStorage.getItem(PAPER_QUEUE_KEY) || "[]"); return Array.isArray(items) ? items : []; }
-  catch { return []; }
-}
-function savePaperQueue(items) { localStorage.setItem(PAPER_QUEUE_KEY, JSON.stringify(items)); updatePaperSyncStatus(); }
-function paperPending(id) { return paperQueue().some((item) => item.id === id && item.uid === managerUser.uid); }
-function updatePaperSyncStatus(message = "", error = false) {
-  const count = paperQueue().filter((item) => item.uid === managerUser.uid).length;
-  const status = document.querySelector("#paper-sync-status");
-  status.textContent = message || (count ? `${count} סגירות טופס מודפס ממתינות לאישור השרת. אין לראות בהן סגורות עד לסנכרון.` : "");
-  if (error) status.dataset.state = "error"; else delete status.dataset.state;
-  document.querySelector("#paper-sync-retry").hidden = !count;
-}
-async function syncPaperClosures() {
-  if (!fullManager || syncingPaper || !navigator.onLine || !paperQueue().some((item) => item.uid === managerUser.uid)) return;
-  syncingPaper = true;
-  let failed = false;
-  try {
-    for (const item of paperQueue().filter((entry) => entry.uid === managerUser.uid)) {
-      try {
-        await closePrintedIssue(item.id, item.uid, item.serial, item.status, item.reopenedAt, item.definitionUpdatedAt);
-        savePaperQueue(paperQueue().filter((entry) => !(entry.id === item.id && entry.uid === item.uid)));
-        updatePaperSyncStatus(`תקלה ${item.serial} נסגרה בשרת.`, false);
-      } catch (error) {
-        updatePaperSyncStatus(`תקלה ${item.serial} עדיין ממתינה: ${error.message}`, true);
-        failed = true;
-        break;
-      }
-    }
-  } finally { syncingPaper = false; if (!failed) updatePaperSyncStatus(); renderIssueLists(); }
-}
-document.querySelector("#paper-sync-retry").addEventListener("click", () => void syncPaperClosures());
-window.addEventListener("online", () => void syncPaperClosures());
-document.addEventListener("visibilitychange", () => { if (!document.hidden) void syncPaperClosures(); });
-updatePaperSyncStatus();
+// The paper-closure route was retired. Never submit an old offline request silently.
+try { localStorage.removeItem("ezeizo-paper-closures-v1"); } catch { /* Storage may be unavailable. */ }
 let cloudIssues = [];
 let latestServerIssues = [];
 const recentIssues = new Map();
@@ -395,7 +360,41 @@ function addDefinitionEditor(card, issue) {
   const team = document.createElement("fieldset"); team.className = "assignee-fieldset";
   const teamLegend = document.createElement("legend"); teamLegend.textContent = "צוות טכנאים · לפחות שניים"; team.append(teamLegend);
   const selected = issue.teamUids || [issue.assigneeUid];
-  technicians.filter((person) => person.active || selected.includes(person.uid)).forEach((person) => { const label = document.createElement("label"); const box = document.createElement("input"); box.type = "checkbox"; box.value = person.uid; box.checked = selected.includes(person.uid); box.disabled = !person.active; label.append(box, ` ${person.name}${person.personalNumber ? ` · ${person.personalNumber}` : ""}`); team.append(label); });
+  const teamRows = document.createElement("div"); teamRows.className = "assignee-options";
+  const addMember = document.createElement("button"); addMember.type = "button"; addMember.className = "secondary-button"; addMember.textContent = "+ הוסף טכנאי";
+  function renderTeamEditor(values = selected) {
+    teamRows.replaceChildren();
+    (values.length >= 2 ? values : [...values, ...Array(2 - values.length).fill("")]).forEach((uid, index) => {
+      const row = document.createElement("div"); row.className = "assignee-row"; row.dataset.uid = uid;
+      const label = document.createElement("label"); label.className = "input-field"; label.textContent = index === 0 ? "מוביל התקלה" : `טכנאי ${index + 1}`;
+      const picker = document.createElement("div"); picker.className = "search-picker";
+      const input = document.createElement("input"); input.type = "search"; input.autocomplete = "off"; input.placeholder = "חפש שם או מספר אישי";
+      input.setAttribute("role", "combobox"); input.setAttribute("aria-autocomplete", "list"); input.setAttribute("aria-expanded", "false");
+      const list = document.createElement("div"); list.className = "picker-list"; list.hidden = true; list.setAttribute("role", "listbox");
+      const eligible = technicians.filter((person) => person.active && !person.deleted);
+      const choose = (person) => { row.dataset.uid = person?.uid || ""; input.value = person?.name || ""; list.hidden = true; input.setAttribute("aria-expanded", "false"); };
+      const show = (all = false) => {
+        const term = all ? "" : input.value.trim().toLocaleLowerCase("he"); list.replaceChildren();
+        const matches = eligible.filter((person) => `${person.name} ${person.personalNumber || ""}`.toLocaleLowerCase("he").includes(term));
+        matches.forEach((person) => { const option = document.createElement("button"); option.type = "button"; option.className = "picker-option"; option.textContent = `${person.name}${person.personalNumber ? ` · ${person.personalNumber}` : ""}`;
+          option.addEventListener("pointerdown", (event) => event.preventDefault()); option.addEventListener("click", () => choose(person)); list.append(option); });
+        if (!matches.length) { const empty = document.createElement("p"); empty.className = "picker-empty"; empty.textContent = "לא נמצאו טכנאים"; list.append(empty); }
+        list.hidden = false; input.setAttribute("aria-expanded", "true");
+      };
+      input.addEventListener("focus", () => { input.select(); show(true); });
+      input.addEventListener("input", () => { row.dataset.uid = ""; show(); });
+      input.addEventListener("keydown", (event) => { if (event.key === "Escape") { list.hidden = true; input.setAttribute("aria-expanded", "false"); } else if (event.key === "Enter" && !list.hidden) { event.preventDefault(); list.querySelector("button")?.click(); } });
+      input.addEventListener("blur", () => setTimeout(() => { if (!picker.contains(document.activeElement)) { list.hidden = true; input.setAttribute("aria-expanded", "false"); if (!row.dataset.uid) input.value = ""; } }, 120));
+      choose(eligible.find((person) => person.uid === uid));
+      picker.append(input, list); label.append(picker); row.append(label);
+      if (index >= 2) { const remove = document.createElement("button"); remove.type = "button"; remove.className = "secondary-button"; remove.textContent = "הסר";
+        remove.addEventListener("click", () => renderTeamEditor([...teamRows.children].filter((_, position) => position !== index).map((child) => child.dataset.uid))); row.append(remove); }
+      teamRows.append(row);
+    });
+  }
+  renderTeamEditor();
+  addMember.addEventListener("click", () => renderTeamEditor([...teamRows.children].map((row) => row.dataset.uid).concat("")));
+  team.append(teamRows, addMember);
   const save = document.createElement("button"); save.type = "submit"; save.className = "primary-button"; save.textContent = "שמור פרטי תקלה";
   const status = document.createElement("p"); status.className = "copy-status"; status.setAttribute("role", "status");
   const retryLock = document.createElement("button"); retryLock.type = "button"; retryLock.className = "secondary-button"; retryLock.textContent = "בדוק שוב"; retryLock.hidden = true;
@@ -415,8 +414,9 @@ function addDefinitionEditor(card, issue) {
   form.append(fields, origins, team, save); editor.append(summary, status, retryLock, form); card.append(editor);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const members = [...team.querySelectorAll("input:checked")].map((box) => technicians.find((person) => person.uid === box.value && person.active)).filter(Boolean);
-    if (!editLock?.held || !fault.value.trim() || members.length < 2 || !shelter.value || !aircraft.value) { status.textContent = "בדוק שהטופס נעול לעריכתך, מלא תיאור ומיקום ובחר לפחות שני טכנאים פעילים."; status.dataset.state = "error"; return; }
+    const selectedUids = [...teamRows.children].map((row) => row.dataset.uid);
+    const members = selectedUids.map((uid) => technicians.find((person) => person.uid === uid && person.active && !person.deleted));
+    if (!editLock?.held || !fault.value.trim() || members.length < 2 || members.some((member) => !member) || new Set(selectedUids).size !== selectedUids.length || !shelter.value || !aircraft.value) { status.textContent = "בדוק שהטופס נעול לעריכתך, מלא תיאור ומיקום ובחר לפחות שני טכנאים פעילים ושונים מהרשימה."; status.dataset.state = "error"; return; }
     save.disabled = true; status.textContent = "בודק נעילה ושומר…"; delete status.dataset.state;
     try {
       const faultOrigins = [...origins.querySelectorAll("input:checked")].map((box) => box.value);
@@ -500,45 +500,6 @@ function addIssueCard(container, item, mode) {
       catch (error) { feedback.textContent = `הביטול נכשל: ${error.message}`; feedback.dataset.state = "error"; confirm.disabled = false; }
     });
     cancel.append(summary, reason, confirm, feedback); card.append(cancel);
-  }
-  if (fullManager && fullIssue && !fullIssue.manualPaper && ["open", "pendingReview"].includes(mode)) {
-    const panel = document.createElement("details"); panel.className = "paper-closure-panel";
-    const heading = document.createElement("summary"); heading.textContent = "הדפסה וסגירה בטופס נייר";
-    const print = document.createElement("a"); print.className = "secondary-button";
-    print.href = "./printable-fault-form.pdf"; print.target = "_blank"; print.rel = "noopener";
-    print.textContent = "פתח טופס להדפסה";
-    const label = document.createElement("label");
-    const checked = document.createElement("input"); checked.type = "checkbox";
-    label.append(checked, document.createTextNode("אני מאשר שהטופס הודפס ומולא ידנית. העותק המודפס נשמר מחוץ לאפליקציה."));
-    const close = document.createElement("button"); close.type = "button"; close.className = "secondary-button"; close.textContent = "סגור תקלה לאחר הדפסה";
-    const feedback = document.createElement("p"); feedback.className = "copy-status"; feedback.setAttribute("role", "status");
-    if (paperPending(fullIssue.id)) {
-      close.disabled = true;
-      feedback.textContent = "הסגירה ממתינה לאישור השרת; התקלה עדיין אינה סגורה במערכת.";
-      const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "secondary-button"; cancel.textContent = "בטל סגירה ממתינה";
-      cancel.addEventListener("click", () => { savePaperQueue(paperQueue().filter((entry) => !(entry.id === fullIssue.id && entry.uid === managerUser.uid))); renderIssueLists(); });
-      panel.append(heading, print, label, close, cancel, feedback);
-    } else panel.append(heading, print, label, close, feedback);
-    close.addEventListener("click", async () => {
-      if (!checked.checked) { feedback.textContent = "יש לאשר שהטופס הודפס ומולא ידנית."; feedback.dataset.state = "error"; return; }
-      if (!window.confirm(`לסגור את תקלה ${fullIssue.sheet.serial} על סמך טופס הנייר? הפרטים שמולאו ידנית לא יועברו לדף הדיגיטלי.`)) return;
-      close.disabled = true; delete feedback.dataset.state;
-      const item = { id: fullIssue.id, uid: managerUser.uid, serial: fullIssue.sheet.serial, status: fullIssue.status, reopenedAt: fullIssue.reopenedAt || "", definitionUpdatedAt: fullIssue.definitionUpdatedAt || "" };
-      if (!navigator.onLine) {
-        try { savePaperQueue([...paperQueue(), item]); feedback.textContent = "הבקשה נשמרה במכשיר וממתינה לחיבור לשרת. התקלה עדיין פתוחה במערכת. אין למחוק את נתוני האפליקציה עד לסנכרון."; renderIssueLists(); }
-        catch (error) { close.disabled = false; feedback.textContent = `לא ניתן לשמור בקשה במכשיר: ${error.message}`; feedback.dataset.state = "error"; }
-        return;
-      }
-      try { await closePrintedIssue(item.id, item.uid, item.serial, item.status, item.reopenedAt, item.definitionUpdatedAt); feedback.textContent = "התקלה נסגרה בשרת על סמך טופס מודפס."; }
-      catch (error) {
-        if (["unavailable", "deadline-exceeded"].includes(error.code)) {
-          try { savePaperQueue([...paperQueue(), item]); feedback.textContent = "השרת אינו זמין. הבקשה נשמרה במכשיר וממתינה לסנכרון."; renderIssueLists(); return; }
-          catch (storageError) { feedback.textContent = `שמירה במכשיר נכשלה: ${storageError.message}`; }
-        } else feedback.textContent = `הסגירה נכשלה: ${error.message}`;
-        feedback.dataset.state = "error"; close.disabled = false;
-      }
-    });
-    card.append(panel);
   }
   container.append(card);
 }
@@ -701,7 +662,6 @@ function updateManagerIssues(issues) {
 }
 watchIssues((issues) => {
   updateManagerIssues(issues);
-  void syncPaperClosures();
 }, (error) => {
   setStatus("#issued-list", `לא ניתן לטעון תקלות: ${error.message}`, true);
   setStatus("#pending-list", `לא ניתן לטעון תקלות: ${error.message}`, true);

@@ -1,5 +1,5 @@
 import { watchSystems, watchComponents } from "../firebase-sync.js?v=1.9.23";
-import { VOLUMES, DEFAULT_SYSTEMS, DEFAULT_COMPONENTS, mergeCatalog, volumeLabel } from "./catalog-data.js?v=1.9.6";
+import { VOLUMES, DEFAULT_SYSTEMS, DEFAULT_COMPONENTS, mergeCatalog, volumeLabel } from "./catalog-data.js?v=1.9.33";
 
 function cell(row, content, span = 1) {
   const element = document.createElement("td");

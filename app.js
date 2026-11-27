@@ -1,12 +1,12 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, watchToolCatalog, refreshTechnicianTasks, getIssue, startIssueWork, saveInitialIntake, addToolIntake, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.30";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, watchToolCatalog, refreshTechnicianTasks, getIssue, startIssueWork, saveInitialIntake, addToolIntake, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.33";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.9.31";
 import { validateTreatment } from "./mechanic-validation.js?v=1.9.23";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
 import { issueTimeline } from "./lifecycle.js?v=1.9.23";
 import { createEditLock } from "./edit-lock.js?v=1.9.23";
-import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.23";
-import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
+import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.33";
+import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.33";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "./tool-catalog.js?v=1.9.30";
 import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.31";
@@ -604,13 +604,13 @@ function showClosed() {
   document.querySelector("#close-sheet").hidden = true;
   const message = document.querySelector("#close-message");
   delete message.dataset.state;
-  message.textContent = remoteIssue?.paperClosure ? "התקלה נסגרה במערכת על סמך טופס נייר. המידע הידני נשמר מחוץ לאפליקציה." : remoteIssue?.status === "closed" ? `הדף נסגר ב־${new Date(remoteIssue.reviewedAt || state.closedAt).toLocaleString("he-IL")}. ${managerClosedView ? "המטיס יכול להחזיר אותו לטכנאי לעריכה." : "אי אפשר לערוך אותו."}` : "הדף הועבר לבדיקת בודק הדף וממתין לחתימתו.";
+  message.textContent = remoteIssue?.paperClosure ? "התקלה נסגרה במערכת על סמך טופס נייר. המידע הידני נשמר מחוץ לאפליקציה." : remoteIssue?.status === "closed" ? `הדף נסגר ב־${new Date(remoteIssue.reviewedAt || state.closedAt).toLocaleString("he-IL")}. אי אפשר לערוך אותו.` : "הדף הועבר לבדיקת בודק הדף וממתין לחתימתו.";
 }
 
 if (managerClosedView && selectedSheet) {
   document.querySelector("#mechanic-back").href = remoteIssue.status === "pendingReview" ? "./#pending" : "./#closed";
   const panel = document.querySelector("#manager-edit-panel");
-  panel.hidden = false;
+  panel.hidden = remoteIssue.status !== "pendingReview";
   document.querySelector("#manager-edit-open").addEventListener("click", async (event) => {
     if (!window.confirm("להחזיר את התקלה לטכנאי לעריכה? כל הפרטים שמולאו יישמרו והוא יוכל לסגור שוב.")) return;
     const button = event.currentTarget; button.disabled = true;
@@ -666,8 +666,8 @@ if (managerClosedView && selectedSheet) {
   }
   reviewPanel.hidden = Boolean(remoteIssue.paperClosure);
   const saveClosed = document.querySelector("#save-closed-review");
-  saveClosed.hidden = Boolean(remoteIssue.paperClosure);
-  saveClosed.textContent = remoteIssue.status === "pendingReview" ? "שמור בקרה להמשך" : "שמור עדכון בקרה";
+  saveClosed.hidden = Boolean(remoteIssue.paperClosure) || remoteIssue.status !== "pendingReview";
+  saveClosed.textContent = "שמור בקרה להמשך";
   saveClosed.addEventListener("click", async () => {
     try {
       const review = collectManagerReview(); saveClosed.disabled = true;
@@ -678,6 +678,7 @@ if (managerClosedView && selectedSheet) {
   });
   if (!reviewPanel.hidden) {
     const isPending = remoteIssue.status === "pendingReview";
+    if (!isPending) document.querySelectorAll("#review-panel input, #review-panel button[data-date-today]").forEach((input) => { input.disabled = true; });
     const canvas = document.querySelector("#reviewer-signature");
     let signature = "";
     const clear = attachSignaturePad(canvas, {

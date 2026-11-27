@@ -1,4 +1,4 @@
-import { gate, revealApp, getIssue, watchToolCatalog, saveManualIssueDetails, approveManualIssue } from "../firebase-sync.js?v=1.9.30";
+import { gate, revealApp, getIssue, watchToolCatalog, saveManualIssueDetails, approveManualIssue } from "../firebase-sync.js?v=1.9.33";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "../tool-catalog.js?v=1.9.30";
 
@@ -136,17 +136,36 @@ if (!issue?.manualPaper) {
       if (input.checked && opposite) document.querySelector(`[data-review="${opposite}"]`).checked = false;
     });
   }
+  const permitRadios = [...document.querySelectorAll('[name="manual-permit"]')];
+  const initialPermit = checks.trackingPermit ? "tracking" : checks.flightPermitUntil ? "flight" : checks.approvalUntil ? "approval" : "";
+  const permitFields = { tracking: document.querySelector("#manual-tracking-flights"), flight: document.querySelector("#manual-flight-until"), approval: document.querySelector("#manual-approval-until") };
+  permitFields.tracking.value = checks.trackingFlights || "";
+  permitFields.flight.value = checks.flightPermitUntil || "";
+  permitFields.approval.value = checks.approvalUntil || "";
+  function showPermitFields() {
+    const selected = permitRadios.find((radio) => radio.checked)?.value;
+    for (const field of Object.keys(permitFields)) document.querySelector(`[data-permit-detail="${field}"]`).hidden = selected !== field;
+  }
+  permitRadios.forEach((radio) => { radio.checked = radio.value === initialPermit; radio.addEventListener("change", () => { showPermitFields(); clearError(); }); });
+  showPermitFields();
   const clear = attachSignaturePad(document.querySelector("#manual-review-signature"), { initial: closed ? issue.reviewerSignature || "" : "", onChange: (value) => { signature = value; if (value) clearError(); } });
   document.querySelector("#manual-clear-signature").addEventListener("click", clear);
   function collectReview() {
     const get = (key) => document.querySelector(`[data-review="${key}"]`);
+    const permit = permitRadios.find((radio) => radio.checked)?.value;
+    if (!permit) required("יש לבחור היתר למעקב, היתר לטיסה או אישור עד תאריך.", permitRadios[0]);
+    const flights = Number(permitFields.tracking.value);
+    if (permit === "tracking" && (!Number.isSafeInteger(flights) || flights < 1)) required("יש להזין מספר גיחות חיובי להיתר למעקב.", permitFields.tracking);
+    if (permit === "flight" && !permitFields.flight.value) required("יש לבחור תאריך להיתר לטיסה.", permitFields.flight);
+    if (permit === "approval" && !permitFields.approval.value) required("יש לבחור תאריך לאישור.", permitFields.approval);
     return {
       verified: get("verified").checked, notVerified: get("notVerified").checked,
       unitsReplaced: get("unitsReplaced").checked, repairPerformed: get("repairPerformed").checked,
       recurrent: get("recurrentYes").checked, recurrentAnswer: get("recurrentYes").checked ? "yes" : get("recurrentNo").checked ? "no" : "",
       missionCancelled: get("missionCancelled").checked, sortieCancelled: get("sortieCancelled").checked,
-      inspectionPermitUntil: "", flightPermitUntil: get("flightPermitUntil").value,
-      trackingPermit: get("trackingPermit").checked, approvalUntil: get("approvalUntil").value
+      inspectionPermitUntil: "", flightPermitUntil: permit === "flight" ? permitFields.flight.value : "",
+      trackingPermit: permit === "tracking", trackingFlights: permit === "tracking" ? flights : 0,
+      approvalUntil: permit === "approval" ? permitFields.approval.value : ""
     };
   }
   function rowInput(type, index, key) {
@@ -182,8 +201,9 @@ if (!issue?.manualPaper) {
     try {
       validate();
       if (!signature) required("יש לחתום על בדיקת הדף.", document.querySelector("#manual-review-signature"));
+      const review = collectReview();
       await save();
-      await approveManualIssue(issue.id, user.uid, signature, collectReview());
+      await approveManualIssue(issue.id, user.uid, signature, review);
       location.replace("./#pending");
     } catch (error) { reportError(error); }
     finally { saving = false; }
