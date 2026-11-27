@@ -1,16 +1,18 @@
 import "./sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, refreshTechnicianTasks, getIssue, startIssueWork, saveInitialIntake, addToolIntake, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.21";
+import { gate, revealApp, watchIssues, watchKeyLoads, watchComponents, watchToolCatalog, refreshTechnicianTasks, getIssue, startIssueWork, saveInitialIntake, addToolIntake, submitForReview, saveIssueWorkDraft, approveIssue, reopenIssue, updateClosedIssueReview } from "./firebase-sync.js?v=1.9.23";
 import { attachSignaturePad } from "./signature-canvas.js?v=1.7.6";
-import { validateTreatment } from "./mechanic-validation.js?v=1.9.21";
+import { validateTreatment } from "./mechanic-validation.js?v=1.9.23";
 import { attachTimeNow } from "./time-now.js?v=1.7.6";
-import { issueTimeline } from "./lifecycle.js?v=1.9.21";
-import { createEditLock } from "./edit-lock.js?v=1.9.21";
-import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.21";
+import { issueTimeline } from "./lifecycle.js?v=1.9.23";
+import { createEditLock } from "./edit-lock.js?v=1.9.23";
+import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.23";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
+import { catalogTool, toolNumberOptions, updateToolCatalog } from "./tool-catalog.js?v=1.9.23";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");
+if (!managerClosedView) watchToolCatalog((items) => updateToolCatalog(items), () => {});
 if (managerClosedView) document.querySelector("#connected-user").textContent = currentUser.name || "מטיס";
 let cloudIssues = [];
 let keyLoads = [];
@@ -697,9 +699,16 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
       const tr = document.createElement("tr");
       for (const [key, label] of [["toolName", "שם כלי"], ["toolNumber", "מספר כלי"], ["notes", "הערות"]]) {
         const td = document.createElement("td"), input = document.createElement("input");
-        input.type = "text"; input.value = row[key]; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
+        input.type = key === "toolNumber" ? "search" : "text"; input.value = row[key]; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
+        if (key === "toolNumber") { input.setAttribute("list", toolNumberOptions()); input.autocomplete = "off"; }
+        if (catalogTool(row.toolNumber)) input.readOnly = true;
+        else if (key !== "toolNumber") input.readOnly = true;
         input.addEventListener("input", () => {
           row[key] = input.value;
+          if (key === "toolNumber") {
+            const tool = catalogTool(input.value);
+            if (tool) { row.toolNumber = tool.toolNumber; row.toolName = tool.toolName; if (index === draftTools.length - 1) draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows(); rows.children[index + 1]?.querySelector('[list="tool-number-options"]')?.focus(); return; }
+          }
           if (index === draftTools.length - 1 && (row.toolName || row.toolNumber || row.notes)) {
             draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows();
             const current = rows.children[index]?.querySelectorAll("input")[["toolName", "toolNumber", "notes"].indexOf(key)];
@@ -708,7 +717,11 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
         });
         td.append(input); tr.append(td);
       }
-      rows.append(tr);
+      const actions = document.createElement("td"), remove = document.createElement("button");
+      remove.type = "button"; remove.className = "remove-row"; remove.textContent = "×"; remove.setAttribute("aria-label", `מחק שורה ${index + 1}`);
+      remove.hidden = !(row.toolName || row.toolNumber || row.notes);
+      remove.addEventListener("click", () => { draftTools.splice(index, 1); if (!draftTools.length || draftTools.at(-1).toolNumber) draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows(); });
+      actions.append(remove); tr.append(actions); rows.append(tr);
     });
   }
   function showLateTools() {
@@ -837,8 +850,12 @@ function renderRows(type, focusTarget = null) {
       const td = document.createElement("td");
       const componentField = (type === "removed" || type === "installed") && key === "name";
       const input = document.createElement("input");
-      input.type = componentField ? "search" : field.type || "text";
+      input.type = componentField || (type === "tools" && key === "toolNumber") ? "search" : field.type || "text";
       if (componentField) input.autocomplete = "off";
+      if (type === "tools") {
+        if (key === "toolNumber") { input.setAttribute("list", toolNumberOptions()); input.autocomplete = "off"; }
+        input.readOnly = Boolean(catalogTool(item.toolNumber)) || key !== "toolNumber";
+      }
       if (field.type === "number") input.step = "1";
       input.value = item[key] || "";
       input.placeholder = field.placeholder;
@@ -848,11 +865,13 @@ function renderRows(type, focusTarget = null) {
       function commitValue(value) {
         const wasFilled = rowHasValue(rows[index], fields);
         rows[index][key] = value;
+        const chosenTool = type === "tools" && key === "toolNumber" ? catalogTool(value) : null;
+        if (chosenTool) { rows[index].toolNumber = chosenTool.toolNumber; rows[index].toolName = chosenTool.toolName; }
         const isFilled = rowHasValue(rows[index], fields);
         const isLastRow = index === rows.length - 1;
-        if ((isFilled && isLastRow) || (wasFilled && !isFilled && !isLastRow)) {
+        if (chosenTool || (isFilled && isLastRow) || (wasFilled && !isFilled && !isLastRow)) {
           const caret = input.selectionStart;
-          renderRows(type, componentField && value ? { index, key: "serial", caret: null } : { index, key, caret });
+          renderRows(type, chosenTool ? { index: index + 1, key: "toolNumber", caret: null } : componentField && value ? { index, key: "serial", caret: null } : { index, key, caret });
         }
         saveState();
       }

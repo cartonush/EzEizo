@@ -179,6 +179,22 @@ async function issuePdf(issue) {
   const pdf = pdfPages(`טופס תקלה ${show(sheet.serial)}`, `${issue.status === "cancelled" ? "שילוח בוטל" : issue.status === "closed" ? "סגור" : issue.status === "pendingReview" ? "ממתין לסגירה" : "פתוח"} · מטוס ${show(sheet.aircraft)}`);
   pdf.heading("פרטי התקלה");
   for (const [label, value] of [["מספר תקלה", sheet.serial], ["טייסת", sheet.squadron], ["דת״ק", sheet.shelter], ["מוסך", sheet.workshop], ["מספר מטוס", sheet.aircraft], ["שם מערכת", sheet.systemName], ["קוד מערכת", sheet.systemCode], ["חליפת ל״א", sheet.ewSystem], ["מקור התקלה", (sheet.faultOrigins?.length ? sheet.faultOrigins : [sheet.faultOrigin].filter(Boolean)).join(" · ")], ["תחום לסגירה", sheet.reviewCategory], ["מוביל התקלה", issue.assigneeName], ["שעת פתיחה", dateTime(issue.createdAt)], ["שעת סגירה", dateTime(state.closedAt || issue.reviewedAt)]]) if (value) pdf.text(label, value);
+  if (issue.manualPaper) {
+    const details = issue.manualDetails || {};
+    pdf.heading("תיעוד תקלה ידנית");
+    pdf.paragraph("הטיפול בוצע על גבי טופס הנייר. חתימות העבודה המקוריות נשמרות בעותק המודפס; פרטים אלה הוזנו בידי המטיס.");
+    for (const [label, value] of [["תיאור תקלה", sheet.fault], ["תיאור תיקון", details.repair], ["הערות טכנאי", details.technicianNotes], ["סיווג תיקון", details.classification], ["שעת הגעה", details.arrivalTime], ["שעת סיום", details.completionTime], ["פרטי ביקורות", details.inspection], ["אסמכתה לנייר", details.paperReference]]) if (value) pdf.text(label, value);
+    (sheet.actions || []).forEach((task, index) => pdf.row([`${index + 1}. ${task}`, checked(details.actions?.[index])]));
+    for (const [title, key, fields] of [
+      ["יחידות שפורקו", "removed", [["מכלול", "name"], ["מספר סידורי", "serial"]]],
+      ["יחידות שהורכבו", "installed", [["מכלול", "name"], ["מספר סידורי", "serial"]]],
+      ["כלים", "tools", [["שם", "toolName"], ["מספר", "toolNumber"], ["הערות", "notes"]]],
+      ["קשיחים שנצרכו", "taken", [["תיאור", "description"], ["כניסה", "quantityIn"], ["יציאה", "quantityOut"], ["הערות", "notes"]]],
+      ["קשיחים שנפסלו", "rejected", [["תיאור", "description"], ["כמות", "quantity"], ["סיבה", "reason"]]]
+    ]) if (details[key]?.length) pdf.rows(title, details[key], fields);
+    await pdf.signature("חתימת בודק הדף", issue.reviewerSignature);
+    return pdf.blob();
+  }
   if (issue.paperClosure) {
     pdf.heading("סגירה באמצעות דף מודפס");
     pdf.paragraph("התקלה נסגרה במערכת על סמך טופס נייר. הפרטים והחתימות שהושלמו ידנית נשמרים על העותק המודפס, ולא בקובץ הדיגיטלי.");

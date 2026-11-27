@@ -1,23 +1,25 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch, closePrintedIssue } from "../firebase-sync.js?v=1.9.21";
+import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createManualIssue, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch, closePrintedIssue } from "../firebase-sync.js?v=1.9.23";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
-import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.21";
-import { initCatalogView } from "./catalog-view.js?v=1.9.21";
+import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.23";
+import { initCatalogView } from "./catalog-view.js?v=1.9.23";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
-import { createEditLock } from "../edit-lock.js?v=1.9.21";
-import { initKeyPages } from "../keys/app.js?v=1.9.21";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.21";
+import { createEditLock } from "../edit-lock.js?v=1.9.23";
+import { initKeyPages } from "../keys/app.js?v=1.9.23";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.23";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
 import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.18";
-import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.21";
-import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.21";
+import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.23";
+import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.23";
 import { makeSquadronEmblem } from "../squadron-emblems.js?v=1.9.19";
+import { initToolAdmin } from "./tool-admin.js?v=1.9.23";
 
 const managerUser = await gate("operations");
 const fullManager = managerUser.isFullManager;
 document.querySelectorAll("[data-full-manager]").forEach((element) => { element.hidden = !fullManager; });
-if (!fullManager) document.querySelectorAll('[data-manager-view="management"], [data-manager-view="users"], [data-manager-view="systems"], [data-manager-view="components"], [data-manager-view="reports"], [data-manager-view="aircraft-constants"]').forEach((view) => { view.inert = true; });
+if (!fullManager) document.querySelectorAll('[data-manager-view="management"], [data-manager-view="print-files"], [data-manager-view="tool-admin"], [data-manager-view="users"], [data-manager-view="systems"], [data-manager-view="components"], [data-manager-view="reports"], [data-manager-view="aircraft-constants"]').forEach((view) => { view.inert = true; });
+if (fullManager) initToolAdmin(managerUser);
 initCatalogAdmin();
 initCatalogView();
 initDuties();
@@ -320,14 +322,15 @@ function renderActions() {
   });
 }
 
-document.querySelector("#create-link").addEventListener("click", async () => {
-  const button = document.querySelector("#create-link");
+async function createFault(event) {
+  const button = event.currentTarget;
+  const manual = button.id === "create-manual";
   const acknowledgment = document.querySelector("#creation-ack");
-  if (!acknowledgment.checked) { setStatus("#created-status", "יש לאשר את בדיקת פרטי התקלה לפני פתיחתה.", true); acknowledgment.focus(); return; }
-  if (!draft.dispatcherSignature) { setStatus("#created-status", "חובה להחתים את משלח המשימה על תדריך הבטיחות וניהול הסיכונים.", true); document.querySelector("#dispatcher-signature").scrollIntoView({ block: "center" }); return; }
+  if (!manual && !acknowledgment.checked) { setStatus("#created-status", "יש לאשר את בדיקת פרטי התקלה לפני פתיחתה.", true); acknowledgment.focus(); return; }
+  if (!manual && !draft.dispatcherSignature) { setStatus("#created-status", "חובה להחתים את משלח המשימה על תדריך הבטיחות וניהול הסיכונים.", true); document.querySelector("#dispatcher-signature").scrollIntoView({ block: "center" }); return; }
   const catalogError = validateCatalogSelection(selections, draft);
   if (catalogError) { setStatus("#created-status", catalogError.message, true); (pickers[catalogError.field]?.input || document.querySelector("#ew-system-select")).focus(); return; }
-  const { assignees, error: assigneeError } = resolveAssignees(selectedAssigneeUids(), technicians);
+  const { assignees, error: assigneeError } = manual ? { assignees: [] } : resolveAssignees(selectedAssigneeUids(), technicians);
   if (assigneeError) { setStatus("#created-status", assigneeError, true); document.querySelector("#new-assignees").scrollIntoView({ block: "center" }); return; }
   button.disabled = true;
   const sheet = EzEizoData.normalizeSheet(draft);
@@ -338,17 +341,22 @@ document.querySelector("#create-link").addEventListener("click", async () => {
     return;
   }
   sheet.id = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // Open while the click still has user activation so mobile Safari allows the PDF tab.
+  const printTab = manual ? window.open("about:blank", "_blank") : null;
   try {
-    const created = await createAssignedIssues(sheet, assignees);
+    const created = manual ? await createManualIssue(sheet, managerUser.uid) : await createAssignedIssues(sheet, assignees);
     sheet.serial = created.serial;
-    recentIssues.set(created.id, { id: created.id, sheet: { ...sheet, id: created.id }, status: "open", createdAt: created.createdAt, assigneeUid: assignees[0].uid, assigneeName: assignees[0].name, teamUids: assignees.map((person) => person.uid), teamNames: assignees.map((person) => person.name) });
+    recentIssues.set(created.id, { id: created.id, sheet: { ...sheet, id: created.id }, status: manual ? "pendingReview" : "open", manualPaper: manual, closed: manual ? { record: { ...sheet, id: created.id, serial: created.serial }, state: { paper: true } } : undefined, createdAt: created.createdAt, assigneeUid: assignees[0]?.uid || "", assigneeName: assignees[0]?.name || "", teamUids: assignees.map((person) => person.uid), teamNames: assignees.map((person) => person.name) });
     updateManagerIssues(latestServerIssues);
+    if (printTab) printTab.location.replace("./printable-fault-form.pdf");
     resetFaultDraft();
-    setStatus("#created-status", `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. הטופס מוכן לפתיחת תקלה חדשה.`);
-    window.location.hash = "open";
-  } catch (error) { setStatus("#created-status", `פתיחת התקלה נכשלה: ${error.message}`, true); }
+    setStatus("#created-status", manual ? `תקלה ידנית מספר ${sheet.serial} נפתחה וממתינה למילוי וסגירה בידי המטיס. טופס התקלה נפתח להדפסה.` : `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. הטופס מוכן לפתיחת תקלה חדשה.`);
+    window.location.hash = manual ? "pending" : "open";
+  } catch (error) { printTab?.close(); setStatus("#created-status", `פתיחת התקלה נכשלה: ${error.message}`, true); }
   finally { button.disabled = false; }
-});
+}
+document.querySelector("#create-link").addEventListener("click", createFault);
+document.querySelector("#create-manual").addEventListener("click", createFault);
 
 function addDefinitionEditor(card, issue) {
   const editor = document.createElement("details"); editor.className = "manager-note-editor";
@@ -421,15 +429,15 @@ function addIssueCard(container, item, mode) {
   title.textContent = `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
   const subtitle = document.createElement("span");
   const fullIssue = cloudIssues.find((issue) => issue.id === item.id);
-  subtitle.textContent = `${item.fault || "ללא תיאור"} · ${mode === "closed" ? "סגורה" : mode === "pendingReview" ? "ממתינה לבודק הדף" : mode === "cancelled" ? "שילוח בוטל" : "פתוחה"} · ${(fullIssue?.teamNames || [fullIssue?.assigneeName || "לא שובצה"]).join(" · ")}`;
+  subtitle.textContent = `${item.fault || "ללא תיאור"} · ${fullIssue?.manualPaper ? "תקלה ידנית · " : ""}${mode === "closed" ? "סגורה" : mode === "pendingReview" ? "ממתינה לבודק הדף" : mode === "cancelled" ? "שילוח בוטל" : "פתוחה"} · ${(fullIssue?.teamNames || [fullIssue?.assigneeName || "לא שובצה"]).join(" · ")}`;
   card.append(title, subtitle);
   if (mode === "cancelled") {
     const reason = document.createElement("span"); reason.textContent = `סיבת הביטול: ${fullIssue?.cancellationReason || "—"}`; card.append(reason);
   } else if (mode !== "open") {
     const view = document.createElement("a");
     view.className = "secondary-button";
-    view.href = `./closed.html?id=${encodeURIComponent(item.id)}`;
-    view.textContent = mode === "pendingReview" ? "בדוק וחתום" : "פתח דף סגור";
+    view.href = `./${fullIssue?.manualPaper ? "manual.html" : "closed.html"}?id=${encodeURIComponent(item.id)}`;
+    view.textContent = fullIssue?.manualPaper && mode === "pendingReview" ? "מלא וסגור תקלה ידנית" : mode === "pendingReview" ? "בדוק וחתום" : "פתח דף סגור";
     card.append(view);
   } else if (fullIssue?.teamUids?.length) {
     const team = document.createElement("span"); team.textContent = `צוות משויך: ${fullIssue.teamNames.join(" · ")}`; card.append(team);
@@ -487,7 +495,7 @@ function addIssueCard(container, item, mode) {
     });
     cancel.append(summary, reason, confirm, feedback); card.append(cancel);
   }
-  if (fullManager && fullIssue && ["open", "pendingReview"].includes(mode)) {
+  if (fullManager && fullIssue && !fullIssue.manualPaper && ["open", "pendingReview"].includes(mode)) {
     const panel = document.createElement("details"); panel.className = "paper-closure-panel";
     const heading = document.createElement("summary"); heading.textContent = "הדפסה וסגירה בטופס נייר";
     const print = document.createElement("a"); print.className = "secondary-button";
@@ -601,7 +609,7 @@ function renderFaultHistory() {
     card.append(heading, metadata, description);
     notes.forEach((text) => { const note = document.createElement("p"); note.className = "history-unit-note"; note.textContent = text; card.append(note); });
     if (issue.status === "cancelled") { const note = document.createElement("span"); note.textContent = `שילוח בוטל: ${issue.cancellationReason || "—"}`; card.append(note); }
-    if (["closed", "pendingReview"].includes(issue.status)) { const link = document.createElement("a"); link.className = "secondary-button"; link.href = `./closed.html?id=${encodeURIComponent(issue.id)}`; link.textContent = "פתח דף תקלה"; card.append(link); }
+    if (["closed", "pendingReview"].includes(issue.status)) { const link = document.createElement("a"); link.className = "secondary-button"; link.href = `./${issue.manualPaper ? "manual.html" : "closed.html"}?id=${encodeURIComponent(issue.id)}`; link.textContent = "פתח דף תקלה"; card.append(link); }
     results.append(card);
   });
   if (!grouped.size) results.textContent = "לא נמצאו פירוקים או הרכבות התואמים לבחירה.";
@@ -620,14 +628,14 @@ let previousManagerView = "";
 let previousIssueRoute = "";
 function showManagerView() {
   const requested = window.location.hash.slice(1);
-  if (!fullManager && ["management", "technicians", "users", "systems", "components", "reports", "aircraft-constants"].includes(requested)) { location.replace("#home"); return; }
-  const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : requested === "closed" || requested === "in-progress" ? "open" : requested === "technicians" ? "users" : ["home", "catalog", "attendance", "duties", "work-status", "management", "reports", "aircraft-constants", "new", "open", "pending", "history", "users", "systems", "components"].includes(requested) ? requested : "home";
+  if (!fullManager && ["management", "print-files", "tool-admin", "technicians", "users", "systems", "components", "reports", "aircraft-constants"].includes(requested)) { location.replace("#home"); return; }
+  const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : requested === "closed" || requested === "in-progress" ? "open" : requested === "technicians" ? "users" : ["home", "catalog", "attendance", "duties", "work-status", "management", "print-files", "tool-admin", "reports", "aircraft-constants", "new", "open", "pending", "history", "users", "systems", "components"].includes(requested) ? requested : "home";
   if (requested === "closed") document.querySelector("#fault-mode").value = "closed";
   if (selected === "open" && requested !== "closed" && (previousIssueRoute !== requested || previousManagerView !== "open")) document.querySelector("#fault-mode").value = requested === "in-progress" ? "open-all" : "open-default";
   if (selected === "open") previousIssueRoute = requested;
   previousManagerView = selected;
   document.querySelector("#closed-review-filters").hidden = !["closed"].includes(document.querySelector("#fault-mode").value);
-  document.querySelector("#manager-back").hidden = !["catalog", "attendance", "duties", "work-status", "users", "systems", "components", "reports", "aircraft-constants"].includes(selected);
+  document.querySelector("#manager-back").hidden = !["catalog", "attendance", "duties", "work-status", "users", "systems", "components", "reports", "aircraft-constants", "print-files", "tool-admin"].includes(selected);
   document.querySelectorAll("[data-open-stage]").forEach((link) => { if (link.dataset.openStage === (requested === "in-progress" ? "progress" : "start")) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current"); });
   document.querySelector("#issued-title").textContent = requested === "in-progress" ? "תקלות בתהליך" : "כל התקלות";
   document.querySelector("#reset-draft").hidden = requested !== "new" && requested !== "keys/create";
@@ -635,7 +643,7 @@ function showManagerView() {
   document.querySelector("#fault-nav").hidden = !["new", "open", "pending", "history"].includes(selected);
   document.querySelectorAll("[data-manager-view]").forEach((view) => { view.hidden = view.dataset.managerView !== (selected === "pending" ? "closed" : selected); });
   document.querySelectorAll("[data-view-link]").forEach((link) => {
-    const nav = ["new", "open", "pending", "history"].includes(selected) ? "faults" : ["users", "systems", "components", "reports", "aircraft-constants"].includes(selected) ? "management" : selected;
+    const nav = ["new", "open", "pending", "history"].includes(selected) ? "faults" : ["users", "systems", "components", "reports", "aircraft-constants", "print-files", "tool-admin"].includes(selected) ? "management" : selected;
     if (link.dataset.viewLink === nav) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
