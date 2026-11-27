@@ -15,6 +15,10 @@ export function initToolIntakePopup(user) {
   const inspectorCanvas = document.querySelector("#tool-intake-inspector-signature");
   let issue = null, lock = null, rows = [], technicianSignature = "", inspectorSignature = "", saving = false;
   let clearTechnician, clearInspector;
+  inspectorNumber.addEventListener("input", () => {
+    inspectorNumber.value = inspectorNumber.value.replace(/[^0-9]/g, "").slice(0, 7);
+    clearError();
+  });
 
   function error(message, target) {
     status.textContent = message; status.dataset.state = "error";
