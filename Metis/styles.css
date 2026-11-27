@@ -157,6 +157,8 @@
   .attendance-table tr td:first-child,.attendance-table tr td:last-child { border-radius: 0; }
 }
 .assignee-options { display: grid; gap: 10px; margin-bottom: 12px; }
+.team-editor-options { grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr)); align-items: end; }
+.team-editor-options .assignee-row { min-width: 0; }
 .assignee-row { display: flex; align-items: end; gap: 8px; }
 .assignee-row .input-field { flex: 1; min-width: 0; }
 .assignee-row .secondary-button { flex: 0 0 auto; }
