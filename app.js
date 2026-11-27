@@ -9,11 +9,14 @@ import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.23";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.6";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 import { catalogTool, toolNumberOptions, updateToolCatalog } from "./tool-catalog.js?v=1.9.23";
+import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.25";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");
 if (!managerClosedView) watchToolCatalog((items) => updateToolCatalog(items), () => {});
-if (managerClosedView) document.querySelector("#connected-user").textContent = currentUser.name || "מטיס";
+const connectedUser = document.querySelector("#connected-user");
+if (connectedUser) connectedUser.textContent = currentUser.name || (managerClosedView ? "מטיס" : "טכנאי");
+const openToolIntakePopup = managerClosedView ? () => {} : initToolIntakePopup(currentUser);
 let cloudIssues = [];
 let keyLoads = [];
 let keyLoadError = "";
@@ -234,7 +237,7 @@ function applyPreflightGate() {
   document.querySelectorAll("#tools-rows input, #tools-rows button, #entry-fields input, #entry-fields button").forEach((el) => { el.disabled = toolsLocked; });
   document.querySelectorAll('[data-signature="entryTechnicianSignature"], [data-signature="entryInspectorSignature"]').forEach((canvas) => { canvas.style.pointerEvents = toolsLocked ? "none" : ""; });
   document.querySelector("#taken-toggle").disabled = intakeSaved && !started;
-  document.querySelector("#add-tools-link").hidden = !started || !remoteIssue?.intake;
+  document.querySelector("#add-tools-link").hidden = true;
   for (const selector of [".descriptions-card", ".actions-card", ".units-card", ".constants-card", '.parts-card[aria-labelledby="rejected-title"]', ".close-card"]) form.querySelector(selector).hidden = !unlocked;
   if (unlocked && !document.querySelector("main").hidden) setupSignaturePads(form);
   document.querySelectorAll("#save-sheet, #save-sheet-bottom").forEach((button) => { button.disabled = !started || safetyStartPending || savingTechnicianDraft; });
@@ -287,16 +290,20 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
   }));
   document.querySelector("#intake-save").addEventListener("click", async () => {
     const feedback = document.querySelector("#intake-status"), button = document.querySelector("#intake-save");
+    const intakeError = (message, target) => {
+      feedback.textContent = message; feedback.dataset.state = "error";
+      const field = target || feedback; field.scrollIntoView({ behavior: "smooth", block: "center" }); field.focus?.({ preventScroll: true });
+    };
     const tools = state.toolsEnabled ? compactRows(state.tools, TABLES.tools) : [];
     const taken = state.takenEnabled ? compactRows(state.taken, TABLES.taken) : [];
-    if (!intakeChoice) { feedback.textContent = "יש לבחור כן או לא."; return; }
-    if (intakeChoice === "yes" && !tools.length && !taken.length) { feedback.textContent = "יש למלא לפחות כלי או קשיח אחד."; return; }
-    if (intakeChoice === "no" && (tools.length || taken.length)) { feedback.textContent = "יש להסיר את הפריטים לפני בחירה בלא."; return; }
+    if (!intakeChoice) { intakeError("יש לבחור כן או לא.", document.querySelector('[name="initial-intake"]')); return; }
+    if (intakeChoice === "yes" && !tools.length && !taken.length) { intakeError("יש למלא לפחות כלי או קשיח אחד.", document.querySelector("#tools-toggle")); return; }
+    if (intakeChoice === "no" && (tools.length || taken.length)) { intakeError("יש להסיר את הפריטים לפני בחירה בלא.", document.querySelector("#intake-choice")); return; }
     const intake = { choice: intakeChoice, tools, taken,
       entryTechnicianSignature: state.entryTechnicianSignature, entryInspectorSignature: state.entryInspectorSignature,
       entryInspectorNumber: state.entryInspectorNumber, takenSignature: state.takenSignature,
       takenFullName: state.takenFullName, takenPersonalNumber: state.takenPersonalNumber, takenRank: state.takenRank };
-    button.disabled = true; intakePending = true; feedback.textContent = "שומר ביקורת כניסה בשרת…";
+    button.disabled = true; intakePending = true; delete feedback.dataset.state; feedback.textContent = "שומר ביקורת כניסה בשרת…";
     try {
       await editLock.renew();
       const at = await saveInitialIntake(sheet.id, currentUser.uid, intake, editLock.session);
@@ -305,9 +312,9 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
       state.entryEnabled = tools.length > 0; state.takenEnabled = taken.length > 0;
       document.querySelector("#entry-check").checked = state.entryEnabled;
       document.querySelector("#entry-fields").hidden = !state.entryEnabled;
-      intakeSaved = true; feedback.textContent = "הקליטה נשמרה. כעת אפשר לחתום על בטיחות המטוס.";
+      intakeSaved = true; feedback.textContent = "הקליטה נשמרה. כעת אפשר לחתום על בטיחות המטוס."; delete feedback.dataset.state;
       applyPreflightGate(); saveState();
-    } catch (error) { feedback.textContent = `הקליטה לא נשמרה: ${error.message}`; feedback.dataset.state = "error"; }
+    } catch (error) { intakeError(`הקליטה לא נשמרה: ${error.message}`); }
     finally { intakePending = false; if (!intakeSaved) button.disabled = false; }
   });
 }
@@ -502,8 +509,9 @@ function renderIssueList() {
     card.append(title, info);
     const row = document.createElement("div"); row.className = "technician-task-row"; row.append(card);
     if (type === "issue" && cloudIssues.find((issue) => issue.id === item.id)?.intake && cloudIssues.find((issue) => issue.id === item.id)?.startedAt) {
-      const add = document.createElement("a"); add.className = "secondary-button";
-      add.href = `?id=${encodeURIComponent(item.id)}#add-tools`; add.textContent = "הוסף כלי חדש";
+      const add = document.createElement("button"); add.type = "button"; add.className = "secondary-button";
+      add.textContent = "הוסף כלי חדש";
+      add.addEventListener("click", () => openToolIntakePopup(cloudIssues.find((issue) => issue.id === item.id)));
       row.append(add);
     }
     list.append(row);
@@ -584,6 +592,13 @@ if (managerClosedView && selectedSheet) {
     }
     return review;
   }
+  function reviewError(message, target) {
+    const status = document.querySelector("#review-status");
+    status.textContent = message; status.dataset.state = "error";
+    const field = target || status;
+    field.scrollIntoView({ behavior: "smooth", block: "center" });
+    field.focus?.({ preventScroll: true });
+  }
   const firstTechnicianCard = document.querySelector(".safety-card") || document.querySelector(".parts-card");
   if (firstTechnicianCard && firstTechnicianCard.parentElement === reviewPanel.parentElement) {
     const details = document.createElement("details"); details.className = "card";
@@ -600,8 +615,8 @@ if (managerClosedView && selectedSheet) {
     try {
       const review = collectManagerReview(); saveClosed.disabled = true;
       await updateClosedIssueReview(sheet.id, currentUser.uid, review);
-      document.querySelector("#review-status").textContent = remoteIssue.status === "pendingReview" ? "הבקרה נשמרה. אפשר לחזור אליה ולסגור בהמשך." : "הבקרה נשמרה. הסינון ברשימת התקלות הסגורות עודכן.";
-    } catch (error) { document.querySelector("#review-status").textContent = `שמירת הבקרה נכשלה: ${error.message}`; }
+      const status = document.querySelector("#review-status"); status.textContent = remoteIssue.status === "pendingReview" ? "הבקרה נשמרה. אפשר לחזור אליה ולסגור בהמשך." : "הבקרה נשמרה. הסינון ברשימת התקלות הסגורות עודכן."; delete status.dataset.state;
+    } catch (error) { reviewError(`שמירת הבקרה נכשלה: ${error.message}`, document.activeElement?.matches('input[type="date"]') ? document.activeElement : null); }
     finally { saveClosed.disabled = false; }
   });
   if (!reviewPanel.hidden) {
@@ -617,17 +632,17 @@ if (managerClosedView && selectedSheet) {
     document.querySelector("#approve-sheet").hidden = !isPending;
     document.querySelector("#clear-reviewer-signature").addEventListener("click", clear);
     document.querySelector("#approve-sheet").addEventListener("click", async (event) => {
-      if (!signature) { document.querySelector("#review-status").textContent = "יש לחתום כבודק הדף לפני הסגירה."; return; }
+      if (!signature) { reviewError("יש לחתום כבודק הדף לפני הסגירה.", canvas); return; }
       const button = event.currentTarget; button.disabled = true;
       try { const review = collectManagerReview(); await approveIssue(sheet.id, currentUser.uid, signature, review); location.replace("./#closed"); }
-      catch (error) { document.querySelector("#review-status").textContent = `הסגירה נכשלה: ${error.message}`; button.disabled = false; }
+      catch (error) { reviewError(`הסגירה נכשלה: ${error.message}`, document.activeElement?.matches('input[type="date"]') ? document.activeElement : null); button.disabled = false; }
     });
   }
 }
 
 async function submitTreatment() {
   if (managerClosedView) return;
-  if (!editLock?.held) { document.querySelector("#close-message").textContent = "הטופס אינו נעול לעריכה עבורך. לחץ על בדוק שוב."; return; }
+  if (!editLock?.held) { const message = document.querySelector("#close-message"); message.textContent = "הטופס אינו נעול לעריכה עבורך. לחץ על בדוק שוב."; message.dataset.state = "error"; message.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
   if (document.querySelector("#close-sheet").disabled) return;
   const validation = validateTreatment(sheet, state, TABLES);
   if (validation) {

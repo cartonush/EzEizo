@@ -183,7 +183,7 @@ async function issuePdf(issue) {
     const details = issue.manualDetails || {};
     pdf.heading("תיעוד תקלה ידנית");
     pdf.paragraph("הטיפול בוצע על גבי טופס הנייר. חתימות העבודה המקוריות נשמרות בעותק המודפס; פרטים אלה הוזנו בידי המטיס.");
-    for (const [label, value] of [["תיאור תקלה", sheet.fault], ["תיאור תיקון", details.repair], ["הערות טכנאי", details.technicianNotes], ["סיווג תיקון", details.classification], ["שעת הגעה", details.arrivalTime], ["שעת סיום", details.completionTime], ["פרטי ביקורות", details.inspection], ["אסמכתה לנייר", details.paperReference]]) if (value) pdf.text(label, value);
+    for (const [label, value] of [["תיאור תקלה", sheet.fault], ["תיאור תיקון", details.repair], ["הערות טכנאי", details.technicianNotes], ["סיווג תיקון", details.classification], ["שעת הגעה", details.arrivalTime], ["שעת סיום", details.completionTime], ["פרטי ביקורות", details.inspection]]) if (value) pdf.text(label, value);
     (sheet.actions || []).forEach((task, index) => pdf.row([`${index + 1}. ${task}`, checked(details.actions?.[index])]));
     for (const [title, key, fields] of [
       ["יחידות שפורקו", "removed", [["מכלול", "name"], ["מספר סידורי", "serial"]]],

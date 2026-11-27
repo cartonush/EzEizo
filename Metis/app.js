@@ -7,7 +7,7 @@ import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
 import { initKeyPages } from "../keys/app.js?v=1.9.23";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.23";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.25";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
 import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.18";
 import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.23";
@@ -325,19 +325,24 @@ function renderActions() {
 async function createFault(event) {
   const button = event.currentTarget;
   const manual = button.id === "create-manual";
+  const faultError = (message, target) => {
+    setStatus("#created-status", message, true);
+    const field = target || document.querySelector("#created-status");
+    field.scrollIntoView({ behavior: "smooth", block: "center" });
+    field.focus?.({ preventScroll: true });
+  };
   const acknowledgment = document.querySelector("#creation-ack");
-  if (!acknowledgment.checked) { setStatus("#created-status", "יש לאשר את בדיקת פרטי התקלה לפני פתיחתה.", true); acknowledgment.focus(); return; }
-  if (!draft.dispatcherSignature) { setStatus("#created-status", "חובה להחתים את משלח המשימה על תדריך הבטיחות וניהול הסיכונים.", true); document.querySelector("#dispatcher-signature").scrollIntoView({ block: "center" }); return; }
+  if (!acknowledgment.checked) { faultError("יש לאשר את בדיקת פרטי התקלה לפני פתיחתה.", acknowledgment); return; }
+  if (!draft.dispatcherSignature) { faultError("חובה להחתים את משלח המשימה על תדריך הבטיחות וניהול הסיכונים.", document.querySelector("#dispatcher-signature")); return; }
   const catalogError = validateCatalogSelection(selections, draft);
-  if (catalogError) { setStatus("#created-status", catalogError.message, true); (pickers[catalogError.field]?.input || document.querySelector("#ew-system-select")).focus(); return; }
+  if (catalogError) { faultError(catalogError.message, pickers[catalogError.field]?.input || document.querySelector("#ew-system-select")); return; }
   const { assignees, error: assigneeError } = resolveAssignees(selectedAssigneeUids(), technicians);
-  if (assigneeError) { setStatus("#created-status", assigneeError, true); document.querySelector("#new-assignees").scrollIntoView({ block: "center" }); return; }
+  if (assigneeError) { faultError(assigneeError, document.querySelector("#new-assignees .assignee-row input") || document.querySelector("#new-assignees")); return; }
   button.disabled = true;
   const sheet = EzEizoData.normalizeSheet(draft);
   sheet.technicians = assignees.map((person) => person.name).join(" · ");
   if (!sheet.fault.trim()) {
-    setStatus("#created-status", "חובה למלא תיאור תקלה לפני פתיחת התקלה.", true);
-    document.querySelector('[data-sheet-field="fault"]').focus();
+    faultError("חובה למלא תיאור תקלה לפני פתיחת התקלה.", document.querySelector('[data-sheet-field="fault"]'));
     button.disabled = false;
     return;
   }
@@ -353,7 +358,7 @@ async function createFault(event) {
     resetFaultDraft();
     setStatus("#created-status", manual ? `תקלה ידנית מספר ${sheet.serial} נפתחה וממתינה למילוי וסגירה בידי המטיס. טופס התקלה נפתח להדפסה.` : `תקלה מספר ${sheet.serial} הוקצתה ל־${assignees.map((person) => person.name).join(" ו־")}. הטופס מוכן לפתיחת תקלה חדשה.`);
     window.location.hash = manual ? "pending" : "open";
-  } catch (error) { printTab?.close(); setStatus("#created-status", `פתיחת התקלה נכשלה: ${error.message}`, true); }
+  } catch (error) { printTab?.close(); faultError(`פתיחת התקלה נכשלה: ${error.message}`); }
   finally { button.disabled = false; }
 }
 document.querySelector("#create-link").addEventListener("click", createFault);
