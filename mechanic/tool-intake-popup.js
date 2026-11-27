@@ -107,7 +107,7 @@ export function initToolIntakePopup(user) {
       await addToolIntake(issue.id, user.uid, { tools, technicianSignature, inspectorSignature, inspectorNumber: inspectorNumber.value.trim() }, lock.session);
       await lock.release().catch(() => {});
       const queueStatus = document.querySelector("#refresh-tasks-status");
-      queueStatus.textContent = `${tools.length} כלים נקלטו לתקלה ${issue.sheet.serial} לאחר ביקורת כניסה.`;
+      queueStatus.textContent = `${tools.length} כלים נקלטו לתקלה ${issue.sheet.serial} לאחר ביקורת כניסה. יש לבצע שוב ביקורת יציאה לפני הגשת הדף.`;
       delete queueStatus.dataset.state;
       dialog.close();
     } catch (failure) { error(`הכלים לא נקלטו: ${failure.message}`); }
