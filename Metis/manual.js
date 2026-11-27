@@ -1,4 +1,4 @@
-import { gate, revealApp, getIssue, watchToolCatalog, saveManualIssueDetails, approveManualIssue } from "../firebase-sync.js?v=1.9.33";
+import { gate, revealApp, getIssue, watchToolCatalog, saveManualIssueDetails, approveManualIssue } from "../firebase-sync.js?v=1.9.36";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "../tool-catalog.js?v=1.9.30";
 
@@ -137,7 +137,7 @@ if (!issue?.manualPaper) {
     });
   }
   const permitRadios = [...document.querySelectorAll('[name="manual-permit"]')];
-  const initialPermit = checks.trackingPermit ? "tracking" : checks.flightPermitUntil ? "flight" : checks.approvalUntil ? "approval" : "";
+  const initialPermit = checks.trackingPermit ? "tracking" : checks.flightPermitUntil ? "flight" : checks.approvalUntil ? "approval" : "none";
   const permitFields = { tracking: document.querySelector("#manual-tracking-flights"), flight: document.querySelector("#manual-flight-until"), approval: document.querySelector("#manual-approval-until") };
   permitFields.tracking.value = checks.trackingFlights || "";
   permitFields.flight.value = checks.flightPermitUntil || "";
@@ -153,7 +153,6 @@ if (!issue?.manualPaper) {
   function collectReview() {
     const get = (key) => document.querySelector(`[data-review="${key}"]`);
     const permit = permitRadios.find((radio) => radio.checked)?.value;
-    if (!permit) required("יש לבחור היתר למעקב, היתר לטיסה או אישור עד תאריך.", permitRadios[0]);
     const flights = Number(permitFields.tracking.value);
     if (permit === "tracking" && (!Number.isSafeInteger(flights) || flights < 1)) required("יש להזין מספר גיחות חיובי להיתר למעקב.", permitFields.tracking);
     if (permit === "flight" && !permitFields.flight.value) required("יש לבחור תאריך להיתר לטיסה.", permitFields.flight);

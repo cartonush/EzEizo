@@ -1,5 +1,5 @@
 import "../sheet-data.js?v=1.7.6";
-import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createManualIssue, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.33";
+import { gate, revealApp, watchIssues, refreshManagerIssues, watchKeyLoads, watchAccounts, setAttendanceStatus, createIssue, createAssignedIssues, createManualIssue, createTechnician, setTechnicianPersonalNumber, updateAccountProfile, resetUserPassword, updateOpenIssueDefinition, setTechnicianActive, deleteTechnicianPermanently, assignIssue, appendIssueManagerNote, cancelIssueDispatch } from "../firebase-sync.js?v=1.9.36";
 import { SQUADRONS, SYSTEMS, COMPONENTS_BY_SYSTEM, WORKSHOPS, EW_SYSTEMS, validateCatalogSelection } from "./catalog.js?v=1.9.0";
 import { initCatalogAdmin } from "./catalog-admin.js?v=1.9.33";
 import { initCatalogView } from "./catalog-view.js?v=1.9.33";

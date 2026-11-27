@@ -372,7 +372,7 @@ export async function approveManualIssue(id, uid, signature, managerReview) {
     if (!snapshot.data().manualDetails?.repair?.trim()) throw new Error("יש לשמור תחילה את תיאור התיקון והטיפול.");
     if (!signature?.startsWith("data:image/png;base64,") || signature.length <= 100) throw new Error("יש לחתום על בדיקת הדף.");
     const permits = [managerReview.trackingPermit, Boolean(managerReview.flightPermitUntil), Boolean(managerReview.approvalUntil)].filter(Boolean);
-    if (permits.length !== 1 || (managerReview.trackingPermit && (!Number.isSafeInteger(managerReview.trackingFlights) || managerReview.trackingFlights < 1))) throw new Error("יש לבחור היתר אחד ולמלא מספר גיחות או תאריך בהתאם.");
+    if (permits.length > 1 || (managerReview.trackingPermit && (!Number.isSafeInteger(managerReview.trackingFlights) || managerReview.trackingFlights < 1))) throw new Error("ניתן לבחור לכל היותר היתר אחד ולמלא מספר גיחות או תאריך בהתאם.");
     transaction.update(ref, { status: "closed", reviewedAt: new Date().toISOString(), reviewedBy: uid, reviewerSignature: signature, managerReview });
   });
 }

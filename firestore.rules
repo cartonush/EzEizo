@@ -510,7 +510,7 @@ service cloud.firestore {
           && request.resource.data.managerReview.trackingPermit == (request.resource.data.managerReview.trackingFlights > 0)
           && ((request.resource.data.managerReview.trackingPermit ? 1 : 0)
             + (request.resource.data.managerReview.flightPermitUntil != '' ? 1 : 0)
-            + (request.resource.data.managerReview.approvalUntil != '' ? 1 : 0)) == 1))
+            + (request.resource.data.managerReview.approvalUntil != '' ? 1 : 0)) <= 1))
         && request.resource.data.reviewedBy == request.auth.uid
         && request.resource.data.reviewedAt is string
         && request.resource.data.reviewerSignature is string
@@ -520,7 +520,8 @@ service cloud.firestore {
         && resource.data.status == 'pendingReview'
         && request.resource.data.status == 'pendingReview'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['manualDetails', 'manualUpdatedAt', 'manualUpdatedBy'])
-        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['manualDetails', 'manualUpdatedAt', 'manualUpdatedBy'])
+        // The operator may save the same details twice; unchanged fields do not appear in affectedKeys().
+        && request.resource.data.keys().hasAll(['manualDetails', 'manualUpdatedAt', 'manualUpdatedBy'])
         && request.resource.data.manualUpdatedBy == request.auth.uid
         && request.resource.data.manualUpdatedAt is string
         && request.resource.data.manualDetails is map
