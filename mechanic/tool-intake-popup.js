@@ -1,7 +1,7 @@
-import { addToolIntake } from "../firebase-sync.js?v=1.9.23";
+import { addToolIntake } from "../firebase-sync.js?v=1.9.30";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
-import { attachToolPicker, catalogTool } from "../tool-catalog.js?v=1.9.29";
+import { attachToolPicker, catalogTool, toolNumberRecorded } from "../tool-catalog.js?v=1.9.30";
 
 export function initToolIntakePopup(user) {
   const dialog = document.querySelector("#tool-intake-dialog");
@@ -40,7 +40,7 @@ export function initToolIntakePopup(user) {
           clearError(); row[key] = input.value;
           if (key === "toolNumber") {
             const selected = catalogTool(input.value);
-            if (selected) {
+            if (selected && !toolNumberRecorded(selected.toolNumber, rows, index, issue?.acceptedTools || [])) {
               row.toolNumber = selected.toolNumber; row.toolName = selected.toolName;
               if (index === rows.length - 1) rows.push({ toolName: "", toolNumber: "", notes: "" });
               render(); body.children[index + 1]?.querySelector('input[type="search"]')?.focus(); return;
@@ -54,7 +54,7 @@ export function initToolIntakePopup(user) {
             same?.focus(); if (caret != null) same?.setSelectionRange(caret, caret);
           }
         });
-        cell.append(key === "toolNumber" ? attachToolPicker(input) : input); tr.append(cell);
+        cell.append(key === "toolNumber" ? attachToolPicker(input, { isUnavailable: (number) => toolNumberRecorded(number, rows, index, issue?.acceptedTools || []) }) : input); tr.append(cell);
       }
       const cell = document.createElement("td"), remove = document.createElement("button");
       remove.type = "button"; remove.className = "remove-row"; remove.textContent = "×";
@@ -90,9 +90,9 @@ export function initToolIntakePopup(user) {
     const tools = rows.filter((row) => Object.values(row).some((value) => String(value).trim()));
     if (!tools.length) { error("יש לבחור לפחות כלי אחד.", body.querySelector('input[type="search"]')); return; }
     for (const [index, row] of tools.entries()) {
+      if (toolNumberRecorded(row.toolNumber, tools, index, issue.acceptedTools || [])) { error("כלי זה כבר תועד בתקלה.", body.children[index]?.querySelector('input[type="search"]')); return; }
       const tool = catalogTool(row.toolNumber);
       if (!tool || tool.toolName !== row.toolName) { error("יש לבחור מספר כלי מתוך הרשימה.", body.children[index]?.querySelector('input[type="search"]')); return; }
-      if (tools.findIndex((other) => other.toolNumber === row.toolNumber) !== index) { error("מספר הכלי נבחר פעמיים.", body.children[index]?.querySelector('input[type="search"]')); return; }
     }
     if (!technicianSignature) { error("יש לחתום כטכנאי על ביקורת הכניסה.", technicianCanvas); return; }
     if (!inspectorSignature) { error("יש להחתים את הבודק על ביקורת הכניסה.", inspectorCanvas); return; }

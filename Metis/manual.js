@@ -1,6 +1,6 @@
-import { gate, revealApp, getIssue, watchToolCatalog, saveManualIssueDetails, approveManualIssue } from "../firebase-sync.js?v=1.9.23";
+import { gate, revealApp, getIssue, watchToolCatalog, saveManualIssueDetails, approveManualIssue } from "../firebase-sync.js?v=1.9.30";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
-import { attachToolPicker, catalogTool, updateToolCatalog } from "../tool-catalog.js?v=1.9.29";
+import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "../tool-catalog.js?v=1.9.30";
 
 const user = await gate("manager");
 watchToolCatalog((items) => updateToolCatalog(items), () => {});
@@ -107,12 +107,13 @@ if (!issue?.manualPaper) {
           item[key] = input.value;
           if (type === "tools" && key === "toolNumber") {
             const tool = catalogTool(input.value);
-            if (tool) { item.toolNumber = tool.toolNumber; item.toolName = tool.toolName; renderRows(type); body.children[index + 1]?.querySelector('input[type="search"]')?.focus(); markDirty(); return; }
+            if (tool && !toolNumberRecorded(tool.toolNumber, state.tools, index)) { item.toolNumber = tool.toolNumber; item.toolName = tool.toolName; renderRows(type); body.children[index + 1]?.querySelector('input[type="search"]')?.focus(); markDirty(); return; }
+            item.toolName = "";
           }
           if (index === state[type].length - 1 && body.children.length === state[type].length) renderRows(type, { index, key, caret: input.selectionStart });
           markDirty();
         });
-        td.append(type === "tools" && key === "toolNumber" ? attachToolPicker(input) : input); tr.append(td);
+        td.append(type === "tools" && key === "toolNumber" ? attachToolPicker(input, { isUnavailable: (number) => toolNumberRecorded(number, state.tools, index) }) : input); tr.append(td);
       }
       const td = document.createElement("td"), remove = document.createElement("button");
       remove.type = "button"; remove.className = "remove-row"; remove.textContent = "×"; remove.setAttribute("aria-label", `מחק שורה ${index + 1}`);
@@ -156,8 +157,8 @@ if (!issue?.manualPaper) {
     if (state.actions[1] && !state.arrivalTime) required("יש למלא שעת הגעה למשימה 2.", document.querySelector('[data-manual="arrivalTime"]'));
     if (state.actions[11] && !state.completionTime) required("יש למלא שעת סיום למשימה 12.", document.querySelector('[data-manual="completionTime"]'));
     for (const [index, row] of state.tools.filter(filled).entries()) {
+      if (toolNumberRecorded(row.toolNumber, state.tools.filter(filled), index)) required("אין להזין את אותו מספר כלי פעמיים.", rowInput("tools", index, "toolNumber"));
       if (!previouslySavedTools.has(`${row.toolNumber}\u0000${row.toolName}`) && (!catalogTool(row.toolNumber) || catalogTool(row.toolNumber).toolName !== row.toolName)) required("יש לבחור מספר כלי מתוך הרשימה.", rowInput("tools", index, "toolNumber"));
-      if (state.tools.filter(filled).some((other, otherIndex) => otherIndex < index && other.toolNumber === row.toolNumber)) required("אין להזין את אותו מספר כלי פעמיים.", rowInput("tools", index, "toolNumber"));
     }
     for (const [type, keys] of [["removed", ["name", "serial"]], ["installed", ["name", "serial"]], ["taken", ["description", "quantityIn", "quantityOut"]], ["rejected", ["description", "quantity", "reason"]]]) {
       for (const [index, row] of state[type].filter(filled).entries()) {

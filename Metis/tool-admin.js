@@ -1,5 +1,5 @@
 import { watchToolCatalog, saveToolCatalog } from "../firebase-sync.js?v=1.9.23";
-import { DEFAULT_TOOLS, updateToolCatalog } from "../tool-catalog.js?v=1.9.29";
+import { DEFAULT_TOOLS, updateToolCatalog } from "../tool-catalog.js?v=1.9.30";
 
 export function initToolAdmin(user) {
   const form = document.querySelector("#tool-admin-form");

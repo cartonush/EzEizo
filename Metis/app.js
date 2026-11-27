@@ -6,14 +6,14 @@ import { initCatalogView } from "./catalog-view.js?v=1.9.23";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
-import { initKeyPages } from "../keys/app.js?v=1.9.29";
+import { initKeyPages } from "../keys/app.js?v=1.9.30";
 import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.26";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
 import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.18";
 import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.23";
 import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.23";
 import { makeSquadronEmblem } from "../squadron-emblems.js?v=1.9.19";
-import { initToolAdmin } from "./tool-admin.js?v=1.9.29";
+import { initToolAdmin } from "./tool-admin.js?v=1.9.30";
 
 const managerUser = await gate("operations");
 const fullManager = managerUser.isFullManager;

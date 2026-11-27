@@ -1,10 +1,10 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.23";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.30";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.7.6";
 import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, alreadyLoadedForPeriod, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.9.26";
 import { attachTimeNow } from "../time-now.js?v=1.7.6";
 import { keyLoadTimeline } from "../lifecycle.js?v=1.9.23";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
-import { attachToolPicker, catalogTool, updateToolCatalog } from "../tool-catalog.js?v=1.9.29";
+import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "../tool-catalog.js?v=1.9.30";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -415,7 +415,7 @@ function renderExtraRows(type, closed) {
       }
       input.addEventListener("input", () => {
         row[key] = input.value;
-        const tool = type === "tools" && key === "toolNumber" ? catalogTool(input.value) : null;
+        const tool = type === "tools" && key === "toolNumber" && !toolNumberRecorded(input.value, rows, index) ? catalogTool(input.value) : null;
         if (type === "tools" && key === "toolNumber") row.toolName = tool?.toolName || "";
         if (tool) row.toolNumber = tool.toolNumber;
         if (tool || (index === rows.length - 1 && input.value.trim())) {
@@ -426,7 +426,7 @@ function renderExtraRows(type, closed) {
           next?.focus({ preventScroll: true }); if (!tool && caret != null) next?.setSelectionRange(caret, caret);
         }
         saveWork();
-      }); td.append(type === "tools" && key === "toolNumber" ? attachToolPicker(input) : input); tr.append(td);
+      }); td.append(type === "tools" && key === "toolNumber" ? attachToolPicker(input, { isUnavailable: (number) => toolNumberRecorded(number, rows, index) }) : input); tr.append(td);
     });
     const cell = document.createElement("td"); if (!closed && columns.some(({ key }) => row[key])) { const remove = make("button", "×", "remove-row"); remove.type = "button"; remove.addEventListener("click", () => { work[type].splice(index, 1); renderExtraRows(type, false); saveWork(); }); cell.append(remove); } tr.append(cell); target.append(tr);
   });
@@ -458,6 +458,7 @@ function validateWork() {
   for (const type of ["tools", "taken", "rejected"]) if (work[`${type}Enabled`]) {
     const rows = compactRows(work[type], KEY_TABLES[type]);
     if (!rows.length) return `יש למלא שורה בטבלת ${type === "tools" ? "כלים" : type === "taken" ? "קשיחים נצרכים" : "קשיחים שנפסלו"}.`;
+    if (type === "tools" && rows.some((row, index) => toolNumberRecorded(row.toolNumber, rows, index))) return "כלי זה כבר תועד בטבלת הכלים.";
     const error = validateRows(rows, KEY_TABLES[type], type); if (error) return error;
   }
   const required = [];
