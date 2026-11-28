@@ -309,6 +309,7 @@ function readWork(load) {
   catch { return syncKeyTools(load, saved); }
 }
 function syncKeyTools(load, state) {
+  state.actions = Array.from({ length: KEY_TASKS.length }, (_, index) => index === 0 || state.actions?.[index] === true);
   if (load.acceptedTools) { state.tools = load.acceptedTools; state.toolsEnabled = load.acceptedTools.length > 0; }
   if (load.toolIntakes?.length && state.finalInspectionToolCount !== state.tools.length) {
     for (const key of ["finalTechnicianSignature", "finalInspectorSignature", "finalInspectorNumber", "finalLeadName", "finalLeadSignature", "departureTime"]) state[key] = "";
@@ -457,7 +458,10 @@ function renderWork() {
   KEY_TASKS.forEach((task, index) => {
     const row = make("li"), label = make("label"); const checkbox = document.createElement("input"); checkbox.type = "checkbox";
     checkbox.checked = index === 0 || Boolean(work.actions[index]); checkbox.disabled = index === 0 || closed;
-    checkbox.addEventListener("change", () => { work.actions[index] = checkbox.checked; saveWork(); });
+    checkbox.addEventListener("change", () => {
+      work.actions[index] = checkbox.checked; saveWork();
+      if ($("#work-status").dataset.state === "error" && work.actions.every(Boolean)) setMessage("#work-status", "כל המשימות סומנו. אפשר לנסות שוב להגיש; יתר השדות ייבדקו גם הם.");
+    });
     label.append(checkbox, make("span", task)); row.append(label); actions.append(row);
     if (index === 0) { const image = document.createElement("img"); image.src = load.dispatcherSignature; image.alt = "חתימת משלח המשימה"; image.style.cssText = "display:block;max-width:220px;max-height:80px;margin:10px"; row.append(image); }
   });
@@ -543,7 +547,9 @@ function bindExtraTables(closed) {
 function validateWork() {
   if (!editLock?.held) return "הטופס אינו נעול לעריכה עבורך. לחץ על בדוק שוב.";
   if (activeLoad.intakeRequired && (!activeLoad.intake || !activeLoad.startedAt || !work.preflightSaved)) return "יש להשלים קליטה וחתימת בטיחות המטוס לפני הגשה.";
-  if (work.actions.length !== 12 || work.actions.some((done) => !done)) return "יש לסמן את כל 12 המשימות.";
+  work.actions = Array.from({ length: KEY_TASKS.length }, (_, index) => index === 0 || work.actions?.[index] === true);
+  const missingTask = work.actions.findIndex((done) => !done);
+  if (missingTask !== -1) return `יש לסמן משימה ${missingTask + 1} מתוך 12 לפני ההגשה.`;
   for (const [index, row] of activeLoad.rows.entries()) if ((row.blue && !work.aircraft[index]?.blueDone) || (row.shach && !work.aircraft[index]?.shachDone)) return `יש לסמן ביצוע הטענה במטוס ${row.aircraft}.`;
   for (const type of ["tools", "taken", "rejected"]) if (work[`${type}Enabled`]) {
     const rows = compactRows(work[type], KEY_TABLES[type]);
@@ -618,11 +624,29 @@ $("#close-key-work-notice").addEventListener("click", () => $("#key-work-notice"
 
 }
 $("#complete-key-load").addEventListener("click", async () => {
-  const error = validateWork(); if (error) return setMessage("#work-status", error, true);
-  const button = $("#complete-key-load"); button.disabled = true;
+  const button = $("#complete-key-load");
+  const error = validateWork();
+  if (error) {
+    button.disabled = false;
+    setMessage("#work-status", error, true);
+    if (error.includes("מתוך 12")) {
+      const details = $("#work-tasks").closest("details"); details.open = true;
+      const missing = [...$("#work-tasks").querySelectorAll('input[type="checkbox"]')].find((box) => !box.checked);
+      requestAnimationFrame(() => { missing?.scrollIntoView({ behavior: "smooth", block: "center" }); missing?.focus({ preventScroll: true }); });
+    }
+    return;
+  }
+  button.disabled = true;
   const clean = { ...work }; for (const [type, columns] of Object.entries(KEY_TABLES)) clean[type] = compactRows(work[type], columns);
-  try { clearTimeout(draftTimer); draftTimer = null; await pendingDraft.catch(() => {}); await closeKeyLoad(activeLoad.id, user.uid, clean, editLock.session); try { localStorage.removeItem(`ezeizo-key-work:${activeLoad.id}`); } catch { /* The server already saved the completed form. */ } editLock.dispose(); editLock = null; location.replace("./"); }
-  catch (failure) { setMessage("#work-status", `סגירת ההטענה נכשלה: ${failure.message}`, true); }
+  try {
+    clearTimeout(draftTimer); draftTimer = null;
+    await pendingDraft.catch(() => {});
+    await editLock.renew();
+    await queueDraft(activeLoad.id, structuredClone(clean), editLock.session);
+    await closeKeyLoad(activeLoad.id, user.uid, clean, editLock.session);
+    try { localStorage.removeItem(`ezeizo-key-work:${activeLoad.id}`); } catch { /* The server already saved the completed form. */ }
+    editLock.dispose(); editLock = null; location.replace("./");
+  } catch (failure) { setMessage("#work-status", `ההטענה לא הוגשה: ${failure.message}. אפשר לתקן ולנסות שוב ללא יציאה מהטופס.`, true); }
   finally { button.disabled = false; }
 });
 $("#save-key-work")?.addEventListener("click", async (event) => {
