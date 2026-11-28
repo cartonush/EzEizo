@@ -434,3 +434,12 @@ main:has(#view-work-status:not([hidden])) { width: min(1460px, calc(100% - 32px)
 #manual-editor .manual-rejected-table th:nth-child(4) { width: 8%; }
 .manual-validation-error { margin: 7px 0 12px; padding: 9px 12px; color: #9d1026; background: #fff0f1; border: 2px solid #dc3650; border-radius: 9px; font-weight: 700; }
 #manual-editor [aria-invalid="true"] { outline: 2px solid #dc3650; outline-offset: 2px; }
+
+.filter-search-picker { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.filter-search-picker input { box-sizing: border-box; width: 100%; min-width: 0; }
+.filter-picker-emblem[hidden] { display: none; }
+.filter-picker-options { position: absolute; z-index: 25; top: 100%; right: 0; left: 0; max-height: 240px; overflow: auto; padding: 5px; border: 1px solid #b7d1dd; border-radius: 10px; background: white; box-shadow: 0 12px 24px #173b5d33; }
+.filter-picker-options[hidden] { display: none; }
+.filter-picker-option { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px; border: 0; background: white; color: #173b5d; text-align: right; cursor: pointer; }
+.filter-picker-option:hover, .filter-picker-option:focus { background: #e9f3f6; }
+.issue-item strong:has(.squadron-emblem), .squad-tabs button:has(.squadron-emblem), .report-aircraft-options label:has(.squadron-emblem) { display: flex; align-items: center; gap: 8px; }

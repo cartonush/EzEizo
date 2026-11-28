@@ -5,6 +5,7 @@ import { attachTimeNow } from "../time-now.js?v=1.7.6";
 import { keyLoadTimeline } from "../lifecycle.js?v=1.9.23";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
 import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "../tool-catalog.js?v=1.9.30";
+import { makeSquadronEmblem } from "../squadron-emblems.js?v=1.9.19";
 
 export function initKeyPages({ user, embedded = false }) {
 const manager = embedded || !location.pathname.toLowerCase().includes("/mechanic/");
@@ -195,6 +196,7 @@ function renderHistory() {
   const tabs = $("#history-tabs"); tabs.replaceChildren();
   KEY_SQUADRONS.forEach((name) => {
     const button = make("button", `טייסת ${name}`); button.type = "button";
+    const emblem = makeSquadronEmblem(name); if (emblem) button.prepend(emblem);
     if (selectedSquadron === name) button.setAttribute("aria-current", "page");
     button.addEventListener("click", () => { selectedSquadron = name; renderHistory(); }); tabs.append(button);
   });
@@ -228,7 +230,9 @@ function renderOpen() {
   if (!list.length) { container.textContent = search ? "לא נמצאו הטענות פתוחות התואמות למזהה." : "אין הטענות פתוחות כרגע."; return; }
   list.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).forEach((load) => {
     const card = make("div", undefined, "issue-item");
-    card.append(make("strong", `${load.serial || "מספר ההטענה נטען…"} · טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`), make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`));
+    const heading = make("strong", `${load.serial || "מספר ההטענה נטען…"} · טייסת ${load.squadron} · דת״ק ${load.shelter} · ${load.date.split("-").reverse().join("/")}`);
+    const emblem = makeSquadronEmblem(load.squadron); if (emblem) heading.prepend(emblem);
+    card.append(heading, make("span", `מטוסים: ${load.aircraftIds.join(", ")} · צוות: ${load.teamNames.join(" · ")}`));
     const open = make("button", "פתח דף", "secondary-button"); open.type = "button";
     open.addEventListener("click", () => { location.hash = route(`work/${load.id}`); if (!embedded) showView(); }); card.append(open); container.append(card);
     if (manager) {
