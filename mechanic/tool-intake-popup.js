@@ -120,8 +120,11 @@ export function initToolIntakePopup(user) {
     document.querySelector("#tool-intake-issue").textContent = `תקלה ${issue.sheet.serial} · מטוס ${issue.sheet.aircraft || "—"}`;
     save.disabled = true; retry.hidden = true; lockStatus.textContent = "בודק שהתקלה פנויה לעדכון…";
     dialog.showModal();
-    if (!clearTechnician) clearTechnician = attachSignaturePad(technicianCanvas, { onChange: (value) => { technicianSignature = value; if (value) clearError(); } });
-    if (!clearInspector) clearInspector = attachSignaturePad(inspectorCanvas, { onChange: (value) => { inspectorSignature = value; if (value) clearError(); } });
+    requestAnimationFrame(() => {
+      if (!dialog.open) return;
+      if (!clearTechnician) clearTechnician = attachSignaturePad(technicianCanvas, { onChange: (value) => { technicianSignature = value; if (value) clearError(); } });
+      if (!clearInspector) clearInspector = attachSignaturePad(inspectorCanvas, { onChange: (value) => { inspectorSignature = value; if (value) clearError(); } });
+    });
     lock = createEditLock({ kind: "issue", serialOrId: issue.sheet.serial, formId: issue.id, user: { uid: user.uid, name: user.name || "טכנאי" }, onChange: ({ held, message }) => {
       lockStatus.textContent = message || "התקלה פנויה לעדכון.";
       save.disabled = !held || saving; retry.hidden = held;

@@ -218,7 +218,8 @@ service cloud.firestore {
     match /keyLoads/{id} {
       allow get, list: if isOperator() || (hasRole('technician') && request.auth.uid in resource.data.teamUids);
       allow create: if isOperator()
-        && request.resource.data.keys().hasOnly(['date', 'time', 'squadron', 'shelter', 'teamUids', 'teamNames', 'rows', 'aircraftIds', 'period', 'dispatcherSignature', 'status', 'createdAt', 'serial'])
+        && request.resource.data.keys().hasOnly(['date', 'time', 'squadron', 'shelter', 'teamUids', 'teamNames', 'rows', 'aircraftIds', 'period', 'dispatcherSignature', 'status', 'createdAt', 'serial', 'intakeRequired'])
+        && request.resource.data.get('intakeRequired', false) is bool
         && request.resource.data.serial is string
         && request.resource.data.serial.matches('K-[0-9]{9}')
         && request.resource.data.status == 'open'
@@ -234,6 +235,40 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['serial'])
         && request.resource.data.serial is string
         && request.resource.data.serial.matches('K-[0-9]{9}');
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['intake'])
+        && hasRole('technician')
+        && resource.data.status == 'open'
+        && resource.data.get('intakeRequired', false) == true
+        && !resource.data.keys().hasAny(['intake', 'startedAt'])
+        && request.auth.uid in resource.data.teamUids
+        && ownsEditLock('key_' + id)
+        && request.resource.data.intake is map
+        && request.resource.data.intake.by == request.auth.uid
+        && request.resource.data.intake.at is string
+        && request.resource.data.intake.choice in ['yes', 'no']
+        && request.resource.data.intake.tools is list
+        && request.resource.data.intake.taken is list
+        && (request.resource.data.intake.choice == 'yes'
+          ? request.resource.data.intake.tools.size() + request.resource.data.intake.taken.size() > 0
+          : request.resource.data.intake.tools.size() + request.resource.data.intake.taken.size() == 0)
+        && (request.resource.data.intake.tools.size() == 0 ||
+          (request.resource.data.intake.entryTechnicianSignature.size() > 100
+          && request.resource.data.intake.entryInspectorSignature.size() > 100
+          && validPersonalNumber(request.resource.data.intake.entryInspectorNumber)))
+        && (request.resource.data.intake.taken.size() == 0 ||
+          (request.resource.data.intake.takenSignature.size() > 100
+          && validPersonalNumber(request.resource.data.intake.takenPersonalNumber)));
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['startedAt', 'startedBy', 'safetySignature'])
+        && hasRole('technician')
+        && resource.data.status == 'open'
+        && resource.data.keys().hasAny(['intake'])
+        && !resource.data.keys().hasAny(['startedAt'])
+        && request.auth.uid in resource.data.teamUids
+        && ownsEditLock('key_' + id)
+        && request.resource.data.startedBy == request.auth.uid
+        && request.resource.data.startedAt is string
+        && request.resource.data.safetySignature is string
+        && request.resource.data.safetySignature.size() > 100;
       allow update: if hasRole('technician')
         && resource.data.status == 'open'
         && request.auth.uid in resource.data.teamUids
@@ -247,6 +282,11 @@ service cloud.firestore {
         && ownsEditLock('key_' + id)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'work', 'completedAt', 'completedBy', 'workDraft'])
         && request.resource.data.status == 'pendingReview'
+        && (!resource.data.get('intakeRequired', false) ||
+          (resource.data.keys().hasAll(['intake', 'startedAt', 'safetySignature'])
+          && request.resource.data.work.get('preflightSaved', false) == true
+          && request.resource.data.work.safetyTechnicianSignature == resource.data.safetySignature
+          && request.resource.data.work.tools == resource.data.intake.tools))
         && request.resource.data.completedBy == request.auth.uid
         && request.resource.data.completedAt is string
         && request.resource.data.work.actions is list

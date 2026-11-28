@@ -1,4 +1,4 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch } from "../firebase-sync.js?v=1.9.38";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch, saveKeyInitialIntake, startKeyWork } from "../firebase-sync.js?v=1.9.40";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, alreadyLoadedForPeriod, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.9.26";
 import { attachTimeNow } from "../time-now.js?v=1.7.6";
@@ -288,13 +288,20 @@ function renderPending() {
   if (!pending.length) container.textContent = "אין הטענות מפתחות שממתינות לסגירה.";
 }
 function defaultWork(load) {
-  return { actions: [true, ...Array(KEY_TASKS.length - 1).fill(false)], aircraft: load.rows.map((row) => ({ aircraft: row.aircraft, blueDone: false, shachDone: false, technicianNote: "" })), toolsEnabled: false, takenEnabled: false, rejectedEnabled: false, entryEnabled: false, interimEnabled: false, finalEnabled: false, tools: [], taken: [], rejected: [] };
+  return { actions: [true, ...Array(KEY_TASKS.length - 1).fill(false)], aircraft: load.rows.map((row) => ({ aircraft: row.aircraft, blueDone: false, shachDone: false, technicianNote: "" })), intakeChoice: "", preflightSaved: false, safetyTechnicianSignature: "", toolsEnabled: false, takenEnabled: false, rejectedEnabled: false, entryEnabled: false, interimEnabled: false, finalEnabled: false, tools: [], taken: [], rejected: [] };
 }
 function readWork(load) {
   const saved = { ...defaultWork(load), ...(load.work || {}), ...(load.workDraft || {}) };
+  if (load.intake) Object.assign(saved, { intakeChoice: load.intake.choice, toolsEnabled: load.intake.tools.length > 0, tools: load.intake.tools, entryEnabled: load.intake.tools.length > 0, takenEnabled: load.intake.taken.length > 0, taken: load.intake.taken, entryTechnicianSignature: load.intake.entryTechnicianSignature || "", entryInspectorSignature: load.intake.entryInspectorSignature || "", entryInspectorNumber: load.intake.entryInspectorNumber || "", takenSignature: load.intake.takenSignature || "", takenFullName: load.intake.takenFullName || "", takenPersonalNumber: load.intake.takenPersonalNumber || "", takenRank: load.intake.takenRank || "" });
+  if (load.startedAt) { saved.preflightSaved = true; saved.safetyTechnicianSignature = load.safetySignature; }
   if (["closed", "cancelled"].includes(load.status)) return saved;
   if (load.workDraft) return saved;
-  try { return { ...saved, ...JSON.parse(localStorage.getItem(`ezeizo-key-work:${load.id}`) || "{}") }; }
+  try {
+    const local = { ...saved, ...JSON.parse(localStorage.getItem(`ezeizo-key-work:${load.id}`) || "{}") };
+    if (load.intake) Object.assign(local, { intakeChoice: saved.intakeChoice, toolsEnabled: saved.toolsEnabled, tools: saved.tools, entryEnabled: saved.entryEnabled, takenEnabled: saved.takenEnabled, taken: saved.taken, entryTechnicianSignature: saved.entryTechnicianSignature, entryInspectorSignature: saved.entryInspectorSignature, entryInspectorNumber: saved.entryInspectorNumber, takenSignature: saved.takenSignature, takenFullName: saved.takenFullName, takenPersonalNumber: saved.takenPersonalNumber, takenRank: saved.takenRank });
+    if (load.startedAt) { local.preflightSaved = true; local.safetyTechnicianSignature = load.safetySignature; }
+    return local;
+  }
   catch { return saved; }
 }
 function renderKeyReview(load) {
@@ -348,6 +355,48 @@ function renderKeyReview(load) {
     try { if (!signature) throw new Error("יש לחתום כבודק הדף."); await approveKeyLoad(load.id, user.uid, signature, collect()); location.hash = route("closed"); }
     catch (error) { setMessage("#key-review-status", `סגירת ההטענה נכשלה: ${error.message}`, true); button.disabled = false; }
   });
+}
+let safetyPadLoadId = "", clearSafetyPad = null;
+function renderKeyPreflight(load, closed) {
+  if (manager || !$("#key-intake-choice")) return;
+  const required = !manager && load.intakeRequired && load.status === "open";
+  const intakeStage = required && !load.intake;
+  const safetyStage = required && Boolean(load.intake) && !load.startedAt;
+  const working = !required || Boolean(load.startedAt);
+  $("#key-intake-choice").hidden = !intakeStage;
+  $("#key-intake-save-area").hidden = !intakeStage;
+  $("#key-safety-area").hidden = !safetyStage;
+  $("#key-work-main").hidden = !working;
+  $("#extra-tables").hidden = safetyStage || (intakeStage && work.intakeChoice !== "yes");
+  $("#key-work-actions").hidden = !working;
+  $("#key-intake-choice").querySelectorAll('input[name="key-intake-choice"]').forEach((radio) => { radio.checked = work.intakeChoice === radio.value; radio.disabled = closed; });
+  for (const id of ["interim-check", "final-check", "rejected-toggle"]) $("#" + id).closest("label").hidden = intakeStage;
+  for (const id of ["interim-fields", "final-fields", "rejected-area"]) if (intakeStage) $("#" + id).hidden = true;
+  if (intakeStage) {
+    if (work.toolsEnabled) $("#entry-check").checked = true;
+    $("#entry-check").disabled = true;
+    $("#entry-fields").hidden = !work.toolsEnabled;
+    requestAnimationFrame(() => initializeSignatures($("#extra-tables")));
+  } else {
+    $("#entry-check").disabled = closed || Boolean(load.intake);
+    if (working && load.intake) {
+      $("#tools-toggle").disabled = true;
+      $("#tools-rows").querySelectorAll("input,button").forEach((input) => { input.disabled = true; });
+      $("#entry-fields").querySelectorAll("input,button").forEach((input) => { input.disabled = true; });
+      $("#entry-fields").querySelectorAll("canvas").forEach((canvas) => { canvas.style.pointerEvents = "none"; });
+    }
+  }
+  if (safetyStage) {
+    const canvas = $("#key-safety-signature");
+    if (safetyPadLoadId !== load.id) {
+      canvas.replaceWith(canvas.cloneNode(true));
+      clearSafetyPad = null;
+      safetyPadLoadId = load.id;
+    }
+    requestAnimationFrame(() => {
+      if (!clearSafetyPad && !$("#key-safety-area").hidden) clearSafetyPad = attachSignaturePad($("#key-safety-signature"), { initial: work.safetyTechnicianSignature || "", onChange: (value) => { work.safetyTechnicianSignature = value; saveWork(); } });
+    });
+  }
 }
 function renderWork() {
   if (!activeLoad) return;
@@ -415,6 +464,7 @@ function renderWork() {
     $("#key-reopen-events").replaceChildren(...keyLoadTimeline(load).map(({ label, at }) => make("li", `${label} · ${new Date(at).toLocaleString("he-IL")}`)));
   }
   setMessage("#work-status", load.status === "cancelled" ? "השילוח בוטל ונשמר בארכיון. לא ניתן לערוך אותו." : load.status === "closed" ? "ההטענה נסגרה לאחר בדיקת מטיס וההיסטוריה עודכנה." : load.status === "pendingReview" ? "ההטענה ממתינה לבדיקת מטיס; הטכנאים אינם יכולים לערוך אותה." : manager ? "צפייה בדף הצוות. רק טכנאי משויך יכול להגיש את ההטענה לבדיקה." : !editLock?.held ? "העריכה ממתינה לנעילת הטופס. בדוק את ההודעה שמעליו." : "ההתקדמות נשמרת במכשיר ובשרת עד להגשה לבדיקה.");
+  renderKeyPreflight(load, closed);
 }
 const signatures = new Map();
 let signatureLoadId = "";
@@ -435,7 +485,7 @@ function renderExtraRows(type, closed) {
   rows.forEach((row, index) => {
     const tr = document.createElement("tr");
     columns.forEach(({ key, label }) => {
-      const td = document.createElement("td"), input = document.createElement("input"); td.dataset.label = label; input.type = type === "tools" && key === "toolNumber" ? "search" : "text"; input.value = row[key] || ""; input.placeholder = label; input.disabled = closed; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
+      const td = document.createElement("td"), input = document.createElement("input"); td.dataset.label = label; input.type = type === "tools" && key === "toolNumber" ? "search" : "text"; input.value = row[key] || ""; input.placeholder = label; input.disabled = closed || (type === "tools" && Boolean(activeLoad.intake)); input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
       if (type === "tools") {
         input.readOnly = key === "toolName" || Boolean(catalogTool(row.toolNumber));
       }
@@ -454,7 +504,7 @@ function renderExtraRows(type, closed) {
         saveWork();
       }); td.append(type === "tools" && key === "toolNumber" ? attachToolPicker(input, { isUnavailable: (number) => toolNumberRecorded(number, rows, index) }) : input); tr.append(td);
     });
-    const cell = document.createElement("td"); if (!closed && columns.some(({ key }) => row[key])) { const remove = make("button", "×", "remove-row"); remove.type = "button"; remove.addEventListener("click", () => { work[type].splice(index, 1); renderExtraRows(type, false); saveWork(); }); cell.append(remove); } tr.append(cell); target.append(tr);
+    const cell = document.createElement("td"); if (!closed && !(type === "tools" && activeLoad.intake) && columns.some(({ key }) => row[key])) { const remove = make("button", "×", "remove-row"); remove.type = "button"; remove.addEventListener("click", () => { work[type].splice(index, 1); renderExtraRows(type, false); saveWork(); }); cell.append(remove); } tr.append(cell); target.append(tr);
   });
 }
 function bindExtraTables(closed) {
@@ -467,7 +517,7 @@ function bindExtraTables(closed) {
   root.querySelectorAll("[data-toggle-state]").forEach((checkbox) => {
     const key = checkbox.dataset.toggleState, target = root.querySelector(`#${checkbox.dataset.target}`);
     checkbox.checked = Boolean(work[key]); checkbox.disabled = closed; target.hidden = !checkbox.checked;
-    checkbox.onchange = () => { work[key] = checkbox.checked; target.hidden = !checkbox.checked; if (checkbox.checked) initializeSignatures(target); saveWork(); };
+    checkbox.onchange = () => { work[key] = checkbox.checked; target.hidden = !checkbox.checked; if (key === "toolsEnabled" && !activeLoad.intake) { work.entryEnabled = checkbox.checked; $("#entry-check").checked = checkbox.checked; $("#entry-fields").hidden = !checkbox.checked; } if (checkbox.checked) initializeSignatures(target); if (key === "toolsEnabled" && checkbox.checked) requestAnimationFrame(() => initializeSignatures($("#entry-fields"))); saveWork(); };
   });
   root.querySelectorAll("[data-state-field]").forEach((input) => {
     const key = input.dataset.stateField; input.value = work[key] || ""; input.disabled = closed;
@@ -479,6 +529,7 @@ function bindExtraTables(closed) {
 }
 function validateWork() {
   if (!editLock?.held) return "הטופס אינו נעול לעריכה עבורך. לחץ על בדוק שוב.";
+  if (activeLoad.intakeRequired && (!activeLoad.intake || !activeLoad.startedAt || !work.preflightSaved)) return "יש להשלים קליטה וחתימת בטיחות המטוס לפני הגשה.";
   if (work.actions.length !== 12 || work.actions.some((done) => !done)) return "יש לסמן את כל 12 המשימות.";
   for (const [index, row] of activeLoad.rows.entries()) if ((row.blue && !work.aircraft[index]?.blueDone) || (row.shach && !work.aircraft[index]?.shachDone)) return `יש לסמן ביצוע הטענה במטוס ${row.aircraft}.`;
   for (const type of ["tools", "taken", "rejected"]) if (work[`${type}Enabled`]) {
@@ -489,6 +540,7 @@ function validateWork() {
   }
   const required = [];
   if (work.toolsEnabled) {
+    if (!work.finalEnabled) return "יש לבצע ביקורת יציאה על כל הכלים לפני הגשה.";
     if (work.entryEnabled) required.push("entryTechnicianSignature", "entryInspectorSignature", "entryInspectorNumber");
     if (work.interimEnabled) required.push("interimTechnicianSignature", "interimInspectorNumber", "interimInspectorSignature", "interimToolsName", "interimToolsSignature");
     if (work.finalEnabled) required.push("finalTechnicianSignature", "finalInspectorNumber", "finalInspectorSignature", "finalLeadName", "finalLeadSignature", "departureTime");
@@ -500,6 +552,55 @@ function validateWork() {
   }
   if (work.finalEnabled && !/^([01]\d|2[0-3]):[0-5]\d$/.test(work.departureTime || "")) return "יש לבחור שעת עזיבה תקינה בביקורת סיום.";
   return "";
+}
+if (!manager) {
+$("#key-intake-choice").querySelectorAll('input[name="key-intake-choice"]').forEach((radio) => radio.addEventListener("change", () => {
+  work.intakeChoice = radio.value;
+  if (radio.value === "no") { work.toolsEnabled = false; work.takenEnabled = false; }
+  saveWork(); renderWork();
+}));
+$("#save-key-intake").addEventListener("click", async () => {
+  if (!editLock?.held || !activeLoad) return setMessage("#key-intake-status", "יש להמתין לנעילת ההטענה.", true);
+  const choice = work.intakeChoice;
+  const tools = work.toolsEnabled ? compactRows(work.tools, KEY_TABLES.tools) : [];
+  const taken = work.takenEnabled ? compactRows(work.taken, KEY_TABLES.taken) : [];
+  if (!["yes", "no"].includes(choice) || (choice === "yes") !== Boolean(tools.length || taken.length)) return setMessage("#key-intake-status", "בחר כן או לא. בבחירת כן יש לתעד לפחות כלי אחד או קשיח אחד.", true);
+  for (const type of ["tools", "taken"]) {
+    const rows = type === "tools" ? tools : taken;
+    const columns = type === "taken" ? KEY_TABLES.taken.filter(({ key }) => key !== "quantityOut") : KEY_TABLES.tools;
+    const error = validateRows(rows, columns, type);
+    if (error) return setMessage("#key-intake-status", error, true);
+  }
+  if (tools.length && (!work.entryTechnicianSignature || !work.entryInspectorSignature || !/^[1-9][0-9]{6}$/.test(work.entryInspectorNumber || ""))) return setMessage("#key-intake-status", "יש להשלים ביקורת כניסה ומספר אישי תקין לכלים.", true);
+  if (taken.length && (!work.takenSignature || !work.takenFullName?.trim() || !/^[1-9][0-9]{6}$/.test(work.takenPersonalNumber || "") || !work.takenRank?.trim())) return setMessage("#key-intake-status", "יש להשלים פרטי חתימה על הקשיחים שנלקחו.", true);
+  const button = $("#save-key-intake"); button.disabled = true;
+  try {
+    await editLock.renew();
+    const intake = { choice, tools, taken, entryTechnicianSignature: work.entryTechnicianSignature || "", entryInspectorSignature: work.entryInspectorSignature || "", entryInspectorNumber: work.entryInspectorNumber || "", takenSignature: work.takenSignature || "", takenFullName: work.takenFullName || "", takenPersonalNumber: work.takenPersonalNumber || "", takenRank: work.takenRank || "" };
+    await saveKeyInitialIntake(activeLoad.id, user.uid, intake, editLock.session);
+    activeLoad.intake = intake;
+    work.tools = tools; work.taken = taken;
+    renderWork();
+    setMessage("#key-safety-status", "הקליטה נשמרה. כעת יש לחתום על בטיחות המטוס.");
+  } catch (error) { setMessage("#key-intake-status", `הקליטה לא נשמרה: ${error.message}`, true); }
+  finally { button.disabled = false; }
+});
+$("#clear-key-safety").addEventListener("click", () => clearSafetyPad?.());
+$("#save-key-safety").addEventListener("click", async () => {
+  if (!editLock?.held || !activeLoad?.intake || !work.safetyTechnicianSignature) return setMessage("#key-safety-status", "יש לחתום על בטיחות המטוס אחרי שמירת הקליטה.", true);
+  const button = $("#save-key-safety"); button.disabled = true;
+  try {
+    await editLock.renew();
+    await startKeyWork(activeLoad.id, user.uid, work.safetyTechnicianSignature, editLock.session);
+    activeLoad.startedAt = new Date().toISOString(); activeLoad.safetySignature = work.safetyTechnicianSignature;
+    work.preflightSaved = true;
+    await queueDraft(activeLoad.id, structuredClone(work), editLock.session);
+    renderWork();
+    $("#key-work-notice").showModal();
+  } catch (error) { setMessage("#key-safety-status", `חתימת הבטיחות לא נשמרה: ${error.message}. אפשר לנסות שוב בלי לנקות את החתימה.`, true); }
+  finally { button.disabled = false; }
+});
+$("#close-key-work-notice").addEventListener("click", () => $("#key-work-notice").close());
 }
 $("#complete-key-load").addEventListener("click", async () => {
   const error = validateWork(); if (error) return setMessage("#work-status", error, true);
