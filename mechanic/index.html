@@ -22,7 +22,7 @@
         <h1>גף אוויוניקה קרב</h1>
         <p class="header-subtitle">משתמש מחובר: <span id="connected-user">—</span></p>
       </div>
-      <span class="version-pill">v1.9.41</span>
+      <span class="version-pill">v1.9.42</span>
       <span class="offline-pill"><i></i> סנכרון תקלות</span>
       <div class="header-actions"><a id="mechanic-back" class="back-to-queue" href="./" aria-label="חזרה לרשימת המשימות" hidden>→ חזרה</a></div>
     </header>
@@ -61,6 +61,19 @@
         </div>
         <div class="create-fault-actions"><button id="save-tool-intake-dialog" type="button" class="primary-button" disabled>שמור ביקורת כניסה</button><button id="cancel-tool-intake-dialog" type="button" class="secondary-button">ביטול</button></div>
         <p id="tool-intake-error" class="copy-status" role="alert"></p>
+      </dialog>
+      <dialog id="key-tool-intake-dialog" class="tool-intake-dialog" aria-labelledby="key-tool-intake-heading">
+        <div class="section-heading"><h2 id="key-tool-intake-heading">הוספת כלים להטענת מפתחות</h2><button id="key-close-tool-intake-dialog" type="button" class="secondary-button">סגור</button></div>
+        <p id="key-tool-intake-issue"></p><p>הכלים ייקלטו ברשימת ההטענה רק לאחר ביקורת כניסה מלאה ושמירה בשרת.</p>
+        <p id="key-tool-intake-lock" class="copy-status" role="status"></p><button id="key-retry-tool-intake-lock" type="button" class="secondary-button" hidden>בדוק שוב</button>
+        <div class="table-wrap"><table><thead><tr><th>מספר כלי</th><th>שם כלי</th><th>הערות</th><th aria-label="פעולות"></th></tr></thead><tbody id="key-tool-intake-rows"></tbody></table></div>
+        <div class="signature-grid">
+          <div class="signature-field"><span class="field-label">חתימת הטכנאי</span><canvas id="key-tool-intake-technician-signature" class="signature-pad" tabindex="0" aria-label="חתימת הטכנאי בביקורת כניסה"></canvas><button id="key-clear-tool-intake-technician" type="button" class="clear-signature">נקה חתימה</button></div>
+          <div class="signature-field"><span class="field-label">חתימת הבודק</span><canvas id="key-tool-intake-inspector-signature" class="signature-pad" tabindex="0" aria-label="חתימת הבודק בביקורת כניסה"></canvas><button id="key-clear-tool-intake-inspector" type="button" class="clear-signature">נקה חתימה</button></div>
+          <label class="input-field">מספר אישי של הבודק<input id="key-tool-intake-inspector-number" type="text" inputmode="numeric" maxlength="7" pattern="[1-9][0-9]{6}"></label>
+        </div>
+        <div class="create-fault-actions"><button id="key-save-tool-intake-dialog" type="button" class="primary-button" disabled>שמור ביקורת כניסה</button><button id="key-cancel-tool-intake-dialog" type="button" class="secondary-button">ביטול</button></div>
+        <p id="key-tool-intake-error" class="copy-status" role="alert"></p>
       </dialog>
       <div id="sheet-form" hidden>
       <div class="card sheet-save-toolbar"><button id="save-sheet" type="button" class="primary-button">שמור</button><span id="shared-save-status" role="status" aria-live="polite">שמור תחילה קליטת כלים וקשיחים, ולאחר מכן חתום על מטוס בטוח לאחזקה.</span></div>
@@ -306,6 +319,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="../app.js?v=1.9.41"></script>
+  <script type="module" src="../app.js?v=1.9.42"></script>
 </body>
 </html>

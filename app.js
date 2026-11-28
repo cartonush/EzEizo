@@ -9,7 +9,8 @@ import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.33";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.33";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "./tool-catalog.js?v=1.9.30";
-import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.41";
+import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.42";
+import { initKeyToolIntakePopup } from "./mechanic/key-tool-intake-popup.js?v=1.9.42";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");
@@ -17,6 +18,7 @@ if (!managerClosedView) watchToolCatalog((items) => updateToolCatalog(items), ()
 const connectedUser = document.querySelector("#connected-user");
 if (connectedUser) connectedUser.textContent = currentUser.name || (managerClosedView ? "מטיס" : "טכנאי");
 const openToolIntakePopup = managerClosedView ? () => {} : initToolIntakePopup(currentUser);
+const openKeyToolIntakePopup = managerClosedView ? () => {} : initKeyToolIntakePopup(currentUser);
 let cloudIssues = [];
 let keyLoads = [];
 let keyLoadError = "";
@@ -572,10 +574,11 @@ function renderIssueList() {
     info.textContent = type === "keys" ? `מטוסים: ${item.aircraftIds.join(", ")} · ${item.date.split("-").reverse().join("/")} · פתוחה` : `${item.fault || "ללא תיאור"} · פתוחה`;
     card.append(title, info);
     const row = document.createElement("div"); row.className = "technician-task-row"; row.append(card);
-    if (type === "issue" && cloudIssues.find((issue) => issue.id === item.id)?.intake && cloudIssues.find((issue) => issue.id === item.id)?.startedAt) {
+    const task = type === "issue" ? cloudIssues.find((issue) => issue.id === item.id) : item;
+    if (task?.intake && task?.startedAt) {
       const add = document.createElement("button"); add.type = "button"; add.className = "secondary-button";
       add.textContent = "הוסף כלי חדש";
-      add.addEventListener("click", () => openToolIntakePopup(cloudIssues.find((issue) => issue.id === item.id)));
+      add.addEventListener("click", () => type === "issue" ? openToolIntakePopup(cloudIssues.find((issue) => issue.id === item.id)) : openKeyToolIntakePopup(keyLoads.find((load) => load.id === item.id)));
       row.append(add);
     }
     list.append(row);
@@ -789,13 +792,12 @@ if (selectedSheet && !managerClosedView && remoteIssue?.status === "open") {
       for (const [key, label] of [["toolNumber", "מספר כלי"], ["toolName", "שם כלי"], ["notes", "הערות"]]) {
         const td = document.createElement("td"), input = document.createElement("input");
         input.type = key === "toolNumber" ? "search" : "text"; input.value = row[key]; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
-        if (catalogTool(row.toolNumber)) input.readOnly = true;
-        else if (key !== "toolNumber") input.readOnly = true;
+        input.readOnly = key === "toolName" || (key === "toolNumber" && Boolean(catalogTool(row.toolNumber)));
         input.addEventListener("input", () => {
           row[key] = input.value;
           if (key === "toolNumber") {
             const tool = catalogTool(input.value);
-            if (tool && !toolNumberRecorded(tool.toolNumber, draftTools, index, remoteIssue.acceptedTools || [])) { row.toolNumber = tool.toolNumber; row.toolName = tool.toolName; if (index === draftTools.length - 1) draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows(); rows.children[index + 1]?.querySelector('input[type="search"]')?.focus(); return; }
+            if (tool && !toolNumberRecorded(tool.toolNumber, draftTools, index, remoteIssue.acceptedTools || [])) { row.toolNumber = tool.toolNumber; row.toolName = tool.toolName; if (index === draftTools.length - 1) draftTools.push({ toolName: "", toolNumber: "", notes: "" }); renderLateRows(); rows.children[index]?.querySelectorAll("input")[2]?.focus({ preventScroll: true }); return; }
             row.toolName = "";
           }
           if (index === draftTools.length - 1 && (row.toolName || row.toolNumber || row.notes)) {
@@ -954,7 +956,7 @@ function renderRows(type, focusTarget = null) {
       input.type = componentField || (type === "tools" && key === "toolNumber") ? "search" : field.type || "text";
       if (componentField) input.autocomplete = "off";
       if (type === "tools") {
-        input.readOnly = Boolean(catalogTool(item.toolNumber)) || key !== "toolNumber";
+        input.readOnly = key === "toolName" || (key === "toolNumber" && Boolean(catalogTool(item.toolNumber)));
       }
       if (field.type === "number") input.step = "1";
       input.value = item[key] || "";
@@ -972,7 +974,7 @@ function renderRows(type, focusTarget = null) {
         const isLastRow = index === rows.length - 1;
         if (chosenTool || (isFilled && isLastRow) || (wasFilled && !isFilled && !isLastRow)) {
           const caret = input.selectionStart;
-          renderRows(type, chosenTool ? { index: index + 1, key: "toolNumber", caret: null } : componentField && value ? { index, key: "serial", caret: null } : { index, key, caret });
+          renderRows(type, chosenTool ? { index, key: "notes", caret: null } : componentField && value ? { index, key: "serial", caret: null } : { index, key, caret });
         }
         saveState();
       }
