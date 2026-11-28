@@ -572,6 +572,8 @@ function renderIssueList() {
     title.textContent = type === "keys" ? `הטענת מפתחות ${item.serial || ""} · טייסת ${item.squadron} · דת״ק ${item.shelter}` : `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
     const info = document.createElement("span");
     info.textContent = type === "keys" ? `מטוסים: ${item.aircraftIds.join(", ")} · ${item.date.split("-").reverse().join("/")} · פתוחה` : `${item.fault || "ללא תיאור"} · פתוחה`;
+    const squadronIcon = makeSquadronEmblem(item.squadron);
+    if (squadronIcon) title.prepend(squadronIcon);
     card.append(title, info);
     const row = document.createElement("div"); row.className = "technician-task-row"; row.append(card);
     const task = type === "issue" ? cloudIssues.find((issue) => issue.id === item.id) : item;

@@ -6,13 +6,14 @@ import { initCatalogView } from "./catalog-view.js?v=1.9.33";
 import { resolveAssignees } from "./assignee-selection.js?v=1.7.6";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { createEditLock } from "../edit-lock.js?v=1.9.23";
-import { initKeyPages } from "../keys/app.js?v=1.9.42";
-import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.26";
+import { initKeyPages } from "../keys/app.js?v=1.9.43";
+import { initReports, updateReportData, initAircraftConstants, constantsForAircraft, closeConstantsEditor } from "./management-pages.js?v=1.9.43";
 import { FAULT_FILTERS, ORIGINS, filterIssues, componentHistory } from "./fault-taxonomy.js?v=1.8.0";
 import { renderAttendance, REGULAR_RANKS, PERMANENT_RANKS, LICENSES, DEPARTMENTS, WORK_STAGES, SERVICE_TYPES, permanentService } from "./attendance.js?v=1.9.18";
 import { initDuties, updateDutyPeople } from "./duties.js?v=1.9.23";
 import { issueWorkStage, renderWorkStatus } from "./work-status.js?v=1.9.23";
 import { makeSquadronEmblem } from "../squadron-emblems.js?v=1.9.19";
+import { enhanceManagerPickers, enhanceSelectPicker } from "./search-pickers.js?v=1.9.43";
 import { initToolAdmin } from "./tool-admin.js?v=1.9.33";
 
 const managerUser = await gate("operations");
@@ -354,6 +355,7 @@ function addDefinitionEditor(card, issue) {
     workshop.parentElement.hidden = shelter.value !== "מוסך";
   };
   squadron.addEventListener("change", refreshLocations); shelter.addEventListener("change", refreshLocations); refreshLocations();
+  enhanceSelectPicker(squadron, { emblem: true, label: "חפש ובחר טייסת" });
   const origins = document.createElement("fieldset"); origins.className = "origin-options";
   const legend = document.createElement("legend"); legend.textContent = "מקור התקלה"; origins.append(legend);
   ORIGINS.forEach((value) => { const label = document.createElement("label"); const box = document.createElement("input"); box.type = "checkbox"; box.value = value; box.checked = (issue.sheet.faultOrigins || [issue.sheet.faultOrigin]).includes(value); label.append(box, ` ${value}`); origins.append(label); });
@@ -446,7 +448,9 @@ function addIssueCard(container, item, mode) {
   title.textContent = `תקלה ${item.serial || "ללא מספר"} · מטוס ${item.aircraft || "—"} · ${item.location || "—"}`;
   const subtitle = document.createElement("span");
   const fullIssue = cloudIssues.find((issue) => issue.id === item.id);
-  subtitle.textContent = `${item.fault || "ללא תיאור"} · ${fullIssue?.manualPaper ? "תקלה ידנית · " : ""}${mode === "closed" ? "סגורה" : mode === "pendingReview" ? "ממתינה לבודק הדף" : mode === "cancelled" ? "שילוח בוטל" : "פתוחה"} · ${(fullIssue?.teamNames || [fullIssue?.assigneeName || "לא שובצה"]).join(" · ")}`;
+  subtitle.textContent = `${item.fault || "ללא תיאור"} · ${fullIssue?.manualPaper ? "תקלה ידנית · " : ""}${mode === "closed" ? "סגורה" : mode === "pendingReview" ? "ממתינה לבודק הדף" : mode === "cancelled" ? "שילוח בוטל" : fullIssue?.startedAt ? "בתהליך" : "פתוחה"} · ${(fullIssue?.teamNames || [fullIssue?.assigneeName || "לא שובצה"]).join(" · ")}`;
+  const squadronIcon = makeSquadronEmblem(item.squadron || fullIssue?.sheet?.squadron);
+  if (squadronIcon) title.prepend(squadronIcon);
   card.append(title, subtitle);
   if (mode === "cancelled") {
     const reason = document.createElement("span"); reason.textContent = `סיבת הביטול: ${fullIssue?.cancellationReason || "—"}`; card.append(reason);
@@ -526,14 +530,13 @@ function renderIssueLists() {
   const uniqueSerials = (items) => [...new Map(items.map((item) => [item.serial, item])).values()];
   const awaiting = uniqueSerials(cloudIssues.filter((item) => item.status === "pendingReview" && item.closed?.record && matches("#pending-issue-search", item.closed.record.serial)).map((item) => item.closed.record));
   const technician = document.querySelector("#fault-technician").value;
-  const technicianSearch = document.querySelector("#fault-technician-search").value.trim().toLocaleLowerCase("he");
-  const technicianUids = technician || technicianSearch ? technicians.filter((person) => (!technician || person.uid === technician) && (!technicianSearch || `${person.name} ${person.personalNumber || ""}`.toLocaleLowerCase("he").includes(technicianSearch))).map((person) => person.uid) : document.querySelector("#fault-mode").value === "technician-history" ? [] : null;
+  const technicianUids = technician ? [technician] : document.querySelector("#fault-mode").value === "technician-history" ? [] : null;
   const mode = document.querySelector("#fault-mode").value;
   const active = filterIssues(cloudIssues, { mode, technicianUids, serial: document.querySelector("#open-issue-search").value, squadron: document.querySelector("#fault-squadron").value, aircraft: document.querySelector("#fault-aircraft").value.trim(), from: document.querySelector("#fault-from").value, to: document.querySelector("#fault-to").value, reviewFilters: [...document.querySelectorAll("[data-closed-filter]:checked")].map((input) => input.dataset.closedFilter), originFilters: [...document.querySelectorAll("[data-closed-origin]:checked")].map((input) => input.dataset.closedOrigin) });
   const stageMode = ["open-default", "workshop-open", "open-all", "open-squadron"].includes(mode);
   document.querySelector("#open-stage-tabs").hidden = !stageMode;
   document.querySelector("#issued-title").textContent = stageMode ? location.hash === "#in-progress" ? "תקלות בתהליך" : "תקלות פתוחות" : "כל התקלות";
-  const visible = stageMode ? active.filter((issue) => issueWorkStage(issue) === (location.hash === "#in-progress" ? "progress" : "start")) : active;
+  const visible = stageMode && location.hash === "#in-progress" ? active.filter((issue) => issueWorkStage(issue) === "progress") : active;
   [...new Map(visible.map((issue) => [issue.sheet.serial, issue])).values()].forEach((issue) => addIssueCard(opened, issue.closed?.record || issue.sheet, issue.status));
   const pendingCategory = document.querySelector("#pending-category").value;
   awaiting.filter((item) => !pendingCategory || cloudIssues.find((issue) => issue.id === item.id)?.sheet?.reviewCategory === pendingCategory).forEach((item) => addIssueCard(pending, item, "pendingReview"));
@@ -544,7 +547,7 @@ function renderIssueLists() {
     const link = document.createElement("a"); link.className = "secondary-button"; link.href = `#keys/work/${encodeURIComponent(load.id)}`; link.textContent = "בדוק וסגור הטענה";
     card.append(title, subtitle, link); pending.append(card);
   });
-  if (!visible.length) opened.textContent = "לא נמצאו תקלות התואמות לסינון.";
+  if (!visible.length) { const openCount = cloudIssues.filter((issue) => issue.status === "open").length; opened.textContent = openCount && (document.querySelector("#fault-from").value || document.querySelector("#fault-to").value) ? `לא נמצאו תקלות בטווח התאריכים הזה. קיימות ${openCount} תקלות פתוחות במערכת; לחץ ״הצג את כל התקופות״ כדי לראות גם תקלות קודמות.` : "לא נמצאו תקלות התואמות לסינון."; }
   if (!pending.children.length) pending.textContent = "לא נמצאו תקלות לסגירה התואמות לסינון.";
   renderFaultHistory();
 }
@@ -609,7 +612,7 @@ function showManagerView() {
   if (!fullManager && ["management", "print-files", "tool-admin", "technicians", "users", "systems", "components", "reports", "aircraft-constants"].includes(requested)) { location.replace("#home"); return; }
   const selected = requested === "keys" || requested.startsWith("keys/") ? "keys" : requested === "closed" || requested === "in-progress" ? "open" : requested === "technicians" ? "users" : ["home", "catalog", "attendance", "duties", "work-status", "management", "print-files", "tool-admin", "reports", "aircraft-constants", "new", "open", "pending", "history", "users", "systems", "components"].includes(requested) ? requested : "home";
   if (requested === "closed") document.querySelector("#fault-mode").value = "closed";
-  if (selected === "open" && requested !== "closed" && (previousIssueRoute !== requested || previousManagerView !== "open")) document.querySelector("#fault-mode").value = requested === "in-progress" ? "open-all" : "open-default";
+  if (selected === "open" && requested !== "closed" && (previousIssueRoute !== requested || previousManagerView !== "open")) document.querySelector("#fault-mode").value = "open-all";
   if (selected === "open") previousIssueRoute = requested;
   previousManagerView = selected;
   document.querySelector("#closed-review-filters").hidden = !["closed"].includes(document.querySelector("#fault-mode").value);
@@ -666,7 +669,7 @@ function updateManagerIssues(issues) {
   for (const issue of issues) recentIssues.delete(issue.id);
   cloudIssues = [...issues, ...recentIssues.values()];
   updateReportData({ issues: cloudIssues });
-  document.querySelector("#home-open-count").textContent = `${cloudIssues.filter((item) => issueWorkStage(item) === "start").length} תקלות פתוחות`;
+  document.querySelector("#home-open-count").textContent = `${cloudIssues.filter((item) => item.status === "open").length} תקלות פתוחות`;
   document.querySelector("#home-progress-count").textContent = `${cloudIssues.filter((item) => issueWorkStage(item) === "progress").length} תקלות בתהליך`;
   document.querySelector("#home-review-count").textContent = `${cloudIssues.filter((item) => item.status === "pendingReview").length} ממתינות לסגירה · ${cloudIssues.filter((item) => item.status === "closed").length} סגורות`;
   renderIssueLists(); renderWorkStatus(cloudIssues); renderUsers();
@@ -752,8 +755,13 @@ document.querySelector('#add-assignee').addEventListener('click', () => renderAs
 function updateUserSelectors() {
   renderAssigneeSelectors();
 }
-for (const id of ["open-issue-search", "pending-issue-search", "fault-technician-search"]) document.getElementById(id).addEventListener("input", renderIssueLists);
+for (const id of ["open-issue-search", "pending-issue-search"]) document.getElementById(id).addEventListener("input", renderIssueLists);
 FAULT_FILTERS.forEach(([value, label]) => document.querySelector("#fault-mode").append(new Option(label, value)));
+document.querySelector("#fault-mode").value = "open-all";
+const faultDate = (offset) => { const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jerusalem", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(Date.now() + offset * 86400000)); const value = (type) => parts.find((part) => part.type === type).value; return `${value("year")}-${value("month")}-${value("day")}`; };
+document.querySelector("#fault-from").value = faultDate(-1);
+document.querySelector("#fault-to").value = faultDate(0);
+document.querySelector("#fault-all-dates").addEventListener("click", () => { document.querySelector("#fault-from").value = ""; document.querySelector("#fault-to").value = ""; renderIssueLists(); });
 ORIGINS.forEach((origin) => { const label = document.createElement("label"); const input = document.createElement("input"); input.type = "checkbox"; input.dataset.closedOrigin = origin; label.append(input, document.createTextNode(` ${origin}`)); document.querySelector("#closed-origin-filters").append(label); });
 document.querySelector("#clear-closed-filters").addEventListener("click", () => { document.querySelectorAll("[data-closed-filter], [data-closed-origin]").forEach((input) => { input.checked = false; }); renderIssueLists(); });
 document.querySelectorAll("[data-closed-filter], [data-closed-origin]").forEach((input) => input.addEventListener("change", renderIssueLists));
@@ -933,7 +941,7 @@ function renderUsers() {
     history.textContent = `תקלות פתוחות: ${open.length} · לסגירה: ${count("pendingReview")} · סגורות: ${closed.length} · מספרי תקלות פתוחות: ${open.map((issue) => issue.sheet.serial).join(", ") || "אין"}`;
     const view = document.createElement("button"); view.type = "button"; view.className = "secondary-button"; view.textContent = "הצג תקלות סגורות";
     view.textContent = "היסטוריית טכנאי";
-    view.addEventListener("click", () => { location.hash = "open"; showManagerView(); document.querySelector("#fault-mode").value = "technician-history"; document.querySelector("#fault-technician").value = person.uid; renderIssueLists(); });
+    view.addEventListener("click", () => { location.hash = "open"; showManagerView(); document.querySelector("#fault-mode").value = "technician-history"; document.querySelector("#fault-technician").value = person.uid; document.querySelector("#fault-technician").dispatchEvent(new Event("change", { bubbles: true })); renderIssueLists(); });
     const reset = document.createElement("button"); reset.type = "button"; reset.className = "secondary-button"; reset.textContent = "אפס סיסמה";
     reset.addEventListener("click", async () => {
       if (!window.confirm(`לאפס את הסיסמה של ${person.name}? הסיסמה הקודמת תפסיק לעבוד.`)) return;
@@ -1029,6 +1037,7 @@ initAircraftConstants({ user: managerUser, onProfilesLoaded: () => {
 watchKeyLoads((loads) => { cloudKeyLoads = loads; updateReportData({ loads }); renderIssueLists(); }, (error) => { setStatus("#report-error", `טעינת הטענות נכשלה: ${error.message}`, true); });
 renderConstants();
 renderActions();
+enhanceManagerPickers();
 renderIssueLists();
 showManagerView();
 revealApp();

@@ -4,6 +4,7 @@ import { downloadReportPdf } from "./report-pdf.js?v=1.7.6";
 import { downloadFile } from "./report-pdf.js?v=1.7.6";
 import { createFormPdf } from "./form-pdf.js?v=1.9.26";
 import { zipFiles } from "./zip.js?v=1.7.6";
+import { makeSquadronEmblem } from "../squadron-emblems.js?v=1.9.19";
 
 const $ = (selector) => document.querySelector(selector);
 const byDate = (value) => value ? new Date(value).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -296,7 +297,7 @@ export function initReports() {
   for (const name of Object.keys(SQUADRONS)) {
     const label = element("label"); const box = document.createElement("input");
     box.type = "checkbox"; box.value = name;
-    label.append(box, document.createTextNode(` טייסת ${name}`)); squadronOptions.append(label);
+    label.append(box, makeSquadronEmblem(name) || document.createTextNode(""), document.createTextNode(` טייסת ${name}`)); squadronOptions.append(label);
   }
   const setupAircraftPicker = ({ squadronSelector, optionsSelector, summarySelector, pickerSelector, selectAllSelector, clearSelector }) => {
     const options = $(optionsSelector);
