@@ -9,7 +9,7 @@ import { initCatalogView } from "./Metis/catalog-view.js?v=1.9.33";
 import { DEFAULT_COMPONENTS, mergeCatalog } from "./Metis/catalog-data.js?v=1.9.33";
 import { makeSquadronEmblem } from "./squadron-emblems.js?v=1.9.19";
 import { attachToolPicker, catalogTool, toolNumberRecorded, updateToolCatalog } from "./tool-catalog.js?v=1.9.30";
-import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.40";
+import { initToolIntakePopup } from "./mechanic/tool-intake-popup.js?v=1.9.41";
 
 const managerClosedView = location.pathname.toLowerCase().endsWith("/metis/closed.html");
 const currentUser = await gate(managerClosedView ? "operations" : "technician");

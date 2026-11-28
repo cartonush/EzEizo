@@ -470,6 +470,21 @@ export async function startKeyWork(id, uid, signature, session) {
   });
 }
 
+export async function addKeyToolIntake(id, uid, batch, session) {
+  const ref = doc(db, "keyLoads", id);
+  await runTransaction(db, async (transaction) => {
+    await requireEditLock(transaction, "key", id, session, uid);
+    const snap = await transaction.get(ref);
+    if (!snap.exists() || snap.data().status !== "open" || !snap.data().startedAt || !snap.data().teamUids.includes(uid)) throw new Error("ההטענה אינה פתוחה לקליטת כלים.");
+    const tools = batch.tools || [];
+    const accepted = snap.data().acceptedTools || snap.data().intake?.tools || [];
+    if (!tools.length || tools.some((tool) => !tool.toolName?.trim() || !tool.toolNumber?.trim()) || duplicateToolNumbers(tools) || duplicateToolNumbers([...accepted, ...tools])) throw new Error("יש לבחור כלים תקינים שאינם מופיעים כבר בהטענה.");
+    if (!batch.technicianSignature?.startsWith("data:image/png;base64,") || !batch.inspectorSignature?.startsWith("data:image/png;base64,") || !/^[1-9][0-9]{6}$/.test(batch.inspectorNumber || "")) throw new Error("יש להשלים ביקורת כניסה ומספר אישי תקין.");
+    await requireCatalogTools(transaction, tools);
+    transaction.update(ref, { acceptedTools: [...accepted, ...tools], toolIntakes: [...(snap.data().toolIntakes || []), { ...batch, at: new Date().toISOString(), by: uid }] });
+  });
+}
+
 // Assign a stable number to older key loads while keeping their document IDs and links.
 export async function assignLegacyKeyLoadSerial(id) {
   const ref = doc(db, "keyLoads", id);
@@ -495,6 +510,7 @@ export async function closeKeyLoad(id, completedBy, work, session) {
     const load = current.data();
     if (!load.teamUids.includes(completedBy)) throw new Error("אינך משויך לצוות ההטענה.");
     if (load.intakeRequired && (!load.startedAt || !load.intake || !work.preflightSaved || work.safetyTechnicianSignature !== load.safetySignature)) throw new Error("יש לשמור קליטה וחתימת בטיחות לפני הגשת ההטענה.");
+    if (load.toolIntakes?.length && (work.finalInspectionToolCount !== (load.acceptedTools || []).length || !work.finalInspectorSignature || !work.finalTechnicianSignature || !work.finalLeadSignature)) throw new Error("נוספו כלים. יש לבצע ביקורת יציאה חדשה על כל הכלים לפני הגשה.");
     if (duplicateToolNumbers(work.tools || [])) throw new Error("כלי זה כבר תועד בטופס המפתחות.");
     const completedAt = new Date().toISOString();
     transaction.update(ref, { status: "pendingReview", work, completedAt, completedBy, workDraft: deleteField() });
