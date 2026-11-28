@@ -397,6 +397,63 @@ service cloud.firestore {
     }
 
     match /issues/{id} {
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['workDraft'])
+        && hasRole('technician')
+        && resource.data.status == 'open'
+        && request.auth.uid in resource.data.get('teamUids', [resource.data.assigneeUid])
+        && ownsIssueLock(id, resource.data.sheet.serial)
+        && request.resource.data.workDraft is map
+        && request.resource.data.workDraft.keys().hasOnly(['state', 'savedAt', 'savedBy'])
+        && request.resource.data.workDraft.savedBy == request.auth.uid
+        && request.resource.data.workDraft.savedAt is string
+        && request.resource.data.workDraft.state is map
+        && request.resource.data.workDraft.state.actions is list
+        && request.resource.data.workDraft.state.actions.size() == 12
+        && (!resource.data.keys().hasAny(['acceptedTools']) || request.resource.data.workDraft.state.tools == resource.data.acceptedTools)
+        && resource.data.keys().hasAny(['startedAt']);
+      allow update: if hasRole('technician')
+        && resource.data.status == 'open'
+        && request.auth.uid in resource.data.get('teamUids', [resource.data.assigneeUid])
+        && ownsIssueLock(id, resource.data.sheet.serial)
+        && !resource.data.keys().hasAny(['startedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['startedAt', 'startedBy', 'safetySignature'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['startedAt', 'startedBy', 'safetySignature'])
+        && request.resource.data.startedAt is string
+        && request.resource.data.startedBy == request.auth.uid
+        && request.resource.data.safetySignature is string
+        && request.resource.data.safetySignature.matches('data:image/png;base64,.*')
+        && request.resource.data.safetySignature.size() > 100
+        && (resource.data.keys().hasAny(['intake']) || resource.data.createdAt < '2026-11-26T21:33:53.000Z');
+      allow update: if hasRole('technician')
+        && resource.data.status == 'open'
+        && request.auth.uid in resource.data.get('teamUids', [resource.data.assigneeUid])
+        && ownsIssueLock(id, resource.data.sheet.serial)
+        && !resource.data.keys().hasAny(['startedAt', 'intake'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['intake', 'acceptedTools'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['intake', 'acceptedTools'])
+        && request.resource.data.intake is map
+        && request.resource.data.intake.choice in ['yes', 'no']
+        && request.resource.data.intake.by == request.auth.uid
+        && request.resource.data.intake.at is string
+        && request.resource.data.intake.tools is list
+        && request.resource.data.intake.taken is list
+        && request.resource.data.intake.tools.size() <= 100
+        && request.resource.data.intake.taken.size() <= 100
+        && request.resource.data.acceptedTools == request.resource.data.intake.tools
+        && (request.resource.data.intake.choice == 'yes'
+          ? request.resource.data.intake.tools.size() + request.resource.data.intake.taken.size() > 0
+          : request.resource.data.intake.tools.size() + request.resource.data.intake.taken.size() == 0)
+        && (request.resource.data.intake.tools.size() == 0 ||
+          (request.resource.data.intake.entryTechnicianSignature is string
+          && request.resource.data.intake.entryTechnicianSignature.size() > 100
+          && request.resource.data.intake.entryInspectorSignature is string
+          && request.resource.data.intake.entryInspectorSignature.size() > 100
+          && validPersonalNumber(request.resource.data.intake.entryInspectorNumber)))
+        && (request.resource.data.intake.taken.size() == 0 ||
+          (request.resource.data.intake.takenSignature is string
+          && request.resource.data.intake.takenSignature.size() > 100
+          && validPersonalNumber(request.resource.data.intake.takenPersonalNumber)));
+
       allow get, list: if isOperator() || (hasRole('technician') && (resource.data.assigneeUid == request.auth.uid || request.auth.uid in resource.data.get('teamUids', [])));
       allow create: if isManager()
         && request.resource.data.keys().hasOnly(['sheet', 'status', 'createdAt', 'assigneeUid', 'assigneeName', 'manualPaper', 'manualCreatedBy', 'closed'])
@@ -432,20 +489,6 @@ service cloud.firestore {
         && request.resource.data.sheet.serial.matches('[0-9]{10}')
         && request.resource.data.sheet.actions.size() == 12
         && request.resource.data.createdAt is string;
-      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['workDraft'])
-        && hasRole('technician')
-        && resource.data.status == 'open'
-        && request.auth.uid in resource.data.get('teamUids', [resource.data.assigneeUid])
-        && ownsIssueLock(id, resource.data.sheet.serial)
-        && request.resource.data.workDraft is map
-        && request.resource.data.workDraft.keys().hasOnly(['state', 'savedAt', 'savedBy'])
-        && request.resource.data.workDraft.savedBy == request.auth.uid
-        && request.resource.data.workDraft.savedAt is string
-        && request.resource.data.workDraft.state is map
-        && request.resource.data.workDraft.state.actions is list
-        && request.resource.data.workDraft.state.actions.size() == 12
-        && (!resource.data.keys().hasAny(['acceptedTools']) || request.resource.data.workDraft.state.tools == resource.data.acceptedTools)
-        && resource.data.keys().hasAny(['startedAt']);
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acceptedTools', 'toolIntakes'])
         && request.resource.data.diff(resource.data).affectedKeys().hasAll(['acceptedTools', 'toolIntakes'])
         && hasRole('technician')
@@ -534,48 +577,6 @@ service cloud.firestore {
         && request.resource.data.sheet.managerNotes is string
         && request.resource.data.sheet.managerNotes.size() > resource.data.sheet.get('managerNotes', '').size()
         && request.resource.data.sheet.managerNotes.size() <= 2000;
-      allow update: if hasRole('technician')
-        && resource.data.status == 'open'
-        && request.auth.uid in resource.data.get('teamUids', [resource.data.assigneeUid])
-        && ownsIssueLock(id, resource.data.sheet.serial)
-        && !resource.data.keys().hasAny(['startedAt'])
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['startedAt', 'startedBy', 'safetySignature'])
-        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['startedAt', 'startedBy', 'safetySignature'])
-        && request.resource.data.startedAt is string
-        && request.resource.data.startedBy == request.auth.uid
-        && request.resource.data.safetySignature is string
-        && request.resource.data.safetySignature.matches('data:image/png;base64,.*')
-        && request.resource.data.safetySignature.size() > 100
-        && (resource.data.keys().hasAny(['intake']) || resource.data.createdAt < '2026-11-26T21:33:53.000Z');
-      allow update: if hasRole('technician')
-        && resource.data.status == 'open'
-        && request.auth.uid in resource.data.get('teamUids', [resource.data.assigneeUid])
-        && ownsIssueLock(id, resource.data.sheet.serial)
-        && !resource.data.keys().hasAny(['startedAt', 'intake'])
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['intake', 'acceptedTools'])
-        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['intake', 'acceptedTools'])
-        && request.resource.data.intake is map
-        && request.resource.data.intake.choice in ['yes', 'no']
-        && request.resource.data.intake.by == request.auth.uid
-        && request.resource.data.intake.at is string
-        && request.resource.data.intake.tools is list
-        && request.resource.data.intake.taken is list
-        && request.resource.data.intake.tools.size() <= 100
-        && request.resource.data.intake.taken.size() <= 100
-        && request.resource.data.acceptedTools == request.resource.data.intake.tools
-        && (request.resource.data.intake.choice == 'yes'
-          ? request.resource.data.intake.tools.size() + request.resource.data.intake.taken.size() > 0
-          : request.resource.data.intake.tools.size() + request.resource.data.intake.taken.size() == 0)
-        && (request.resource.data.intake.tools.size() == 0 ||
-          (request.resource.data.intake.entryTechnicianSignature is string
-          && request.resource.data.intake.entryTechnicianSignature.size() > 100
-          && request.resource.data.intake.entryInspectorSignature is string
-          && request.resource.data.intake.entryInspectorSignature.size() > 100
-          && validPersonalNumber(request.resource.data.intake.entryInspectorNumber)))
-        && (request.resource.data.intake.taken.size() == 0 ||
-          (request.resource.data.intake.takenSignature is string
-          && request.resource.data.intake.takenSignature.size() > 100
-          && validPersonalNumber(request.resource.data.intake.takenPersonalNumber)));
       allow update: if isOperator()
         && resource.data.status == 'pendingReview'
         && request.resource.data.status == 'closed'
