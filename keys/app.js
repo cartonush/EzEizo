@@ -1,4 +1,4 @@
-import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch, saveKeyInitialIntake, startKeyWork } from "../firebase-sync.js?v=1.9.40";
+import { gate, revealApp, watchKeyLoads, watchTechnicians, watchToolCatalog, createKeyLoad, assignLegacyKeyLoadSerial, closeKeyLoad, approveKeyLoad, saveKeyManagerReview, reopenKeyLoad, appendKeyLoadManagerNote, saveKeyWorkDraft, cancelKeyDispatch, saveKeyInitialIntake, startKeyWork, addKeyToolIntake } from "../firebase-sync.js?v=1.9.41";
 import { attachSignaturePad } from "../signature-canvas.js?v=1.9.31";
 import { KEY_SQUADRONS, KEY_TASKS, KEY_TABLES, aircraftFor, sheltersFor, periodFor, alreadyLoadedForPeriod, compactRows, validateRows, keyHistoryByAircraft } from "./data.js?v=1.9.26";
 import { attachTimeNow } from "../time-now.js?v=1.7.6";
@@ -292,17 +292,26 @@ function defaultWork(load) {
 }
 function readWork(load) {
   const saved = { ...defaultWork(load), ...(load.work || {}), ...(load.workDraft || {}) };
-  if (load.intake) Object.assign(saved, { intakeChoice: load.intake.choice, toolsEnabled: load.intake.tools.length > 0, tools: load.intake.tools, entryEnabled: load.intake.tools.length > 0, takenEnabled: load.intake.taken.length > 0, taken: load.intake.taken, entryTechnicianSignature: load.intake.entryTechnicianSignature || "", entryInspectorSignature: load.intake.entryInspectorSignature || "", entryInspectorNumber: load.intake.entryInspectorNumber || "", takenSignature: load.intake.takenSignature || "", takenFullName: load.intake.takenFullName || "", takenPersonalNumber: load.intake.takenPersonalNumber || "", takenRank: load.intake.takenRank || "" });
+  if (load.intake) Object.assign(saved, { intakeChoice: load.intake.choice, toolsEnabled: load.intake.tools.length > 0, tools: load.intake.tools, entryEnabled: load.intake.tools.length > 0, takenEnabled: load.startedAt ? Boolean(saved.takenEnabled || load.intake.taken.length) : load.intake.taken.length > 0, taken: load.startedAt && saved.taken?.length ? saved.taken : load.intake.taken, entryTechnicianSignature: load.intake.entryTechnicianSignature || "", entryInspectorSignature: load.intake.entryInspectorSignature || "", entryInspectorNumber: load.intake.entryInspectorNumber || "", takenSignature: load.intake.takenSignature || "", takenFullName: load.intake.takenFullName || "", takenPersonalNumber: load.intake.takenPersonalNumber || "", takenRank: load.intake.takenRank || "" });
   if (load.startedAt) { saved.preflightSaved = true; saved.safetyTechnicianSignature = load.safetySignature; }
   if (["closed", "cancelled"].includes(load.status)) return saved;
-  if (load.workDraft) return saved;
+  if (load.workDraft) return syncKeyTools(load, saved);
   try {
     const local = { ...saved, ...JSON.parse(localStorage.getItem(`ezeizo-key-work:${load.id}`) || "{}") };
-    if (load.intake) Object.assign(local, { intakeChoice: saved.intakeChoice, toolsEnabled: saved.toolsEnabled, tools: saved.tools, entryEnabled: saved.entryEnabled, takenEnabled: saved.takenEnabled, taken: saved.taken, entryTechnicianSignature: saved.entryTechnicianSignature, entryInspectorSignature: saved.entryInspectorSignature, entryInspectorNumber: saved.entryInspectorNumber, takenSignature: saved.takenSignature, takenFullName: saved.takenFullName, takenPersonalNumber: saved.takenPersonalNumber, takenRank: saved.takenRank });
+    if (load.intake) Object.assign(local, { intakeChoice: saved.intakeChoice, toolsEnabled: saved.toolsEnabled, tools: saved.tools, entryEnabled: saved.entryEnabled, takenEnabled: load.startedAt ? Boolean(local.takenEnabled || saved.takenEnabled) : saved.takenEnabled, taken: load.startedAt && local.taken?.length ? local.taken : saved.taken, entryTechnicianSignature: saved.entryTechnicianSignature, entryInspectorSignature: saved.entryInspectorSignature, entryInspectorNumber: saved.entryInspectorNumber, takenSignature: saved.takenSignature, takenFullName: saved.takenFullName, takenPersonalNumber: saved.takenPersonalNumber, takenRank: saved.takenRank });
     if (load.startedAt) { local.preflightSaved = true; local.safetyTechnicianSignature = load.safetySignature; }
-    return local;
+    return syncKeyTools(load, local);
   }
-  catch { return saved; }
+  catch { return syncKeyTools(load, saved); }
+}
+function syncKeyTools(load, state) {
+  if (load.acceptedTools) { state.tools = load.acceptedTools; state.toolsEnabled = load.acceptedTools.length > 0; }
+  if (load.toolIntakes?.length && state.finalInspectionToolCount !== state.tools.length) {
+    for (const key of ["finalTechnicianSignature", "finalInspectorSignature", "finalInspectorNumber", "finalLeadName", "finalLeadSignature", "departureTime"]) state[key] = "";
+    state.finalInspectionToolCount = null;
+    state.finalEnabled = true;
+  }
+  return state;
 }
 function renderKeyReview(load) {
   const panel = $("#key-review-panel"); if (!panel) return;
@@ -363,6 +372,7 @@ function renderKeyPreflight(load, closed) {
   const intakeStage = required && !load.intake;
   const safetyStage = required && Boolean(load.intake) && !load.startedAt;
   const working = !required || Boolean(load.startedAt);
+  $("#add-key-tool").hidden = !working || closed || !load.intake;
   $("#key-intake-choice").hidden = !intakeStage;
   $("#key-intake-save-area").hidden = !intakeStage;
   $("#key-safety-area").hidden = !safetyStage;
@@ -472,7 +482,7 @@ function initializeSignatures(root) {
   root.querySelectorAll("canvas[data-signature]").forEach((canvas) => {
     if (canvas.clientWidth === 0) return;
     const key = canvas.dataset.signature;
-    if (!signatures.has(canvas)) signatures.set(canvas, attachSignaturePad(canvas, { initial: work[key] || "", onChange: (value) => { work[key] = value; saveWork(); } }));
+    if (!signatures.has(canvas)) signatures.set(canvas, attachSignaturePad(canvas, { initial: work[key] || "", onChange: (value) => { work[key] = value; if (key === "finalInspectorSignature") work.finalInspectionToolCount = value ? work.tools.length : null; saveWork(); } }));
     const button = root.querySelector(`[data-clear-signature="${key}"]`);
     if (button) { button.onclick = signatures.get(canvas); button.disabled = manager || activeLoad.status === "closed" || !editLock?.held; }
     canvas.style.pointerEvents = manager || activeLoad.status === "closed" || !editLock?.held ? "none" : "auto";
@@ -541,6 +551,7 @@ function validateWork() {
   const required = [];
   if (work.toolsEnabled) {
     if (!work.finalEnabled) return "יש לבצע ביקורת יציאה על כל הכלים לפני הגשה.";
+    if (activeLoad.toolIntakes?.length && work.finalInspectionToolCount !== work.tools.length) return "נוספו כלים. יש לבצע שוב ביקורת יציאה על כל הכלים לפני הגשה.";
     if (work.entryEnabled) required.push("entryTechnicianSignature", "entryInspectorSignature", "entryInspectorNumber");
     if (work.interimEnabled) required.push("interimTechnicianSignature", "interimInspectorNumber", "interimInspectorSignature", "interimToolsName", "interimToolsSignature");
     if (work.finalEnabled) required.push("finalTechnicianSignature", "finalInspectorNumber", "finalInspectorSignature", "finalLeadName", "finalLeadSignature", "departureTime");
@@ -601,6 +612,76 @@ $("#save-key-safety").addEventListener("click", async () => {
   finally { button.disabled = false; }
 });
 $("#close-key-work-notice").addEventListener("click", () => $("#key-work-notice").close());
+const keyToolDialog = $("#key-tool-dialog"), newToolsBody = $("#key-new-tools");
+let newTools = [], newTechSignature = "", newInspectorSignature = "", clearNewTech, clearNewInspector, savingKeyTools = false;
+function renderNewKeyTools() {
+  newToolsBody.replaceChildren();
+  newTools.forEach((tool, index) => {
+    const row = document.createElement("tr");
+    for (const [key, label] of [["toolNumber", "מספר כלי"], ["toolName", "שם כלי"], ["notes", "הערות"]]) {
+      const cell = document.createElement("td"), input = document.createElement("input");
+      input.type = key === "toolNumber" ? "search" : "text";
+      input.value = tool[key]; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
+      input.readOnly = key === "toolName" || Boolean(catalogTool(tool.toolNumber));
+      input.addEventListener("input", () => {
+        tool[key] = input.value;
+        if (key === "toolNumber") {
+          const selected = catalogTool(input.value);
+          tool.toolName = selected && !toolNumberRecorded(selected.toolNumber, newTools, index, activeLoad.acceptedTools || activeLoad.intake.tools) ? selected.toolName : "";
+          if (tool.toolName) tool.toolNumber = selected.toolNumber;
+        }
+        if (index === newTools.length - 1 && Object.values(tool).some(Boolean)) newTools.push({ toolNumber: "", toolName: "", notes: "" });
+        if (tool.toolName || newToolsBody.children.length !== newTools.length) {
+          renderNewKeyTools();
+          newToolsBody.children[tool.toolName ? index + 1 : index]?.querySelector('input[type="search"]')?.focus();
+        }
+      });
+      cell.append(key === "toolNumber" ? attachToolPicker(input, { isUnavailable: (number) => toolNumberRecorded(number, newTools, index, activeLoad.acceptedTools || activeLoad.intake.tools) }) : input);
+      row.append(cell);
+    }
+    const cell = document.createElement("td"), remove = make("button", "×", "remove-row"); remove.type = "button";
+    remove.hidden = !Object.values(tool).some(Boolean);
+    remove.addEventListener("click", () => { newTools.splice(index, 1); if (!newTools.length || Object.values(newTools.at(-1)).some(Boolean)) newTools.push({ toolNumber: "", toolName: "", notes: "" }); renderNewKeyTools(); });
+    cell.append(remove); row.append(cell); newToolsBody.append(row);
+  });
+}
+$("#add-key-tool").addEventListener("click", () => {
+  if (!editLock?.held || !activeLoad?.startedAt) return setMessage("#work-status", "יש להמתין לנעילת ההטענה ולחתימת בטיחות המטוס.", true);
+  newTools = [{ toolNumber: "", toolName: "", notes: "" }]; renderNewKeyTools();
+  setMessage("#key-new-tools-status", ""); keyToolDialog.showModal();
+  requestAnimationFrame(() => {
+    if (!keyToolDialog.open) return;
+    if (!clearNewTech) clearNewTech = attachSignaturePad($("#key-new-tech-signature"), { onChange: (value) => { newTechSignature = value; } });
+    if (!clearNewInspector) clearNewInspector = attachSignaturePad($("#key-new-inspector-signature"), { onChange: (value) => { newInspectorSignature = value; } });
+  });
+});
+$("#cancel-key-tool").addEventListener("click", () => { if (!savingKeyTools) keyToolDialog.close(); });
+keyToolDialog.addEventListener("cancel", (event) => { if (savingKeyTools) event.preventDefault(); });
+keyToolDialog.addEventListener("close", () => { clearNewTech?.(); clearNewInspector?.(); newTechSignature = ""; newInspectorSignature = ""; $("#key-new-inspector-number").value = ""; });
+$("#clear-key-new-tech").addEventListener("click", () => clearNewTech?.());
+$("#clear-key-new-inspector").addEventListener("click", () => clearNewInspector?.());
+$("#key-new-inspector-number").addEventListener("input", (event) => { event.target.value = event.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "").slice(0, 7); });
+$("#save-key-new-tools").addEventListener("click", async () => {
+  const tools = newTools.filter((tool) => Object.values(tool).some((value) => String(value).trim()));
+  if (!tools.length || tools.some((tool, index) => !catalogTool(tool.toolNumber) || catalogTool(tool.toolNumber).toolName !== tool.toolName || toolNumberRecorded(tool.toolNumber, tools, index, activeLoad.acceptedTools || activeLoad.intake.tools))) return setMessage("#key-new-tools-status", "יש לבחור כלי תקין שעדיין לא נקלט בהטענה.", true);
+  const inspectorNumber = $("#key-new-inspector-number").value;
+  if (!newTechSignature || !newInspectorSignature || !/^[1-9][0-9]{6}$/.test(inspectorNumber)) return setMessage("#key-new-tools-status", "יש להשלים שתי חתימות ומספר אישי תקין של הבודק.", true);
+  const button = $("#save-key-new-tools"); button.disabled = true; savingKeyTools = true;
+  try {
+    await editLock.renew();
+    await addKeyToolIntake(activeLoad.id, user.uid, { tools, technicianSignature: newTechSignature, inspectorSignature: newInspectorSignature, inspectorNumber }, editLock.session);
+    const accepted = [...(activeLoad.acceptedTools || activeLoad.intake.tools), ...tools];
+    activeLoad.acceptedTools = accepted;
+    activeLoad.toolIntakes = [...(activeLoad.toolIntakes || []), { tools, by: user.uid, at: new Date().toISOString() }];
+    work.tools = accepted; work.toolsEnabled = true; work.finalEnabled = true; work.finalInspectionToolCount = null;
+    for (const key of ["finalTechnicianSignature", "finalInspectorSignature", "finalInspectorNumber", "finalLeadName", "finalLeadSignature", "departureTime"]) work[key] = "";
+    signatures.clear(); signatureLoadId = "";
+    $("#extra-tables").querySelectorAll("canvas[data-signature]").forEach((canvas) => canvas.replaceWith(canvas.cloneNode(true)));
+    saveWork(); renderWork(); keyToolDialog.close();
+    setMessage("#work-status", "הכלים נקלטו. יש לבצע שוב ביקורת יציאה על כל הכלים לפני הגשה.");
+  } catch (error) { setMessage("#key-new-tools-status", `קליטת הכלים נכשלה: ${error.message}`, true); }
+  finally { savingKeyTools = false; button.disabled = false; }
+});
 }
 $("#complete-key-load").addEventListener("click", async () => {
   const error = validateWork(); if (error) return setMessage("#work-status", error, true);
