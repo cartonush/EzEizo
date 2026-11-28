@@ -437,8 +437,36 @@ export async function createKeyLoad(load) {
     if (next > 999999999) throw new Error("מספרי ההטענות אזלו.");
     const serial = `K-${String(next).padStart(9, "0")}`;
     transaction.set(keyCounterRef, { last: next });
-    transaction.set(ref, { ...load, serial, status: "open", createdAt: new Date().toISOString() });
+    transaction.set(ref, { ...load, intakeRequired: true, serial, status: "open", createdAt: new Date().toISOString() });
     return { id: ref.id, serial };
+  });
+}
+
+export async function saveKeyInitialIntake(id, uid, intake, session) {
+  const ref = doc(db, "keyLoads", id);
+  await runTransaction(db, async (transaction) => {
+    await requireEditLock(transaction, "key", id, session, uid);
+    const snap = await transaction.get(ref);
+    if (!snap.exists() || snap.data().status !== "open" || snap.data().intake || !snap.data().teamUids.includes(uid)) throw new Error("שלב הקליטה כבר נשמר או שההטענה אינה פתוחה.");
+    const tools = intake.tools || [], taken = intake.taken || [];
+    if (!["yes", "no"].includes(intake.choice) || (intake.choice === "yes") !== Boolean(tools.length || taken.length)) throw new Error("יש לבחור כן או לא ולתעד לפחות פריט אחד אם נלקחו כלים או קשיחים.");
+    if (duplicateToolNumbers(tools)) throw new Error("כלי מופיע פעמיים.");
+    await requireCatalogTools(transaction, tools);
+    if (tools.length && (!intake.entryTechnicianSignature?.startsWith("data:image/png;base64,") || !intake.entryInspectorSignature?.startsWith("data:image/png;base64,") || !/^[1-9][0-9]{6}$/.test(intake.entryInspectorNumber || ""))) throw new Error("יש להשלים ביקורת כניסה לכלים ומספר אישי תקין.");
+    if (taken.length && (!intake.takenSignature?.startsWith("data:image/png;base64,") || !intake.takenFullName?.trim() || !/^[1-9][0-9]{6}$/.test(intake.takenPersonalNumber || "") || !intake.takenRank?.trim())) throw new Error("יש להשלים את פרטי החתימה על קשיחים.");
+    transaction.update(ref, { intake: { ...intake, by: uid, at: new Date().toISOString() } });
+  });
+}
+
+export async function startKeyWork(id, uid, signature, session) {
+  if (!signature?.startsWith("data:image/png;base64,") || signature.length < 100) throw new Error("יש לחתום על מטוס בטוח לאחזקה.");
+  const ref = doc(db, "keyLoads", id);
+  await runTransaction(db, async (transaction) => {
+    await requireEditLock(transaction, "key", id, session, uid);
+    const snap = await transaction.get(ref);
+    if (!snap.exists() || snap.data().status !== "open" || !snap.data().intake || !snap.data().teamUids.includes(uid)) throw new Error("יש לשמור קליטה לפני חתימת בטיחות.");
+    if (snap.data().startedAt) return;
+    transaction.update(ref, { startedAt: new Date().toISOString(), startedBy: uid, safetySignature: signature });
   });
 }
 
@@ -466,6 +494,7 @@ export async function closeKeyLoad(id, completedBy, work, session) {
     if (!current.exists() || current.data().status !== "open") throw new Error("ההטענה כבר נסגרה או אינה קיימת.");
     const load = current.data();
     if (!load.teamUids.includes(completedBy)) throw new Error("אינך משויך לצוות ההטענה.");
+    if (load.intakeRequired && (!load.startedAt || !load.intake || !work.preflightSaved || work.safetyTechnicianSignature !== load.safetySignature)) throw new Error("יש לשמור קליטה וחתימת בטיחות לפני הגשת ההטענה.");
     if (duplicateToolNumbers(work.tools || [])) throw new Error("כלי זה כבר תועד בטופס המפתחות.");
     const completedAt = new Date().toISOString();
     transaction.update(ref, { status: "pendingReview", work, completedAt, completedBy, workDraft: deleteField() });
