@@ -39,7 +39,7 @@ export function initToolIntakePopup(user) {
         const cell = document.createElement("td"), input = document.createElement("input");
         input.type = key === "toolNumber" ? "search" : "text";
         input.value = row[key]; input.setAttribute("aria-label", `${label}, שורה ${index + 1}`);
-        input.readOnly = key === "toolName" || Boolean(catalogTool(row.toolNumber));
+        input.readOnly = key === "toolName" || (key === "toolNumber" && Boolean(catalogTool(row.toolNumber)));
         input.addEventListener("input", () => {
           clearError(); row[key] = input.value;
           if (key === "toolNumber") {
@@ -47,7 +47,7 @@ export function initToolIntakePopup(user) {
             if (selected && !toolNumberRecorded(selected.toolNumber, rows, index, issue?.acceptedTools || [])) {
               row.toolNumber = selected.toolNumber; row.toolName = selected.toolName;
               if (index === rows.length - 1) rows.push({ toolName: "", toolNumber: "", notes: "" });
-              render(); body.children[index + 1]?.querySelector('input[type="search"]')?.focus(); return;
+              render(); body.children[index]?.querySelectorAll("input")[2]?.focus({ preventScroll: true }); return;
             }
             row.toolName = "";
           }
