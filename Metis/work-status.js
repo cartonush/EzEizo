@@ -1,5 +1,5 @@
 export function issueWorkStage(issue) {
-  if (issue.status === "open") return issue.startedAt || issue.workDraft?.state?.safetyTechnicianSignature ? "progress" : "start";
+  if (issue.status === "open") return issue.startedAt ? "progress" : "start";
   if (issue.status === "pendingReview" || issue.status === "closed") return "finished";
   return null;
 }
@@ -21,21 +21,24 @@ export function isToday(value, now = new Date()) {
     && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
 }
 
+export function visibleWorkIssues(issues, now = new Date()) {
+  const end = now.getTime(), start = end - 24 * 60 * 60 * 1000;
+  return issues.filter((issue) => {
+    const at = new Date(issueStageDate(issue)).getTime();
+    return issue.sheet && issueWorkStage(issue) && Number.isFinite(at) && at >= start && at <= end;
+  });
+}
+
 let midnightRefresh;
 export function renderWorkStatus(issues) {
   const root = document.querySelector("#work-status-board");
   root.replaceChildren();
   const now = new Date();
-  document.querySelector("#work-status-date").textContent = `תקלות מהיום · ${new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "long", year: "numeric" }).format(now)}`;
+  document.querySelector("#work-status-date").textContent = `תקלות עם פעילות ב־24 השעות האחרונות · עד ${new Intl.DateTimeFormat("he-IL", { dateStyle: "short", timeStyle: "short" }).format(now)}`;
   clearTimeout(midnightRefresh);
-  midnightRefresh = setTimeout(() => renderWorkStatus(issues), new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime() + 1000);
-  const bySerial = new Map(), rank = { closed: 3, pendingReview: 2, open: 1 };
-  for (const issue of issues.filter((item) => item.sheet?.serial && isToday(issueStageDate(item), now))) {
-    const previous = bySerial.get(issue.sheet.serial);
-    if (!previous || (rank[issue.status] || 0) > (rank[previous.status] || 0)) bySerial.set(issue.sheet.serial, issue);
-  }
-  const unique = [...bySerial.values()];
-  for (const [stage, title, hint] of [["start", "תחילת עבודה", "פתוחות · טרם נחתם בטוח לאחזקה"], ["progress", "מהלך עבודה", "חתימת בטיחות נשמרה"], ["finished", "סיום עבודה", "ממתינות לבקרה או סגורות"]]) {
+  midnightRefresh = setTimeout(() => renderWorkStatus(issues), 60_000);
+  const unique = visibleWorkIssues(issues, now);
+  for (const [stage, title, hint] of [["start", "תחילת עבודה", "פתוחות · טרם נשמרה תחילת העבודה לאחר חתימת בטיחות המטוס"], ["progress", "מהלך עבודה", "חתימת בטיחות נשמרה"], ["finished", "סיום עבודה", "ממתינות לבקרה או סגורות"]]) {
     const lane = document.createElement("section"); lane.className = `work-status-lane work-status-${stage}`;
     const group = unique.filter((item) => issueWorkStage(item) === stage).sort((a, b) => String(issueStageDate(b)).localeCompare(String(issueStageDate(a))));
     const heading = document.createElement("h3"); heading.textContent = `${title} · ${group.length}`;
